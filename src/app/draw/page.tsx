@@ -1,47 +1,130 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
+import { BismillahButton } from '@/components/BismillahButton';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { ArrowRight, BookOpen, Check, Home, Redo, Share2 } from 'lucide-react';
-import { generateUniqueRandomNumbers } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { generateIslamicRandom } from '@/lib/utils';
 import Link from 'next/link';
+import { Home, Redo, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-type DrawStep = 'dua' | 'settings' | 'animation' | 'result';
+type DrawStep = 'settings' | 'animation' | 'result';
 type DrawSettings = { range: number; count: number };
 
-function NumberSpinner() {
-  const [digit, setDigit] = useState(0);
+function NumberAnimation() {
+  const [phase, setPhase] = useState(0);
+
+  const phases = [
+    "نمبرز مکس ہو رہے ہیں...",
+    "پہلا نمبر منتخب ہو رہا ہے",
+    "دوسرا نمبر منتخب ہو رہا ہے", 
+    "تیسرا نمبر منتخب ہو رہا ہے",
+    "چوتھا نمبر منتخب ہو رہا ہے",
+    "پانچواں نمبر منتخب ہو رہا ہے",
+    "نتیجہ تیار ہے!"
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setDigit(d => (d + 1) % 10);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
+      setPhase(p => (p < phases.length - 1 ? p + 1 : p));
+    }, 1000);
 
-  return <span className="text-4xl font-mono text-muted-foreground animate-pulse">{digit}</span>;
+    return () => clearInterval(interval);
+  }, [phases.length]);
+
+  return (
+    <div className="min-h-screen bg-islamic-dark flex flex-col items-center justify-center p-4">
+      <div className="text-center mb-8">
+        <h3 className="text-2xl font-arabic text-islamic-gold mb-4 animate-pulse">
+          {phases[phase]}
+        </h3>
+        
+        <div className="flex justify-center space-x-2 mt-8">
+          {[...Array(33)].map((_, i) => (
+            <div 
+              key={i}
+              className={`w-2 h-2 rounded-full transition-colors duration-500 ${
+                i <= (phase / (phases.length -1)) * 33 ? 'bg-islamic-gold' : 'bg-gray-600'
+              }`}
+            />
+          ))}
+        </div>
+        <p className="text-islamic-gold/70 mt-4 text-sm font-urdu">تسبیح کی طرح نمبرز مکس ہو رہے ہیں</p>
+      </div>
+    </div>
+  );
 }
 
+
+function SettingsModal({ settings, onSave }: { settings: DrawSettings, onSave: (settings: DrawSettings) => void }) {
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  return (
+      <Card className="w-full max-w-lg shadow-xl animate-fade-in bg-islamic-dark border-islamic-gold">
+        <CardContent className="p-8 space-y-8">
+          <h2 className="font-arabic text-3xl text-center text-islamic-gold">قرعہ کی ترتیبات</h2>
+          <div className="space-y-6">
+            <h3 className="font-urdu text-xl text-white">نمبروں کی حد:</h3>
+            <RadioGroup
+              dir="ltr"
+              value={String(localSettings.range)}
+              onValueChange={(val) => setLocalSettings(prev => ({...prev, range: Number(val)}))}
+              className="flex gap-4 justify-center"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="99" id="r1" className="text-islamic-gold border-islamic-gold" />
+                <Label htmlFor="r1" className="text-lg text-white font-urdu">1 سے 99 تک</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="100" id="r2" className="text-islamic-gold border-islamic-gold" />
+                <Label htmlFor="r2" className="text-lg text-white font-urdu">1 سے 100 تک</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <div className="space-y-6">
+            <h3 className="font-urdu text-xl text-white">کتنے نمبر چاہیے:</h3>
+            <RadioGroup
+              dir="ltr"
+              value={String(localSettings.count)}
+              onValueChange={(val) => setLocalSettings(prev => ({...prev, count: Number(val)}))}
+              className="flex gap-4 justify-center"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="4" id="c1" className="text-islamic-gold border-islamic-gold" />
+                <Label htmlFor="c1" className="text-lg text-white font-urdu">4 نمبر</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="5" id="c2" className="text-islamic-gold border-islamic-gold" />
+                <Label htmlFor="c2" className="text-lg text-white font-urdu">5 نمبر</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <Button size="lg" className="w-full text-lg bg-islamic-gold text-islamic-dark hover:bg-yellow-600 font-urdu" onClick={() => onSave(localSettings)}>
+            محفوظ کریں
+          </Button>
+        </CardContent>
+      </Card>
+  );
+}
+
+
 export default function DrawPage() {
-  const [step, setStep] = useState<DrawStep>('dua');
-  const [settings, setSettings] = useState<DrawSettings>({ range: 99, count: 4 });
+  const [step, setStep] = useState<DrawStep>('settings');
+  const [settings, setSettings] = useState<DrawSettings>({ range: 99, count: 5 });
   const [resultNumbers, setResultNumbers] = useState<number[]>([]);
-  const [revealedNumbers, setRevealedNumbers] = useState<(number | null)[]>([]);
   const { toast } = useToast();
 
-  const handleSettingsChange = (type: 'range' | 'count', value: number) => {
-    setSettings(prev => ({ ...prev, [type]: value }));
-  };
-
-  const handleStartDraw = () => {
-    const numbers = generateUniqueRandomNumbers(settings.range, settings.count);
-    setResultNumbers(numbers);
-    setRevealedNumbers(Array(settings.count).fill(null));
+  const handleStartDraw = async () => {
     setStep('animation');
+    const numbers = await generateIslamicRandom(1, settings.range, settings.count);
+    setResultNumbers(numbers);
+    setTimeout(() => {
+        setStep('result');
+    }, 4000); // Wait for animation
   };
 
   const handleRedraw = () => {
@@ -70,149 +153,77 @@ export default function DrawPage() {
     }
   };
 
-  useEffect(() => {
-    if (step === 'animation') {
-      const revealNextNumber = (index: number) => {
-        if (index < resultNumbers.length) {
-          setTimeout(() => {
-            setRevealedNumbers(prev => {
-              const newRevealed = [...prev];
-              newRevealed[index] = resultNumbers[index];
-              return newRevealed;
-            });
-            revealNextNumber(index + 1);
-          }, 2000);
-        } else {
-          setTimeout(() => {
-            setStep('result');
-          }, 1000);
-        }
-      };
-      revealNextNumber(0);
-    }
-  }, [step, resultNumbers]);
+  if (step === 'animation') {
+    return <NumberAnimation />;
+  }
 
-  const renderStep = () => {
-    switch (step) {
-      case 'dua':
-        return (
-          <Card className="w-full max-w-lg text-center shadow-xl animate-fade-in">
-            <CardContent className="p-8 sm:p-12 space-y-6">
-              <BookOpen className="mx-auto h-16 w-16 text-primary" />
-              <h2 className="font-headline text-4xl text-primary">اَللّٰهُمَّ خِرْ لِيْ وَاخْتَرْ لِيْ</h2>
-              <p className="text-muted-foreground text-lg">"اے اللہ! میرے لیے بہتر کو منتخب فرما"</p>
-              <Button size="lg" className="w-full text-lg" onClick={() => setStep('settings')}>
-                آمادہ ہوں - اگلا مرحلہ <ArrowRight className="mr-2 h-5 w-5" />
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      case 'settings':
-        return (
-          <Card className="w-full max-w-lg shadow-xl animate-fade-in">
-            <CardContent className="p-8 space-y-8">
-              <h2 className="font-headline text-3xl text-center text-primary">قرعہ کی ترتیبات</h2>
-              <div className="space-y-6">
-                <h3 className="font-headline text-xl">نمبروں کی حد:</h3>
-                <RadioGroup
-                  dir="ltr"
-                  value={String(settings.range)}
-                  onValueChange={(val) => handleSettingsChange('range', Number(val))}
-                  className="flex gap-4 justify-center"
+  if (step === 'result') {
+    return (
+       <div className="min-h-screen bg-gradient-to-b from-islamic-green to-islamic-dark flex flex-col items-center justify-center p-4">
+          <h1 className="text-4xl font-arabic text-islamic-gold mb-8 animate-fade-in">
+            الْحَمْدُ لِلَّهِ
+          </h1>
+          
+          <div className="bg-white bg-opacity-20 p-8 rounded-2xl backdrop-blur-sm animate-fade-in">
+            <h2 className="text-2xl font-urdu text-white text-center mb-6">
+              قرعہ کا نتیجہ
+            </h2>
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+              {resultNumbers.map((number, index) => (
+                <div 
+                  key={index}
+                  style={{ animationDelay: `${index * 150}ms` }}
+                  className="bg-islamic-gold text-islamic-dark text-3xl font-bold p-6 rounded-lg text-center shadow-lg transform hover:scale-110 transition-transform animate-fade-in"
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="99" id="r1" />
-                    <Label htmlFor="r1" className="text-lg">1 سے 99 تک</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="100" id="r2" />
-                    <Label htmlFor="r2" className="text-lg">1 سے 100 تک</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <div className="space-y-6">
-                <h3 className="font-headline text-xl">کتنے نمبر چاہیے:</h3>
-                <RadioGroup
-                  dir="ltr"
-                  value={String(settings.count)}
-                  onValueChange={(val) => handleSettingsChange('count', Number(val))}
-                  className="flex gap-4 justify-center"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="4" id="c1" />
-                    <Label htmlFor="c1" className="text-lg">4 نمبر</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="5" id="c2" />
-                    <Label htmlFor="c2" className="text-lg">5 نمبر</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <Button size="lg" className="w-full text-lg" onClick={handleStartDraw}>
-                قرعہ شروع کریں
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      case 'animation':
-        return (
-          <div className="w-full max-w-2xl text-center animate-fade-in">
-             <h2 className="font-headline text-3xl text-primary mb-6">نمبرز مکس ہو رہے ہیں...</h2>
-             <div dir="ltr" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 justify-center">
-                {revealedNumbers.map((num, index) => (
-                    <Card key={index} className={`flex flex-col items-center justify-center p-4 h-40 transition-all duration-500 ${num !== null ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
-                        {num !== null ? (
-                            <div className="text-center animate-fade-in">
-                               <p className="text-4xl font-bold">{num}</p>
-                               <p className="text-sm font-headline mt-2 flex items-center gap-1"><Check size={16}/> الحمد للہ</p>
-                            </div>
-                        ) : (
-                           <div className="flex gap-1">
-                             <NumberSpinner />
-                             <NumberSpinner />
-                           </div>
-                        )}
-                    </Card>
-                ))}
-             </div>
-          </div>
-        );
-      case 'result':
-        return (
-          <Card className="w-full max-w-lg text-center shadow-xl animate-fade-in">
-            <CardContent className="p-8 space-y-6">
-              <h2 className="font-headline text-3xl text-primary">🎉 الحمد للہ! قرعہ کا نتیجہ</h2>
-              <p className="font-headline text-lg text-muted-foreground">منتخب نمبر:</p>
-              <div className="flex flex-wrap justify-center gap-4 py-4">
-                {resultNumbers.map((num, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-accent/20 border-2 border-accent text-accent-foreground rounded-lg p-3 shadow-md">
-                    <span className="font-bold text-3xl">📌 {num}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="font-headline text-xl text-primary">"فَإِنَّ اللَّهَ هُوَ الْغَنِيُّ الْحَمِيدُ"</p>
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Button size="lg" className="flex-1" onClick={handleShare}>
+                  {number}
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xl font-arabic text-islamic-gold text-center mb-6">
+              فَإِنَّ اللَّهَ هُوَ الْغَنِيُّ الْحَمِيدُ
+            </p>
+
+            <div className="flex flex-col md:flex-row gap-4 justify-center">
+               <Button size="lg" className="flex-1 bg-islamic-green text-white hover:bg-islamic-lightGreen font-urdu" onClick={handleShare}>
                   <Share2 className="ml-2 h-5 w-5" /> نتیجہ شیئر کریں
                 </Button>
-                <Button size="lg" variant="outline" className="flex-1" onClick={handleRedraw}>
+                <Button size="lg" variant="outline" className="flex-1 bg-islamic-gold text-islamic-dark hover:bg-yellow-600 font-urdu" onClick={handleRedraw}>
                   <Redo className="ml-2 h-5 w-5" /> دوبارہ قرعہ کریں
                 </Button>
-              </div>
-              <Link href="/" passHref>
-                <Button size="lg" variant="ghost" className="w-full mt-2">
+            </div>
+             <Link href="/" passHref>
+                <Button size="lg" variant="ghost" className="w-full mt-4 text-white hover:bg-islamic-gold/20 font-urdu">
                   <Home className="ml-2 h-5 w-5" /> ہوم پیج پر جائیں
                 </Button>
               </Link>
-            </CardContent>
-          </Card>
-        );
-    }
-  };
+          </div>
+        </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      {renderStep()}
+    <div className="min-h-screen bg-islamic-green flex items-center justify-center p-4">
+      {step === 'settings' ? (
+        <SettingsModal 
+          settings={settings}
+          onSave={(newSettings) => {
+            setSettings(newSettings);
+            setStep('dua');
+          }}
+        />
+      ) : (
+        <div className="text-center animate-fade-in">
+          <h2 className="text-3xl font-arabic text-islamic-gold mb-8">
+            اَللّٰهُمَّ خِرْ لِيْ وَاخْتَرْ لِيْ
+          </h2>
+          <p className="text-white/80 font-urdu mb-8">"اے اللہ! میرے لیے بہتر کو منتخب فرما"</p>
+          <BismillahButton href="#" onClick={(e) => { e.preventDefault(); handleStartDraw(); }}>
+            قرعہ شروع کریں
+          </BismillahButton>
+        </div>
+      )}
     </div>
   );
 }

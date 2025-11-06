@@ -13,28 +13,28 @@ const prayerTimes = [
 export default function PrayerTimesPage() {
   return (
     <PageWrapper title="نماز کے اوقات">
-      <Card className="shadow-lg">
+      <Card className="shadow-lg bg-black/20 border-islamic-gold/50 text-white">
         <CardHeader>
-          <CardTitle className="text-center font-headline text-3xl">🕌 آج کے اوقاتِ نماز</CardTitle>
+          <CardTitle className="text-center font-arabic text-3xl text-islamic-gold">🕌 آج کے اوقاتِ نماز</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-right text-lg">نماز</TableHead>
-                <TableHead className="text-left text-lg">وقت</TableHead>
+              <TableRow className="border-islamic-gold/50">
+                <TableHead className="text-right text-lg font-urdu text-white">نماز</TableHead>
+                <TableHead className="text-left text-lg font-urdu text-white">وقت</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {prayerTimes.map((prayer) => (
-                <TableRow key={prayer.name}>
-                  <TableCell className="font-bold text-xl">{prayer.name}</TableCell>
+                <TableRow key={prayer.name} className="border-islamic-gold/30">
+                  <TableCell className="font-bold text-xl font-urdu">{prayer.name}</TableCell>
                   <TableCell className="text-left font-mono text-xl">{prayer.time}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          <p className="text-center text-muted-foreground mt-6 text-sm">
+          <p className="text-center text-white/70 mt-6 text-sm font-urdu">
             نوٹ: یہ اوقات مثال کے طور پر ہیں۔ اپنے مقامی مسجد کے اوقات پر عمل کریں۔
           </p>
         </CardContent>
