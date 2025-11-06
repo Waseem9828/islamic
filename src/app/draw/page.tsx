@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { Home, Redo, Share2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-type DrawStep = 'settings' | 'animation' | 'result';
+type DrawStep = 'settings' | 'dua' | 'animation' | 'result';
 type DrawSettings = { range: number; count: number };
 
 function NumberAnimation() {
@@ -31,7 +31,7 @@ function NumberAnimation() {
   useEffect(() => {
     const interval = setInterval(() => {
       setPhase(p => (p < phases.length - 1 ? p + 1 : p));
-    }, 1000);
+    }, 550); // Made it a bit faster
 
     return () => clearInterval(interval);
   }, [phases.length]);
@@ -129,6 +129,7 @@ export default function DrawPage() {
 
   const handleRedraw = () => {
     setStep('settings');
+    setResultNumbers([]);
   };
 
   const handleShare = async () => {
@@ -219,7 +220,7 @@ export default function DrawPage() {
             اَللّٰهُمَّ خِرْ لِيْ وَاخْتَرْ لِيْ
           </h2>
           <p className="text-white/80 font-urdu mb-8">"اے اللہ! میرے لیے بہتر کو منتخب فرما"</p>
-          <BismillahButton href="#" onClick={(e) => { e.preventDefault(); handleStartDraw(); }}>
+          <BismillahButton onClick={(e) => { e.preventDefault(); handleStartDraw(); }}>
             قرعہ شروع کریں
           </BismillahButton>
         </div>
