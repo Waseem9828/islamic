@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BismillahButton } from '@/components/BismillahButton';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ function NumberAnimation() {
     "نتیجہ تیار ہے!"
   ];
 
-  useEffect(() => {
+  useState(() => {
     const interval = setInterval(() => {
       setPhase(p => (p < phases.length - 1 ? p + 1 : p));
     }, 550); // Made it a bit faster
@@ -134,23 +134,12 @@ export default function DrawPage() {
 
   const handleShare = async () => {
     const text = `الحمد للہ! قرعہ کا نتیجہ:\n\n${resultNumbers.join('\n')}\n\nIslamic Random Selector ایپ کے ذریعے`;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'قرعہ کا نتیجہ',
-          text: text,
-        });
-      } catch (error) {
-        console.error('Share failed:', error);
-        toast({ title: 'شیئرنگ میں ناکامی', description: 'نتیجہ شیئر نہیں کیا جا سکا', variant: 'destructive'});
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(text);
-        toast({ title: 'نتیجہ کاپی ہوگیا', description: 'اب آپ اسے کہیں بھی پیسٹ کر سکتے ہیں۔' });
-      } catch (err) {
-        toast({ title: 'کاپی کرنے میں ناکامی', description: 'نتیجہ کاپی نہیں کیا جا سکا', variant: 'destructive'});
-      }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: 'نتیجہ کاپی ہوگیا', description: 'اب آپ اسے کہیں بھی پیسٹ کر سکتے ہیں۔' });
+    } catch (err) {
+      console.error('Copy failed:', err);
+      toast({ title: 'کاپی کرنے میں ناکامی', description: 'نتیجہ کاپی نہیں کیا جا سکا', variant: 'destructive'});
     }
   };
 
