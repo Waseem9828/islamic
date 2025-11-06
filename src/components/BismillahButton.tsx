@@ -1,37 +1,41 @@
 "use client"
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
-export const BismillahButton = ({ href, children, className }: { href: string, children: React.ReactNode, className?: string }) => {
+export const BismillahButton = ({ href, children, className, onClick }: { href?: string, children: React.ReactNode, className?: string, onClick?: (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void }) => {
   const [isPressed, setIsPressed] = useState(false);
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => {
     // We can't play audio reliably on click, so we'll skip it for now.
     // This is a browser security feature.
     
     setIsPressed(true);
     setTimeout(() => setIsPressed(false), 1000);
+    
+    if (onClick) {
+      onClick(e);
+    }
   };
 
-  return (
-    <Link
-      href={href}
-      onClick={handleClick}
-      className={cn(`
-        relative overflow-hidden
-        bg-islamic-green text-white
-        px-8 py-4 rounded-lg
-        text-xl font-arabic
-        shadow-lg transform transition-all
-        hover:bg-islamic-lightGreen
-        hover:scale-105
-        active:scale-95
-        border-2 border-islamic-gold
-        flex items-center justify-center
-        ${isPressed ? 'ring-4 ring-islamic-gold' : ''}
-      `, className)}
-    >
+  const buttonClassName = cn(`
+    relative overflow-hidden
+    bg-islamic-green text-white
+    px-8 py-4 rounded-lg
+    text-xl font-arabic
+    shadow-lg transform transition-all
+    hover:bg-islamic-lightGreen
+    hover:scale-105
+    active:scale-95
+    border-2 border-islamic-gold
+    flex items-center justify-center
+    ${isPressed ? 'ring-4 ring-islamic-gold' : ''}
+  `, className);
+
+  const content = (
+    <>
       <div 
         className="absolute inset-0 opacity-10"
         style={{
@@ -46,6 +50,27 @@ export const BismillahButton = ({ href, children, className }: { href: string, c
       {isPressed && (
         <div className="absolute inset-0 bg-islamic-gold opacity-30 animate-ping"></div>
       )}
-    </Link>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        onClick={handleClick}
+        className={buttonClassName}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className={buttonClassName}
+    >
+      {content}
+    </button>
   );
 };
