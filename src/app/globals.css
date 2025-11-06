@@ -2,67 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 0 0% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 120 100% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 120 20% 10%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 45 100% 50%;
-    --accent-foreground: 45 100% 10%;
+    --background: 120 100% 19.6%; /* islamic-green */
+    --foreground: 0 0% 100%; /* white */
+ 
+    --card: 120 100% 19.6%;
+    --card-foreground: 0 0% 100%;
+ 
+    --popover: 120 100% 19.6%;
+    --popover-foreground: 0 0% 100%;
+ 
+    --primary: 51 100% 50%; /* islamic-gold */
+    --primary-foreground: 120 100% 10.8%; /* islamic-dark */
+ 
+    --secondary: 120 60% 34.1%; /* islamic-lightGreen */
+    --secondary-foreground: 0 0% 100%;
+ 
+    --muted: 120 60% 34.1%;
+    --muted-foreground: 60 30% 94.1%; /* islamic-cream */
+ 
+    --accent: 51 100% 50%; /* islamic-gold */
+    --accent-foreground: 120 100% 10.8%;
+ 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 45 100% 50%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 51 100% 50%;
+    --input: 120 60% 34.1%;
+    --ring: 51 100% 50%;
     --radius: 0.5rem;
   }
+ 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 0 0% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 120 100% 20%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 120 20% 10%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 45 100% 50%;
-    --accent-foreground: 45 100% 10%;
+    --background: 120 100% 19.6%; /* islamic-green */
+    --foreground: 0 0% 100%; /* white */
+ 
+    --card: 120 100% 19.6%;
+    --card-foreground: 0 0% 100%;
+ 
+    --popover: 120 100% 19.6%;
+    --popover-foreground: 0 0% 100%;
+ 
+    --primary: 51 100% 50%; /* islamic-gold */
+    --primary-foreground: 120 100% 10.8%; /* islamic-dark */
+ 
+    --secondary: 120 60% 34.1%; /* islamic-lightGreen */
+    --secondary-foreground: 0 0% 100%;
+ 
+    --muted: 120 60% 34.1%;
+    --muted-foreground: 60 30% 94.1%; /* islamic-cream */
+ 
+    --accent: 51 100% 50%; /* islamic-gold */
+    --accent-foreground: 120 100% 10.8%;
+ 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 45 100% 50%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+ 
+    --border: 51 100% 50%;
+    --input: 120 60% 34.1%;
+    --ring: 51 100% 50%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    direction: rtl;
   }
 }
