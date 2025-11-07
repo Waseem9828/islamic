@@ -213,6 +213,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
             return;
         }
 
+        const duration = phases[phase] ? phases[phase].duration : 1000;
         const phaseTimer = setTimeout(() => {
             if (phase < settings.count) {
                 const [min, max] = settings.range.split('-').map(Number);
@@ -220,7 +221,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
                 setCurrentNumbers(prev => [...prev, newNumber]);
                 setPhase(prev => prev + 1);
             }
-        }, phases[phase]?.duration || 1000);
+        }, duration);
 
         return () => clearTimeout(phaseTimer);
     }, [phase, settings, isComplete, onComplete]);
@@ -232,7 +233,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
             <div className="text-center max-w-2xl w-full">
                 <div className="mb-12">
                     <h3 className="text-3xl font-arabic text-islamic-gold mb-4">
-                        {phases[phase]?.text || "مکمل ہو گیا!"}
+                        {(phases[phase] && phases[phase].text) || "مکمل ہو گیا!"}
                     </h3>
                     <div className="flex justify-center items-center space-x-2 mb-8">
                         {[...Array(33)].map((_, i) => (
@@ -324,5 +325,5 @@ export default function DrawPage() {
     }
   };
 
-  return <div className="min-h-full">{renderStep()}</div>;
+  return <div className="min-h-full flex items-center justify-center">{renderStep()}</div>;
 }
