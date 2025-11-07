@@ -54,6 +54,12 @@ export default function Home() {
             >
               👥 کمیونٹی
             </button>
+             <button
+              onClick={() => router.push('/exact-selection')}
+              className="bg-islamic-gold text-islamic-dark px-6 py-4 rounded-2xl text-lg font-urdu hover:bg-yellow-600 transition-colors font-bold"
+            >
+              🎯 Exact Selection
+            </button>
         </div>
 
         {/* فیچر گرڈ */}
