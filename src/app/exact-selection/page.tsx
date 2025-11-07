@@ -149,16 +149,18 @@ const MultiStageMethod = () => {
     const [isComplete, setIsComplete] = useState(false);
 
     const stages = [
-        { id: 1, name: 'پہلا مرحلہ', range: '1-100', count: 5 },
-        { id: 2, name: 'دوسرا مرحلہ', range: 'پچھلے 5 نمبر', count: 5 },
-        { id: 3, name: 'تیسرا مرحلہ', range: 'پچھلے 5 نمبر', count: 5 },
-        { id: 4, name: 'چوتھا مرحلہ', range: 'پچھلے 5 نمبر', count: 5 },
-        { id: 5, name: 'پانچواں مرحلہ', range: 'آخری 5 نمبر', count: 1 }
+        { id: 1, name: 'پہلا مرحلہ', range: '1-100', count: 7 },
+        { id: 2, name: 'دوسرا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
+        { id: 3, name: 'تیسرا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
+        { id: 4, name: 'چوتھا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
+        { id: 5, name: 'پانچواں مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
+        { id: 6, name: 'چھٹا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
+        { id: 7, name: 'ساتواں مرحلہ', range: 'آخری 7 نمبر', count: 1 }
     ];
 
     const generateInitialNumbers = () => {
         const numbers: number[] = [];
-        while (numbers.length < 5) {
+        while (numbers.length < 7) {
             const randomNum = Math.floor(Math.random() * 100) + 1;
             if (!numbers.includes(randomNum)) {
                 numbers.push(randomNum);
@@ -177,7 +179,7 @@ const MultiStageMethod = () => {
     const performStageDraw = () => {
         if (isComplete) return;
 
-        if (currentStage >= 5) {
+        if (currentStage >= 7) {
             calculateExactNumber();
             return;
         }
@@ -185,7 +187,7 @@ const MultiStageMethod = () => {
         const newSelection: number[] = [];
         const availableNumbers = [...currentNumbers];
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 7; i++) {
             const randomIndex = Math.floor(Math.random() * availableNumbers.length);
             newSelection.push(availableNumbers[randomIndex]);
         }
@@ -250,18 +252,18 @@ const MultiStageMethod = () => {
                     طَرِيقَةُ الْمَرَاحِلِ الْمُتَعَدِّدَة
                 </h2>
                 <p className="text-white font-urdu text-lg">
-                    5 مراحل میں 5 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے
+                    7 مراحل میں 7 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے
                 </p>
             </div>
 
             <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6">
                 <div className="flex justify-between mb-4">
                     {stages.map((stage) => (
-                        <div key={stage.id} className="text-center">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-islamic-gold text-islamic-dark' : currentStage === stage.id ? 'bg-islamic-green text-white border-2 border-islamic-gold' : 'bg-white bg-opacity-20 text-white'}`}>
+                        <div key={stage.id} className="text-center flex-1">
+                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-islamic-gold text-islamic-dark' : currentStage === stage.id ? 'bg-islamic-green text-white border-2 border-islamic-gold' : 'bg-white bg-opacity-20 text-white'}`}>
                                 {stage.id}
                             </div>
-                            <div className="text-white text-sm font-urdu">{stage.name}</div>
+                            <div className="text-white text-xs md:text-sm font-urdu">{stage.name}</div>
                         </div>
                     ))}
                 </div>
@@ -284,7 +286,7 @@ const MultiStageMethod = () => {
                     disabled={isComplete}
                     className="bg-islamic-gold text-islamic-dark px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
                 >
-                    {isComplete ? 'مکمل' : currentStage >= 5 ? 'حتمی نتیجہ دیکھیں' : 'مرحلہ مکمل کریں'}
+                    {isComplete ? 'مکمل' : currentStage >= 7 ? 'حتمی نتیجہ دیکھیں' : 'مرحلہ مکمل کریں'}
                 </button>
                 <button
                     onClick={resetProcess}
@@ -373,7 +375,7 @@ export default function ExactSelectionPage() {
         {
             id: 'multistage',
             name: 'مرحلہ وار انتخاب',
-            description: '5 مراحل میں 5 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے',
+            description: '7 مراحل میں 7 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے',
             icon: '🔄'
         }
     ];
