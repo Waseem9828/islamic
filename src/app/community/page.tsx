@@ -43,7 +43,7 @@ const GroupDraw = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-arabic text-islamic-gold mb-4">جماعتی قُرعہ</h2>
+                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">جماعتی قُرعہ</h2>
                 <p className="text-white font-urdu text-lg">دوستوں اور خاندان کے ساتھ مل کر قرعہ اندازی کریں</p>
             </div>
             <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-8">
@@ -157,7 +157,7 @@ const Leaderboard = () => {
     return (
         <div className="max-w-6xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-arabic text-islamic-gold mb-4">تَصْنِيفُ الْمُبَارَكَة</h2>
+                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">تَصْنِيفُ الْمُبَارَكَة</h2>
                 <p className="text-white font-urdu text-lg">نیکی کے مقابلوں میں حصہ لیں اور انعامات جیتیں</p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -268,7 +268,7 @@ const ShareResults = ({ numbers, settings }: { numbers?: number[], settings?: an
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-arabic text-islamic-gold mb-4">مُشَارَكَةُ النَّتَائِج</h2>
+                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">مُشَارَكَةُ النَّتَائِج</h2>
                 <p className="text-white font-urdu text-lg">اپنے نتائج شیئر کریں اور دوسروں کے نتائج دیکھیں</p>
             </div>
             {numbers && numbers.length > 0 && (
@@ -337,11 +337,7 @@ export default function CommunityPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-islamic-dark to-islamic-green pt-8 md:pt-20">
-            <div className="text-center mb-8">
-                <h1 className="text-4xl md:text-6xl font-arabic text-islamic-gold mb-4">جَمَاعَتِ الْخَيْر</h1>
-                <p className="text-2xl text-white font-urdu">نیکی کی کمیونٹی میں شامل ہوں</p>
-            </div>
+        <div className="p-4">
             <div className="flex justify-center mb-8 px-4">
                 <div className="bg-white bg-opacity-10 rounded-2xl p-1 flex gap-1 flex-wrap justify-center">
                     {tabs.map((tab) => (

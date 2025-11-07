@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { BismillahButton } from '@/components/BismillahButton';
 import { generateIslamicRandom } from '@/lib/utils';
-import Link from 'next/link';
 import { Home, Redo, Share2, Copy } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { useToast } from '@/hooks/use-toast';
 
 type DrawStep = 'settings' | 'dua' | 'animation' | 'result';
 
@@ -79,81 +80,97 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
 
 // --- نتیجہ ڈسپلے ---
 const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: number[], settings: any, onRestart: () => void, onHome: () => void }) => {
-    const [showCopySuccess, setShowCopySuccess] = useState(false);
-
-    const copyToClipboard = async () => {
-        const text = numbers.join(', ');
-        try {
-            await navigator.clipboard.writeText(text);
-            setShowCopySuccess(true);
-            setTimeout(() => setShowCopySuccess(false), 2000);
-        } catch (err) {
-            console.error('Copy failed:', err);
-        }
-    };
+    const { toast } = useToast();
+    const resultCardRef = useRef<HTMLDivElement>(null);
 
     const handleShare = async () => {
-        const text = `قرعہ کا نتیجہ: ${numbers.join(', ')}\n\nبسم اللہ کے ساتھ اسلامی قرعہ اندازی`;
-        if (navigator.share) {
-            try {
+        if (!resultCardRef.current) return;
+
+        try {
+            const canvas = await html2canvas(resultCardRef.current, {
+                backgroundColor: null, // Transparent background
+                useCORS: true,
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], 'qurah-result.png', { type: 'image/png' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
+                    files: [file],
                     title: 'قرعہ کا نتیجہ',
-                    text: text,
+                    text: `قرعہ کا نتیجہ: ${numbers.join(', ')}`,
                 });
-            } catch (err) {
-                console.error('Sharing failed:', err);
+            } else {
+                 await navigator.clipboard.write([
+                    new ClipboardItem({
+                        'image/png': blob
+                    })
+                ]);
+                toast({
+                    title: "نتیجہ کاپی ہوگیا!",
+                    description: "اسکرین شاٹ کلپ بورڈ میں کاپی کر لیا گیا ہے۔",
+                });
             }
-        } else {
-            copyToClipboard();
+        } catch (err) {
+            console.error('Sharing or copying screenshot failed:', err);
+            const text = numbers.join(', ');
+            await navigator.clipboard.writeText(text);
+            toast({
+                title: "صرف ٹیکسٹ کاپی ہوا",
+                description: "اسکرین شاٹ شیئر نہیں ہوسکا، صرف نتیجہ کاپی کیا گیا ہے۔",
+                variant: "destructive",
+            });
         }
     };
 
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-islamic-green to-islamic-dark flex flex-col items-center justify-center p-4">
-            <div className="absolute top-8 text-6xl text-islamic-gold opacity-20">﷽</div>
-            <div className="absolute bottom-8 text-6xl text-islamic-gold opacity-20">﷽</div>
-            <div className="text-center max-w-4xl w-full">
-                <header className="mb-8">
-                    <h1 className="text-4xl md:text-6xl font-arabic text-islamic-gold mb-4">الْحَمْدُ لِلَّهِ</h1>
+        <div className="flex flex-col items-center justify-center p-4">
+            <div ref={resultCardRef} className="bg-gradient-to-br from-islamic-green to-islamic-dark rounded-3xl p-8 mb-8 border-2 border-islamic-gold w-full max-w-4xl">
+                 <header className="mb-8 text-center">
+                    <h1 className="text-4xl md:text-6xl font-arabic text-islamic-gold mb-2 font-bold">
+                        الْحَمْدُ لِلَّهِ
+                    </h1>
                     <p className="text-2xl text-white font-urdu">قرعہ کا نتیجہ</p>
                 </header>
-                <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-3xl p-8 mb-8 border-2 border-islamic-gold border-opacity-40">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                        {numbers.map((number, index) => (
-                            <div key={index} className="relative group">
-                                <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 text-islamic-dark text-4xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border-4 border-white">
-                                    {number}
-                                </div>
-                                <div className="absolute -top-2 -right-2 bg-islamic-green text-white text-sm rounded-full w-8 h-8 flex items-center justify-center border-2 border-white">
-                                    {index + 1}
-                                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
+                    {numbers.map((number, index) => (
+                        <div key={index} className="relative group">
+                            <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 text-islamic-dark text-4xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border-4 border-white">
+                                {number}
                             </div>
-                        ))}
-                    </div>
-                    <div className="mb-6">
-                        <p className="text-2xl font-arabic text-islamic-gold leading-relaxed">فَإِنَّ اللَّهَ هُوَ الْغَنِيُّ الْحَمِيدُ</p>
-                        <p className="text-white font-urdu mt-2">"بے شک اللہ بے نیاز اور قابل تعریف ہے"</p>
-                    </div>
-                    <div className="bg-white bg-opacity-10 rounded-2xl p-4 mb-6">
-                        <div className="flex justify-between text-sm text-white">
-                            <span className="font-urdu">حد:</span><span>{settings.range}</span>
-                            <span className="font-urdu">تعداد:</span><span>{settings.count}</span>
-                            <span className="font-urdu">طریقہ:</span>
+                            <div className="absolute -top-2 -right-2 bg-islamic-dark text-white text-sm rounded-full w-8 h-8 flex items-center justify-center border-2 border-white font-bold">
+                                {index + 1}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="mb-6 text-center">
+                    <p className="text-2xl font-arabic text-islamic-gold leading-relaxed font-bold">
+                        فَإِنَّ اللَّهَ هُوَ الْغَنِيُّ الْحَمِيدُ
+                    </p>
+                    <p className="text-white font-urdu mt-2">"بے شک اللہ بے نیاز اور قابل تعریف ہے"</p>
+                </div>
+                 <div className="bg-white bg-opacity-10 rounded-2xl p-4 mt-6">
+                    <div className="flex justify-around items-center text-sm text-white">
+                        <div><span className="font-urdu font-bold">حد: </span><span>{settings.range}</span></div>
+                        <div><span className="font-urdu font-bold">تعداد: </span><span>{settings.count}</span></div>
+                        <div>
+                            <span className="font-urdu font-bold">طریقہ: </span>
                             <span className="font-urdu">{settings.method === 'automatic' ? 'خودکار' : settings.method === 'stepwise' ? 'قدم بہ قدم' : 'تسبیح'}</span>
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-col md:flex-row gap-4 justify-center mb-8">
-                    <button onClick={handleShare} className="bg-islamic-green text-white px-8 py-4 rounded-2xl hover:bg-islamic-lightGreen transition-colors font-urdu text-lg flex items-center justify-center gap-3">
-                        <Share2 size={20} /> نتیجہ شیئر کریں
-                        {showCopySuccess && (<span className="text-islamic-gold text-sm animate-pulse">کاپی ہو گیا!</span>)}
-                    </button>
-                    <button onClick={onRestart} className="bg-islamic-gold text-islamic-dark px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors font-urdu text-lg font-bold flex items-center justify-center gap-3">
-                        <Redo size={20} /> دوبارہ قرعہ کریں
-                    </button>
-                </div>
-                <button onClick={onHome} className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu flex items-center justify-center gap-2">
-                    <Home size={20} /> ہوم پیج پر جائیں
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-4xl">
+                <button onClick={handleShare} className="flex-1 bg-islamic-green text-white px-8 py-4 rounded-2xl hover:bg-islamic-lightGreen transition-colors font-urdu text-lg flex items-center justify-center gap-3">
+                    <Share2 size={20} /> نتیجہ شیئر کریں
+                </button>
+                <button onClick={onRestart} className="flex-1 bg-islamic-gold text-islamic-dark px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors font-urdu text-lg font-bold flex items-center justify-center gap-3">
+                    <Redo size={20} /> دوبارہ قرعہ کریں
                 </button>
             </div>
             <footer className="mt-12 text-center">
@@ -210,7 +227,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
 
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-islamic-dark to-islamic-green flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center justify-center p-4">
             <div className="absolute top-8 text-6xl text-islamic-gold opacity-20">﷽</div>
             <div className="text-center max-w-2xl w-full">
                 <div className="mb-12">
@@ -284,7 +301,7 @@ export default function DrawPage() {
         return <SettingsModal onSave={handleSettingsSave} onClose={() => router.push('/')} initialSettings={settings} />;
       case 'dua':
         return (
-          <div className="min-h-screen bg-islamic-green flex flex-col items-center justify-center p-4 text-center">
+          <div className="flex flex-col items-center justify-center p-4 text-center">
              <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-3xl p-8 mb-12 border border-islamic-gold border-opacity-30">
                 <p className="text-2xl md:text-4xl font-arabic text-islamic-gold leading-relaxed">
                     اَللّٰهُمَّ خِرْ لِيْ وَاخْتَرْ لِيْ
@@ -307,5 +324,5 @@ export default function DrawPage() {
     }
   };
 
-  return <>{renderStep()}</>;
+  return <div className="min-h-full">{renderStep()}</div>;
 }

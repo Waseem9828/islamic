@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { AppLayout } from '@/components/AppLayout';
 
 export const metadata: Metadata = {
   title: 'اسلامی قرعہ اندازی - Islamic Random Selector',
@@ -23,7 +24,9 @@ export default function RootLayout({
         <meta name="theme-color" content="#006400" />
       </head>
       <body>
-        {children}
+        <AppLayout>
+          {children}
+        </AppLayout>
         <Toaster />
       </body>
     </html>

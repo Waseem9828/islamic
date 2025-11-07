@@ -35,7 +35,7 @@
     "@radix-ui/react-toast": "^1.2.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "html-to-image": "^1.11.11",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.416.0",
     "react-hook-form": "^7.54.2",
     "recharts": "^2.15.1",

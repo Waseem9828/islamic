@@ -50,7 +50,7 @@ const EliminationMethod = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-arabic text-islamic-gold mb-4">
+                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">
                     طَرِيقَةُ الاِخْتِيارِ الدَّقِيق
                 </h2>
                 <p className="text-white font-urdu text-lg">
@@ -117,7 +117,7 @@ const EliminationMethod = () => {
                 </div>
             </div>
 
-            {remainingNumbers.length > 0 && (
+            {remainingNumbers.length > 0 && !isComplete && (
                 <div className="bg-white bg-opacity-10 rounded-2xl p-6 mt-6">
                     <h3 className="text-xl font-urdu text-islamic-gold mb-4 text-center">
                         باقی نمبر ({remainingNumbers.length})
@@ -246,7 +246,7 @@ const MultiStageMethod = () => {
     return (
         <div className="max-w-6xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-arabic text-islamic-gold mb-4">
+                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">
                     طَرِيقَةُ الْمَرَاحِلِ الْمُتَعَدِّدَة
                 </h2>
                 <p className="text-white font-urdu text-lg">
@@ -379,16 +379,7 @@ export default function ExactSelectionPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-islamic-dark to-islamic-green pt-8 md:pt-20">
-            <div className="text-center mb-8">
-                <h1 className="text-4xl md:text-6xl font-arabic text-islamic-gold mb-4">
-                    الاِخْتِيارُ الدَّقِيق
-                </h1>
-                <p className="text-2xl text-white font-urdu">
-                    exact نمبر منتخب کرنے کے خصوصی طریقے
-                </p>
-            </div>
-
+        <div className="p-4">
             <div className="max-w-4xl mx-auto p-4 mb-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {methods.map((method) => (

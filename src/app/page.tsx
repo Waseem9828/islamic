@@ -9,7 +9,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-islamic-green via-islamic-lightGreen to-islamic-dark flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <main className="flex flex-col items-center justify-center p-4 relative overflow-hidden">
       
       {/* اسلامی بیکگراؤنڈ پیٹرن */}
       <div className="absolute inset-0 opacity-10">
@@ -48,18 +48,6 @@ export default function Home() {
           <BismillahButton onClick={handleBismillahClick}>
             شروع کریں بِسْمِ اللَّهِ
           </BismillahButton>
-           <button
-              onClick={() => router.push('/community')}
-              className="bg-islamic-cream text-islamic-green px-6 py-4 rounded-2xl text-lg font-urdu hover:bg-opacity-90 transition-colors"
-            >
-              👥 کمیونٹی
-            </button>
-             <button
-              onClick={() => router.push('/exact-selection')}
-              className="bg-islamic-gold text-islamic-dark px-6 py-4 rounded-2xl text-lg font-urdu hover:bg-yellow-600 transition-colors font-bold"
-            >
-              🎯 Exact Selection
-            </button>
         </div>
 
         {/* فیچر گرڈ */}
