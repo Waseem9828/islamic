@@ -1,10 +1,11 @@
 'use client';
 import { BismillahButton } from '@/components/BismillahButton';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
   const handleBismillahClick = () => {
-    console.log('بسم اللہ کے ساتھ شروع کریں');
-    // یہاں ہم بعد میں navigation شامل کریں گے
+    router.push('/draw');
   };
 
   return (
