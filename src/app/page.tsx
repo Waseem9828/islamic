@@ -4,7 +4,7 @@ import { BismillahButton } from '@/components/BismillahButton';
 export default function Home() {
   const handleBismillahClick = () => {
     console.log('بسم اللہ کے ساتھ شروع کریں');
-    // यहां हम बाद में navigation शामिल करेंगे
+    // یہاں ہم بعد میں navigation شامل کریں گے
   };
 
   return (
