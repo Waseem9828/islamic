@@ -44,10 +44,16 @@ export default function Home() {
         </div>
 
         {/* مین ایکشن بٹن */}
-        <div className="mb-12">
+        <div className="mb-12 flex flex-col sm:flex-row gap-4 justify-center">
           <BismillahButton onClick={handleBismillahClick}>
             شروع کریں بِسْمِ اللَّهِ
           </BismillahButton>
+           <button
+              onClick={() => router.push('/community')}
+              className="bg-islamic-cream text-islamic-green px-6 py-4 rounded-2xl text-lg font-urdu hover:bg-opacity-90 transition-colors"
+            >
+              👥 کمیونٹی
+            </button>
         </div>
 
         {/* فیچر گرڈ */}
