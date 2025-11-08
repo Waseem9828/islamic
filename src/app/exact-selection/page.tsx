@@ -5,7 +5,7 @@ import { BismillahButton } from '@/components/BismillahButton';
 
 // --- Three-Stage Draw Method Component ---
 const ThreeStageDraw = () => {
-    const [stage, setStage] = useState(0); // 0: Start, 1-3: Main draws, 4: Consolidate, 5: Final, 6: Complete
+    const [stage, setStage] = useState(0); // 0: Start, 1: R1, 2: R2, 3: R3, 4: Consolidate, 5: Final, 6: Complete
     const [round1Numbers, setRound1Numbers] = useState<number[]>([]);
     const [round2Numbers, setRound2Numbers] = useState<number[]>([]);
     const [round3Numbers, setRound3Numbers] = useState<number[]>([]);
@@ -25,21 +25,27 @@ const ThreeStageDraw = () => {
         } else if (stage === 2) {
             const r3 = await generateIslamicRandom(1, 99, 5);
             setRound3Numbers(r3);
-            const all15 = [...round1Numbers, ...round2Numbers, ...r3];
-            setConsolidatedNumbers(all15);
             setStage(3);
         } else if (stage === 3) {
-            // Need to implement custom random selection from a given array
-            const shuffled = [...consolidatedNumbers].sort(() => 0.5 - Math.random());
-            const final5 = shuffled.slice(0, 5);
+            const all15 = [...round1Numbers, ...round2Numbers, ...round3Numbers];
+            setConsolidatedNumbers(all15);
+            const final5 = await generateIslamicRandom(0, all15.length - 1, 5, all15);
             setFinalFive(final5);
             setStage(4);
         } else if (stage === 4) {
-            const shuffled = [...finalFive].sort(() => 0.5 - Math.random());
-            setExactNumber(shuffled[0]);
+            const final1 = await generateIslamicRandom(0, finalFive.length - 1, 1, finalFive);
+            setExactNumber(final1[0]);
             setStage(5);
         }
     };
+    
+    const customGenerateRandom = (min: number, max: number, count: number, sourceArray: number[]): Promise<number[]> => {
+        return new Promise((resolve) => {
+            const shuffled = [...sourceArray].sort(() => 0.5 - Math.random());
+            resolve(shuffled.slice(0, count));
+        });
+    };
+
 
     const resetProcess = () => {
         setStage(0);
@@ -54,21 +60,21 @@ const ThreeStageDraw = () => {
     const getStageDescription = () => {
         switch (stage) {
             case 0: return "تین مرحلوں پر مشتمل قرعہ اندازی شروع کریں۔";
-            case 1: return "پہلا مرحلہ مکمل۔ دوسرا مرحلہ شروع کریں۔";
-            case 2: return "دوسرا مرحلہ مکمل۔ تیسرا مرحلہ شروع کریں۔";
+            case 1: return "پہلا مرحلہ مکمل۔ اب دوسرا مرحلہ شروع کریں۔";
+            case 2: return "دوسرا مرحلہ مکمل۔ اب تیسرا مرحلہ شروع کریں۔";
             case 3: return "تینوں مراحل مکمل۔ اب 15 نمبروں میں سے 5 منتخب کریں۔";
-            case 4: return "اب 5 نمبروں میں سے حتمی نمبر منتخب کریں۔";
+            case 4: return "5 نمبر منتخب ہوگئے۔ اب ان میں سے حتمی نمبر منتخب کریں۔";
             case 5: return "الحمدللہ! حتمی نمبر منتخب ہو گیا ہے۔";
             default: return "";
         }
     };
 
-    const renderNumbers = (numbers: number[], title: string) => (
-        <div className="bg-white bg-opacity-5 rounded-xl p-4">
+    const renderNumbers = (numbers: number[], title: string, highlight = false) => (
+        <div className={`bg-white bg-opacity-5 rounded-xl p-4 ${highlight ? 'border-2 border-islamic-gold' : ''}`}>
             <h4 className="text-lg font-urdu text-islamic-gold mb-3">{title}</h4>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-3 flex-wrap justify-center">
                 {numbers.map((num, idx) => (
-                    <div key={idx} className="bg-islamic-green text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg">
+                    <div key={idx} className={`text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${highlight ? 'bg-islamic-gold text-islamic-dark' : 'bg-islamic-green'}`}>
                         {num}
                     </div>
                 ))}
@@ -87,31 +93,35 @@ const ThreeStageDraw = () => {
             <div className="flex gap-4 justify-center mb-8">
                 {stage < 5 ? (
                     <BismillahButton onClick={startDraw}>
-                        {stage === 0 ? 'قرعہ شروع کریں' : `مرحلہ ${stage + 1} شروع کریں`}
+                        {stage === 0 ? 'پہلا قرعہ' : stage === 1 ? 'دوسرا قرعہ' : stage === 2 ? 'تیسرا قرعہ' : stage === 3 ? '5 منتخب کریں' : 'حتمی نمبر نکالیں'}
                     </BismillahButton>
                 ) : (
-                     <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
-                        <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
-                            الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
-                        </h3>
-                        <div className="text-8xl font-bold text-islamic-dark mb-4">
-                            {exactNumber}
+                    exactNumber !== null && (
+                        <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center animate-pulse">
+                            <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
+                                الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
+                            </h3>
+                            <div className="text-8xl font-bold text-islamic-dark mb-4">
+                                {exactNumber}
+                            </div>
                         </div>
-                    </div>
+                    )
                 )}
-                <button
-                    onClick={resetProcess}
-                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu"
-                >
-                    دوبارہ شروع کریں
-                </button>
+                {(stage > 0) && (
+                    <button
+                        onClick={resetProcess}
+                        className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu"
+                    >
+                        دوبارہ شروع کریں
+                    </button>
+                )}
             </div>
             
             <div className="space-y-4">
                 {round1Numbers.length > 0 && renderNumbers(round1Numbers, "پہلے مرحلے کے نمبر")}
                 {round2Numbers.length > 0 && renderNumbers(round2Numbers, "دوسرے مرحلے کے نمبر")}
                 {round3Numbers.length > 0 && renderNumbers(round3Numbers, "تیسرے مرحلے کے نمبر")}
-                {finalFive.length > 0 && renderNumbers(finalFive, "آخری پانچ نمبر")}
+                {finalFive.length > 0 && renderNumbers(finalFive, "آخری پانچ نمبر", true)}
             </div>
         </div>
     );
