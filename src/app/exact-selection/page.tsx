@@ -1,5 +1,122 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { generateIslamicRandom } from '@/lib/utils';
+import { BismillahButton } from '@/components/BismillahButton';
+
+// --- Three-Stage Draw Method Component ---
+const ThreeStageDraw = () => {
+    const [stage, setStage] = useState(0); // 0: Start, 1-3: Main draws, 4: Consolidate, 5: Final, 6: Complete
+    const [round1Numbers, setRound1Numbers] = useState<number[]>([]);
+    const [round2Numbers, setRound2Numbers] = useState<number[]>([]);
+    const [round3Numbers, setRound3Numbers] = useState<number[]>([]);
+    const [consolidatedNumbers, setConsolidatedNumbers] = useState<number[]>([]);
+    const [finalFive, setFinalFive] = useState<number[]>([]);
+    const [exactNumber, setExactNumber] = useState<number | null>(null);
+
+    const startDraw = async () => {
+        if (stage === 0) {
+            const r1 = await generateIslamicRandom(1, 99, 5);
+            setRound1Numbers(r1);
+            setStage(1);
+        } else if (stage === 1) {
+            const r2 = await generateIslamicRandom(1, 99, 5);
+            setRound2Numbers(r2);
+            setStage(2);
+        } else if (stage === 2) {
+            const r3 = await generateIslamicRandom(1, 99, 5);
+            setRound3Numbers(r3);
+            const all15 = [...round1Numbers, ...round2Numbers, ...r3];
+            setConsolidatedNumbers(all15);
+            setStage(3);
+        } else if (stage === 3) {
+            // Need to implement custom random selection from a given array
+            const shuffled = [...consolidatedNumbers].sort(() => 0.5 - Math.random());
+            const final5 = shuffled.slice(0, 5);
+            setFinalFive(final5);
+            setStage(4);
+        } else if (stage === 4) {
+            const shuffled = [...finalFive].sort(() => 0.5 - Math.random());
+            setExactNumber(shuffled[0]);
+            setStage(5);
+        }
+    };
+
+    const resetProcess = () => {
+        setStage(0);
+        setRound1Numbers([]);
+        setRound2Numbers([]);
+        setRound3Numbers([]);
+        setConsolidatedNumbers([]);
+        setFinalFive([]);
+        setExactNumber(null);
+    };
+
+    const getStageDescription = () => {
+        switch (stage) {
+            case 0: return "تین مرحلوں پر مشتمل قرعہ اندازی شروع کریں۔";
+            case 1: return "پہلا مرحلہ مکمل۔ دوسرا مرحلہ شروع کریں۔";
+            case 2: return "دوسرا مرحلہ مکمل۔ تیسرا مرحلہ شروع کریں۔";
+            case 3: return "تینوں مراحل مکمل۔ اب 15 نمبروں میں سے 5 منتخب کریں۔";
+            case 4: return "اب 5 نمبروں میں سے حتمی نمبر منتخب کریں۔";
+            case 5: return "الحمدللہ! حتمی نمبر منتخب ہو گیا ہے۔";
+            default: return "";
+        }
+    };
+
+    const renderNumbers = (numbers: number[], title: string) => (
+        <div className="bg-white bg-opacity-5 rounded-xl p-4">
+            <h4 className="text-lg font-urdu text-islamic-gold mb-3">{title}</h4>
+            <div className="flex gap-3 flex-wrap">
+                {numbers.map((num, idx) => (
+                    <div key={idx} className="bg-islamic-green text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg">
+                        {num}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="max-w-4xl mx-auto p-4">
+            <div className="text-center mb-8">
+                <p className="text-white font-urdu text-lg">
+                    {getStageDescription()}
+                </p>
+            </div>
+
+            <div className="flex gap-4 justify-center mb-8">
+                {stage < 5 ? (
+                    <BismillahButton onClick={startDraw}>
+                        {stage === 0 ? 'قرعہ شروع کریں' : `مرحلہ ${stage + 1} شروع کریں`}
+                    </BismillahButton>
+                ) : (
+                     <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
+                        <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
+                            الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
+                        </h3>
+                        <div className="text-8xl font-bold text-islamic-dark mb-4">
+                            {exactNumber}
+                        </div>
+                    </div>
+                )}
+                <button
+                    onClick={resetProcess}
+                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu"
+                >
+                    دوبارہ شروع کریں
+                </button>
+            </div>
+            
+            <div className="space-y-4">
+                {round1Numbers.length > 0 && renderNumbers(round1Numbers, "پہلے مرحلے کے نمبر")}
+                {round2Numbers.length > 0 && renderNumbers(round2Numbers, "دوسرے مرحلے کے نمبر")}
+                {round3Numbers.length > 0 && renderNumbers(round3Numbers, "تیسرے مرحلے کے نمبر")}
+                {finalFive.length > 0 && renderNumbers(finalFive, "آخری پانچ نمبر")}
+            </div>
+        </div>
+    );
+};
+
 
 // --- Elimination Method Component ---
 const EliminationMethod = () => {
@@ -50,9 +167,6 @@ const EliminationMethod = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">
-                    طَرِيقَةُ الاِخْتِيارِ الدَّقِيق
-                </h2>
                 <p className="text-white font-urdu text-lg">
                     ایک ایک نمبر ختم ہوتا جائے گا، آخر میں ایک نمبر باقی رہے گا
                 </p>
@@ -88,7 +202,7 @@ const EliminationMethod = () => {
                 </div>
             </div>
 
-            {isComplete && finalNumber && (
+            {isComplete && finalNumber != null && (
                 <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
                     <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
                         الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
@@ -158,17 +272,11 @@ const MultiStageMethod = () => {
         { id: 7, name: 'ساتواں مرحلہ', range: 'آخری 7 نمبر', count: 1 }
     ];
 
-    const generateInitialNumbers = () => {
-        const numbers: number[] = [];
-        while (numbers.length < 7) {
-            const randomNum = Math.floor(Math.random() * 100) + 1;
-            if (!numbers.includes(randomNum)) {
-                numbers.push(randomNum);
-            }
-        }
+    const generateInitialNumbers = async () => {
+        const numbers = await generateIslamicRandom(1, 100, 7);
         setCurrentNumbers(numbers);
     };
-
+    
     useEffect(() => {
         if (currentStage === 1 && currentNumbers.length === 0) {
             generateInitialNumbers();
@@ -248,9 +356,6 @@ const MultiStageMethod = () => {
     return (
         <div className="max-w-6xl mx-auto p-4">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-urdu text-islamic-gold mb-4">
-                    طَرِيقَةُ الْمَرَاحِلِ الْمُتَعَدِّدَة
-                </h2>
                 <p className="text-white font-urdu text-lg">
                     7 مراحل میں 7 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے
                 </p>
@@ -377,13 +482,19 @@ export default function ExactSelectionPage() {
             name: 'مرحلہ وار انتخاب',
             description: '7 مراحل میں 7 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے',
             icon: '🔄'
+        },
+        {
+            id: 'three-stage',
+            name: 'تین مرحلہ جاتی قرعہ',
+            description: 'تین مختلف قرعہ اندازیوں کے ذریعے ایک حتمی نمبر منتخب کریں۔',
+            icon: '🎲'
         }
     ];
 
     return (
         <div className="p-4">
             <div className="max-w-4xl mx-auto p-4 mb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {methods.map((method) => (
                         <div
                             key={method.id}
@@ -405,6 +516,7 @@ export default function ExactSelectionPage() {
             <div className="container mx-auto px-4">
                 {activeMethod === 'elimination' && <EliminationMethod />}
                 {activeMethod === 'multistage' && <MultiStageMethod />}
+                {activeMethod === 'three-stage' && <ThreeStageDraw />}
             </div>
 
             <div className="max-w-4xl mx-auto p-4 mt-8">
