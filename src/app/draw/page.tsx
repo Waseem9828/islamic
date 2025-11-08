@@ -47,8 +47,8 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
         </div>
         <div className="mb-6">
           <label className="block text-white font-urdu mb-3 text-right">کتنے نمبر چاہیے:</label>
-          <div className="flex gap-3 justify-center">
-            {[3, 4, 5, 7].map((num) => (
+          <div className="flex gap-2 flex-wrap justify-center">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
               <button key={num} onClick={() => setSettings({ ...settings, count: num })}
                 className={`w-12 h-12 rounded-full border-2 text-lg font-bold transition-all ${settings.count === num ? 'bg-islamic-gold text-islamic-dark border-islamic-gold' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
                 {num}
@@ -195,6 +195,9 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
         { text: "پانچواں نمبر منتخب ہو رہا ہے", duration: 1500 },
         { text: "چھٹا نمبر منتخب ہو رہا ہے", duration: 1500 },
         { text: "ساتواں نمبر منتخب ہو رہا ہے", duration: 1500 },
+        { text: "آٹھواں نمبر منتخب ہو رہا ہے", duration: 1500 },
+        { text: "نواں نمبر منتخب ہو رہا ہے", duration: 1500 },
+        { text: "دسواں نمبر منتخب ہو رہا ہے", duration: 1500 },
         { text: "مکمل ہو گیا!", duration: 1000 }
     ];
 
@@ -326,3 +329,5 @@ export default function DrawPage() {
 
   return <div className="min-h-full flex items-center justify-center">{renderStep()}</div>;
 }
+
+    
