@@ -128,7 +128,7 @@ const EliminationMethod = () => {
     const [isComplete, setIsComplete] = useState(false);
 
     useEffect(() => {
-        const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+        const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
         setAllNumbers(numbers);
         setRemainingNumbers(numbers);
     }, []);
@@ -156,7 +156,7 @@ const EliminationMethod = () => {
     };
 
     const resetProcess = () => {
-        const numbers = Array.from({ length: 100 }, (_, i) => i + 1);
+        const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
         setRemainingNumbers(numbers);
         setSelectedNumbers([]);
         setCurrentStep(0);
@@ -197,7 +197,7 @@ const EliminationMethod = () => {
                 <div className="w-full bg-white bg-opacity-20 rounded-full h-3">
                     <div
                         className="bg-islamic-gold h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${((100 - remainingNumbers.length) / 100) * 100}%` }}
+                        style={{ width: `${((99 - remainingNumbers.length) / 99) * 100}%` }}
                     ></div>
                 </div>
             </div>
@@ -263,7 +263,7 @@ const MultiStageMethod = () => {
     const [isComplete, setIsComplete] = useState(false);
 
     const stages = [
-        { id: 1, name: 'پہلا مرحلہ', range: '1-100', count: 7 },
+        { id: 1, name: 'پہلا مرحلہ', range: '1-99', count: 7 },
         { id: 2, name: 'دوسرا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
         { id: 3, name: 'تیسرا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
         { id: 4, name: 'چوتھا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
@@ -273,7 +273,7 @@ const MultiStageMethod = () => {
     ];
 
     const generateInitialNumbers = async () => {
-        const numbers = await generateIslamicRandom(1, 100, 7);
+        const numbers = await generateIslamicRandom(1, 99, 7);
         setCurrentNumbers(numbers);
     };
     
@@ -474,7 +474,7 @@ export default function ExactSelectionPage() {
         {
             id: 'elimination',
             name: 'ایک ایک کرکے ختم کریں',
-            description: '100 نمبروں میں سے ایک ایک نمبر ختم ہوتا جائے گا، آخر میں ایک نمبر باقی رہے گا',
+            description: '99 نمبروں میں سے ایک ایک نمبر ختم ہوتا جائے گا، آخر میں ایک نمبر باقی رہے گا',
             icon: '🎯'
         },
         {

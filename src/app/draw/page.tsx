@@ -17,7 +17,6 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
     { value: '1-33', label: '1 سے 33 تک' },
     { value: '1-66', label: '1 سے 66 تک' },
     { value: '1-99', label: '1 سے 99 تک' },
-    { value: '1-100', label: '1 سے 100 تک' }
   ];
 
   const methods = [
@@ -213,7 +212,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
             return;
         }
 
-        const duration = phases[phase] ? phases[phase].duration : 1000;
+        const duration = (phases[phase] && phases[phase].duration) ? phases[phase].duration : 1000;
         const phaseTimer = setTimeout(() => {
             if (phase < settings.count) {
                 const [min, max] = settings.range.split('-').map(Number);
