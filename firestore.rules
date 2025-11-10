@@ -97,7 +97,7 @@ service cloud.firestore {
      * @principle Only admins can manage the admin roles collection.
      */
     match /roles_admin/{adminId} {
-      allow get: if isAdmin();
+      allow get: if isOwner(adminId);
       allow list: if false; // Listing all admins is not permitted.
       allow create: if isAdmin();
       allow update: if false;
