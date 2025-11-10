@@ -10,11 +10,11 @@ const config: Config = {
     extend: {
       colors: {
         islamic: {
-          green: '#006400',
-          lightGreen: '#228B22',
-          gold: '#FFD700',
-          cream: '#FFFDD0',
-          dark: '#0A3A0A',
+          green: 'hsl(var(--primary))',
+          lightGreen: 'hsl(var(--secondary))',
+          gold: 'hsl(var(--accent))',
+          cream: 'hsl(var(--foreground))',
+          dark: 'hsl(var(--background))',
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

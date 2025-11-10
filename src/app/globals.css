@@ -7,64 +7,64 @@
 
 @layer base {
   :root {
-    --background: 120 100% 19.6%; /* islamic-green */
-    --foreground: 0 0% 100%; /* white */
+    --background: 222 47% 11%; /* Dark Blue */
+    --foreground: 210 40% 98%; /* White */
  
-    --card: 120 100% 19.6%;
-    --card-foreground: 0 0% 100%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
  
-    --popover: 120 100% 19.6%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
  
-    --primary: 51 100% 50%; /* islamic-gold */
-    --primary-foreground: 120 100% 10.8%; /* islamic-dark */
+    --primary: 173 80% 40%; /* Teal */
+    --primary-foreground: 210 40% 98%;
  
-    --secondary: 120 60% 34.1%; /* islamic-lightGreen */
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%; /* Darker Blue */
+    --secondary-foreground: 210 40% 98%;
  
-    --muted: 120 60% 34.1%;
-    --muted-foreground: 60 30% 94.1%; /* islamic-cream */
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%; /* Muted Text */
  
-    --accent: 51 100% 50%; /* islamic-gold */
-    --accent-foreground: 120 100% 10.8%;
+    --accent: 173 80% 40%; /* Teal */
+    --accent-foreground: 210 40% 98%;
  
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 51 100% 50%;
-    --input: 120 60% 34.1%;
-    --ring: 51 100% 50%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 173 80% 40%;
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 120 100% 19.6%; /* islamic-green */
-    --foreground: 0 0% 100%; /* white */
+    --background: 222 47% 11%; /* Dark Blue */
+    --foreground: 210 40% 98%; /* White */
  
-    --card: 120 100% 19.6%;
-    --card-foreground: 0 0% 100%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
  
-    --popover: 120 100% 19.6%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
  
-    --primary: 51 100% 50%; /* islamic-gold */
-    --primary-foreground: 120 100% 10.8%; /* islamic-dark */
+    --primary: 173 80% 40%; /* Teal */
+    --primary-foreground: 210 40% 98%;
  
-    --secondary: 120 60% 34.1%; /* islamic-lightGreen */
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%; /* Darker Blue */
+    --secondary-foreground: 210 40% 98%;
  
-    --muted: 120 60% 34.1%;
-    --muted-foreground: 60 30% 94.1%; /* islamic-cream */
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%; /* Muted Text */
  
-    --accent: 51 100% 50%; /* islamic-gold */
-    --accent-foreground: 120 100% 10.8%;
+    --accent: 173 80% 40%; /* Teal */
+    --accent-foreground: 210 40% 98%;
  
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
  
-    --border: 51 100% 50%;
-    --input: 120 60% 34.1%;
-    --ring: 51 100% 50%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 173 80% 40%;
   }
 }
  
