@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,10 +32,23 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const auth = getAuth();
+    const firestore = getFirestore();
 
     try {
       if (isSigningUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const newUser = userCredential.user;
+        
+        // Create user document in Firestore
+        if (newUser) {
+          const userDocRef = doc(firestore, 'users', newUser.uid);
+          await setDoc(userDocRef, {
+            id: newUser.uid,
+            email: newUser.email,
+            username: newUser.email?.split('@')[0] || 'user',
+          });
+        }
+        
         toast({ title: 'کامیابی!', description: 'آپ کا اکاؤنٹ بن گیا ہے۔' });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
