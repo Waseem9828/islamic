@@ -3,11 +3,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { BismillahButton } from '@/components/BismillahButton';
 import { generateIslamicRandom } from '@/lib/utils';
-import { Redo, Share2 } from 'lucide-react';
+import { Redo, Share2, Send } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { useAdmin } from '@/hooks/use-admin';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useGroups } from '@/hooks/use-groups';
+
 
 type DrawStep = 'settings' | 'dua' | 'animation' | 'result';
 
@@ -38,7 +41,7 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
         </div>
         <div className="mb-6">
           <label className="block text-white font-urdu mb-3 text-right">نمبروں کی حد:</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {ranges.map((range) => (
               <button key={range.value} onClick={() => setSettings({ ...settings, range: range.value })}
                 className={`p-3 rounded-xl border-2 transition-all ${settings.range === range.value ? 'bg-accent text-accent-foreground border-accent' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
@@ -83,13 +86,17 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
 const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: number[], settings: any, onRestart: () => void, onHome: () => void }) => {
     const { toast } = useToast();
     const resultCardRef = useRef<HTMLDivElement>(null);
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { groups, isLoading: areGroupsLoading } = useGroups();
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleShare = async () => {
         if (!resultCardRef.current) return;
 
         try {
             const canvas = await html2canvas(resultCardRef.current, {
-                backgroundColor: null, // Transparent background
+                backgroundColor: null,
                 useCORS: true,
             });
             const dataUrl = canvas.toDataURL('image/png');
@@ -123,6 +130,38 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                 description: "اسکرین شاٹ شیئر نہیں ہوسکا، صرف نتیجہ کاپی کیا گیا ہے۔",
                 variant: "destructive",
             });
+        }
+    };
+    
+    const handleSendToGroup = async (groupId: string, groupName: string) => {
+        if (!user || isSaving) return;
+        setIsSaving(true);
+        try {
+            const drawDocRef = await addDoc(collection(firestore, 'draws'), {
+                adminId: user.uid,
+                drawTime: serverTimestamp(),
+                settings: settings,
+            });
+
+            await addDoc(collection(firestore, 'draws', drawDocRef.id, 'draw_results'), {
+                groupId: groupId,
+                selectedNumbers: numbers,
+            });
+
+            toast({
+                title: "نتیجہ بھیج دیا گیا!",
+                description: `قرعہ کا نتیجہ کامیابی سے "${groupName}" گروپ کو بھیج دیا گیا ہے۔`,
+            });
+            onRestart();
+        } catch (error) {
+            console.error("Error sending draw result: ", error);
+            toast({
+                variant: "destructive",
+                title: "خرابی",
+                description: "نتیجہ بھیجتے وقت ایک مسئلہ پیش آیا۔",
+            });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -164,6 +203,26 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="w-full max-w-4xl mb-8">
+                <h3 className="text-xl font-urdu text-center text-islamic-gold mb-4">نتیجہ گروپ کو بھیجیں</h3>
+                {areGroupsLoading ? (
+                     <div className="text-center text-white">گروپس لوڈ ہو رہے ہیں...</div>
+                ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {groups.map((group) => (
+                            <button
+                                key={group.id}
+                                onClick={() => handleSendToGroup(group.id, group.name)}
+                                disabled={isSaving}
+                                className="bg-white bg-opacity-10 text-white px-6 py-4 rounded-xl hover:bg-opacity-20 transition-colors font-urdu text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+                            >
+                                <Send size={20} /> {group.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-4xl">
