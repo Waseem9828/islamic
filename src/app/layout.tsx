@@ -21,7 +21,8 @@ export default function RootLayout({
   return (
     <html lang="ur" dir="rtl">
       <head>
-        <meta name="theme-color" content="#006400" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0d1a2e" />
       </head>
       <body>
         <AppLayout>
