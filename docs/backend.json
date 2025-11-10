@@ -1,0 +1,336 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Islamic Random Selector app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "User's username."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "subscriptionId": {
+          "type": "string",
+          "description": "Reference to Subscription. (Relationship: User 1:1 Subscription)"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "Admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Admin",
+      "type": "object",
+      "description": "Represents an administrator of the Islamic Random Selector app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin."
+        },
+        "username": {
+          "type": "string",
+          "description": "Admin's username."
+        },
+        "email": {
+          "type": "string",
+          "description": "Admin's email address.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "Draw": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Draw",
+      "type": "object",
+      "description": "Represents a draw performed by the admin.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the draw."
+        },
+        "adminId": {
+          "type": "string",
+          "description": "Reference to Admin. (Relationship: Admin 1:N Draw)"
+        },
+        "drawTime": {
+          "type": "string",
+          "description": "Timestamp of when the draw was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "adminId",
+        "drawTime"
+      ]
+    },
+    "DrawResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DrawResult",
+      "type": "object",
+      "description": "Represents the result of a draw for a specific group.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the draw result."
+        },
+        "drawId": {
+          "type": "string",
+          "description": "Reference to Draw. (Relationship: Draw 1:N DrawResult)"
+        },
+        "groupId": {
+          "type": "string",
+          "description": "Reference to Group. (Relationship: Group 1:N DrawResult)"
+        },
+        "selectedNumbers": {
+          "type": "array",
+          "description": "Array of numbers selected in the draw.",
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "drawId",
+        "groupId",
+        "selectedNumbers"
+      ]
+    },
+    "Group": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Group",
+      "type": "object",
+      "description": "Represents a group (Gali, Disawar, Faridabad, Ghaziabad).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the group."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the group (e.g., Gali, Disawar)."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "type": "object",
+      "description": "Represents a user's subscription to access draw results.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the subscription."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Subscription)"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the subscription.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the subscription.",
+          "format": "date-time"
+        },
+        "subscriptionTierId": {
+          "type": "string",
+          "description": "Reference to SubscriptionTier. (Relationship: SubscriptionTier 1:N Subscription)"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "startDate",
+        "endDate"
+      ]
+    },
+    "SubscriptionTier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SubscriptionTier",
+      "type": "object",
+      "description": "Represents a type of subscription (7 days, 1 month, etc).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the subscription tier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the subscription tier (e.g., 7 Days, 1 Month)."
+        },
+        "durationDays": {
+          "type": "number",
+          "description": "Duration of the subscription in days."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the subscription."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "durationDays",
+        "price"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Includes the 'subscriptionId' field which is denormalized for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "Admin",
+          "schema": {
+            "$ref": "#/backend/entities/Admin"
+          },
+          "description": "Stores admin user IDs. Existence in this collection grants admin privileges.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique identifier for the admin user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/draws/{drawId}",
+        "definition": {
+          "entityName": "Draw",
+          "schema": {
+            "$ref": "#/backend/entities/Draw"
+          },
+          "description": "Stores information about each draw performed by the admin.",
+          "params": [
+            {
+              "name": "drawId",
+              "description": "The unique identifier for the draw."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/draws/{drawId}/draw_results/{drawResultId}",
+        "definition": {
+          "entityName": "DrawResult",
+          "schema": {
+            "$ref": "#/backend/entities/DrawResult"
+          },
+          "description": "Stores the results of each draw, with references to the associated draw and group.",
+          "params": [
+            {
+              "name": "drawId",
+              "description": "The unique identifier for the draw."
+            },
+            {
+              "name": "drawResultId",
+              "description": "The unique identifier for the draw result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/groups/{groupId}",
+        "definition": {
+          "entityName": "Group",
+          "schema": {
+            "$ref": "#/backend/entities/Group"
+          },
+          "description": "Stores information about the different groups (Gali, Disawar, Faridabad, Ghaziabad).",
+          "params": [
+            {
+              "name": "groupId",
+              "description": "The unique identifier for the group."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Stores user subscription information.  Owned by the user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "The unique identifier for the subscription."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/subscription_tiers/{subscriptionTierId}",
+        "definition": {
+          "entityName": "SubscriptionTier",
+          "schema": {
+            "$ref": "#/backend/entities/SubscriptionTier"
+          },
+          "description": "Stores information about different subscription tiers.",
+          "params": [
+            {
+              "name": "subscriptionTierId",
+              "description": "The unique identifier for the subscription tier."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This design prioritizes admin control and paid subscriptions for accessing draw results. All draw result data is segregated into its own collection to ensure it has a homogeneous security posture. The design implements Authorization Independence through denormalization. Specifically, the `Subscription` status is directly associated with the `User` document. This eliminates the need for security rules to perform expensive `get()` operations to check subscription status. It leverages path-based ownership for private user data (subscriptions) and a dedicated collection with existence checks for admin roles.\n\nTo ensure that Rules are not Filters (QAPs) and list operations are secure, access to the `/draw_results` collection is governed by checking if a user has a valid subscription, indicated by the presence of a `subscriptionId` on the `User` object. Only subscribed users can access the draw results.\n\nAll administrative tasks are performed by users whose IDs appear in `/roles_admin/{adminId}`. This collection will serve as the main source of truth for elevated administrative privileges. Only members of this collection can create or modify draws and draw results."
+  }
+}
