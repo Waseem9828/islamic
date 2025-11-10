@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AppLayout } from '@/components/AppLayout';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'اسلامی قرعہ اندازی - Islamic Random Selector',
@@ -25,9 +26,11 @@ export default function RootLayout({
         <meta name="theme-color" content="#0d1a2e" />
       </head>
       <body>
-        <AppLayout>
-          {children}
-        </AppLayout>
+        <FirebaseClientProvider>
+          <AppLayout>
+            {children}
+          </AppLayout>
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>
