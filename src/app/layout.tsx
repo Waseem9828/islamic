@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="ur" dir="rtl">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#0d1a2e" />
+        <meta name="theme-color" content="#0f172a" />
       </head>
       <body>
         <FirebaseClientProvider>

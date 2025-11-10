@@ -1,42 +1,61 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Dice5, Users, Target, UserCircle } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, LogIn, UserCircle, Shield, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const navItems = [
-  { href: '/', label: 'ہوم', icon: Home },
-  { href: '/draw', label: 'قرعہ', icon: Dice5 },
-  { href: '/exact-selection', label: 'انتخاب', icon: Target },
-  { href: '/community', label: 'کمیونٹی', icon: Users },
-];
+import { useUser } from '@/firebase';
+import { useAdmin } from '@/hooks/use-admin';
+import { getAuth, signOut } from 'firebase/auth';
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const { isAdmin } = useAdmin();
+
+  const handleLogout = async () => {
+    const auth = getAuth();
+    await signOut(auth);
+    router.push('/login');
+  };
+
+  const navItems = user
+    ? [
+        { href: '/', label: 'ہوم', icon: Home },
+        { href: '/profile', label: 'پروفائل', icon: UserCircle },
+      ]
+    : [{ href: '/login', label: 'لاگ ان', icon: LogIn }];
 
   const getPageTitle = () => {
-    switch (pathname) {
-      case '/':
-        return 'الْقُرْعَةُ الْإِسْلَامِيَّةُ';
-      case '/draw':
-        return 'قرعہ اندازی';
-      case '/exact-selection':
-        return 'الاِخْتِيارُ الدَّقِيق';
-      case '/community':
-        return 'جَمَاعَتِ الْخَيْر';
-      default:
-        return 'اسلامی قرعہ';
-    }
+    if (pathname.startsWith('/admin')) return 'ایڈمن پینل';
+    if (pathname === '/') return 'صارف ڈیش بورڈ';
+    if (pathname === '/login') return 'لاگ ان / سائن اپ';
+    if (pathname === '/profile') return 'صارف پروفائل';
+    return 'اسلامی قرعہ';
   };
+
+  // Do not render layout for login page or while loading
+  if (pathname === '/login' || isUserLoading) {
+     return <>{children}</>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-islamic-dark via-islamic-green to-islamic-dark text-white">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 bg-white bg-opacity-10 backdrop-blur-md p-4 flex justify-between items-center z-40 border-b border-islamic-gold border-opacity-20">
         <h1 className="text-xl font-arabic text-islamic-gold">{getPageTitle()}</h1>
-        <button className="p-2 rounded-full hover:bg-white hover:bg-opacity-20">
-          <UserCircle className="text-islamic-gold" />
-        </button>
+        <div className="flex items-center gap-4">
+            {isAdmin && (
+                 <Link href="/admin" className="p-2 rounded-full hover:bg-white hover:bg-opacity-20" title="ایڈمن پینل">
+                    <Shield className="text-islamic-gold" />
+                </Link>
+            )}
+            {user && (
+                 <button onClick={handleLogout} className="p-2 rounded-full hover:bg-white hover:bg-opacity-20" title="لاگ آؤٹ">
+                    <LogOut className="text-islamic-gold" />
+                </button>
+            )}
+        </div>
       </header>
 
       {/* Main Content */}
@@ -50,7 +69,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className={cn(
               "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-20",
-              pathname === item.href ? 'bg-islamic-gold text-islamic-dark' : 'text-white hover:bg-white hover:bg-opacity-10'
+              pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-white hover:bg-white hover:bg-opacity-10'
             )}>
               <item.icon className="w-6 h-6" />
               <span className="text-xs font-urdu">{item.label}</span>

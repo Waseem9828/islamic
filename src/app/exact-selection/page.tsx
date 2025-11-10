@@ -2,6 +2,10 @@
 import { useState, useEffect } from 'react';
 import { generateIslamicRandom } from '@/lib/utils';
 import { BismillahButton } from '@/components/BismillahButton';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useAdmin } from '@/hooks/use-admin';
+
 
 // --- Three-Stage Draw Method Component ---
 const ThreeStageDraw = () => {
@@ -74,7 +78,7 @@ const ThreeStageDraw = () => {
             <h4 className="text-lg font-urdu text-islamic-gold mb-3">{title}</h4>
             <div className="flex gap-3 flex-wrap justify-center">
                 {numbers.map((num, idx) => (
-                    <div key={idx} className={`text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${highlight ? 'bg-islamic-gold text-islamic-dark' : 'bg-islamic-green'}`}>
+                    <div key={idx} className={`text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${highlight ? 'bg-accent text-accent-foreground' : 'bg-islamic-green'}`}>
                         {num}
                     </div>
                 ))}
@@ -186,7 +190,7 @@ const EliminationMethod = () => {
                 <button
                     onClick={performSingleDraw}
                     disabled={isComplete}
-                    className="bg-islamic-gold text-islamic-dark px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
+                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
                 >
                     {isComplete ? 'مکمل' : 'قرعہ کریں'}
                 </button>
@@ -375,7 +379,7 @@ const MultiStageMethod = () => {
                 <div className="flex justify-between mb-4">
                     {stages.map((stage) => (
                         <div key={stage.id} className="text-center flex-1">
-                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-islamic-gold text-islamic-dark' : currentStage === stage.id ? 'bg-islamic-green text-white border-2 border-islamic-gold' : 'bg-white bg-opacity-20 text-white'}`}>
+                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-accent text-accent-foreground' : currentStage === stage.id ? 'bg-islamic-green text-white border-2 border-islamic-gold' : 'bg-white bg-opacity-20 text-white'}`}>
                                 {stage.id}
                             </div>
                             <div className="text-white text-xs md:text-sm font-urdu">{stage.name}</div>
@@ -399,7 +403,7 @@ const MultiStageMethod = () => {
                 <button
                     onClick={performStageDraw}
                     disabled={isComplete}
-                    className="bg-islamic-gold text-islamic-dark px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
+                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
                 >
                     {isComplete ? 'مکمل' : currentStage >= 7 ? 'حتمی نتیجہ دیکھیں' : 'مرحلہ مکمل کریں'}
                 </button>
@@ -478,7 +482,26 @@ const MultiStageMethod = () => {
 };
 
 export default function ExactSelectionPage() {
+    const { user, isUserLoading } = useUser();
+    const { isAdmin, isAdminLoading } = useAdmin();
+    const router = useRouter();
     const [activeMethod, setActiveMethod] = useState('elimination');
+
+    useEffect(() => {
+        if (!isUserLoading && !isAdminLoading) {
+            if (!user || !isAdmin) {
+                router.push('/');
+            }
+        }
+    }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
+
+     if (isUserLoading || isAdminLoading) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Loading Admin...</div></div>;
+    }
+
+    if (!isAdmin) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Access Denied.</div></div>;
+    }
 
     const methods = [
         {

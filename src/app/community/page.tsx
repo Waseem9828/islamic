@@ -1,5 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useAdmin } from '@/hooks/use-admin';
+
 
 // --- GroupDraw Component ---
 const GroupDraw = () => {
@@ -50,7 +54,7 @@ const GroupDraw = () => {
                 <h3 className="text-xl font-urdu text-white mb-4">نیا گروپ بنائیں</h3>
                 <div className="flex gap-4">
                     <input type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="گروپ کا نام درج کریں" className="flex-1 bg-white bg-opacity-20 text-white placeholder-white placeholder-opacity-60 rounded-xl px-4 py-3 border border-white border-opacity-30" />
-                    <button onClick={createNewGroup} className="bg-islamic-gold text-islamic-dark px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">بنائیں</button>
+                    <button onClick={createNewGroup} className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">بنائیں</button>
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -109,7 +113,7 @@ const GroupDraw = () => {
                             <p className="text-white text-sm mb-3">اپنے دوستوں کو دعوتی کوڈ دے کر گروپ میں شامل ہونے دیں</p>
                             <div className="flex gap-3">
                                 <input type="text" placeholder="دعوتی کوڈ درج کریں" className="flex-1 bg-white bg-opacity-20 text-white placeholder-white placeholder-opacity-60 rounded-xl px-4 py-2 border border-white border-opacity-30" />
-                                <button className="bg-islamic-gold text-islamic-dark px-4 py-2 rounded-xl hover:bg-yellow-600 transition-colors font-urdu">شامل ہوں</button>
+                                <button className="bg-accent text-accent-foreground px-4 py-2 rounded-xl hover:bg-yellow-600 transition-colors font-urdu">شامل ہوں</button>
                             </div>
                         </div>
                     </div>
@@ -165,7 +169,7 @@ const Leaderboard = () => {
                     <h3 className="text-2xl font-urdu text-islamic-gold text-center mb-6">🏆 لیڈر بورڈ</h3>
                     <div className="flex gap-2 mb-6 bg-white bg-opacity-10 rounded-2xl p-1">
                         {['weekly', 'monthly', 'allTime'].map((tab) => (
-                            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2 rounded-xl transition-all font-urdu ${activeTab === tab ? 'bg-islamic-gold text-islamic-dark' : 'text-white hover:bg-white hover:bg-opacity-10'}`}>
+                            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2 rounded-xl transition-all font-urdu ${activeTab === tab ? 'bg-accent text-accent-foreground' : 'text-white hover:bg-white hover:bg-opacity-10'}`}>
                                 {tab === 'weekly' && 'ہفتہ وار'}
                                 {tab === 'monthly' && 'ماہانہ'}
                                 {tab === 'allTime' && 'ہمہ وقت'}
@@ -207,7 +211,7 @@ const Leaderboard = () => {
                                     <span>{challenge.participants} شرکاء</span>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={() => joinChallenge(challenge.id)} className="flex-1 bg-islamic-gold text-islamic-dark py-2 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">شامل ہوں</button>
+                                    <button onClick={() => joinChallenge(challenge.id)} className="flex-1 bg-accent text-accent-foreground py-2 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">شامل ہوں</button>
                                     <button className="bg-white bg-opacity-20 text-white py-2 px-4 rounded-xl hover:bg-opacity-30 transition-colors font-urdu">تفصیل</button>
                                 </div>
                             </div>
@@ -281,7 +285,7 @@ const ShareResults = ({ numbers, settings }: { numbers?: number[], settings?: an
                     </div>
                     <div className="flex gap-4">
                         <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="اپنا تبصرہ شامل کریں..." className="flex-1 bg-white bg-opacity-20 text-white placeholder-white placeholder-opacity-60 rounded-xl px-4 py-3 border border-white border-opacity-30" />
-                        <button onClick={shareMyResult} className="bg-islamic-gold text-islamic-dark px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">شیئر کریں</button>
+                        <button onClick={shareMyResult} className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">شیئر کریں</button>
                     </div>
                 </div>
             )}
@@ -328,7 +332,26 @@ const ShareResults = ({ numbers, settings }: { numbers?: number[], settings?: an
 
 
 export default function CommunityPage() {
+    const { user, isUserLoading } = useUser();
+    const { isAdmin, isAdminLoading } = useAdmin();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('groups');
+
+    useEffect(() => {
+        if (!isUserLoading && !isAdminLoading) {
+        if (!user || !isAdmin) {
+            router.push('/');
+        }
+        }
+    }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
+
+    if (isUserLoading || isAdminLoading) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Loading Admin...</div></div>;
+    }
+
+    if (!isAdmin) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Access Denied.</div></div>;
+    }
 
     const tabs = [
         { id: 'groups', name: 'گروپس', icon: '👥' },
@@ -341,7 +364,7 @@ export default function CommunityPage() {
             <div className="flex justify-center mb-8 px-4">
                 <div className="bg-white bg-opacity-10 rounded-2xl p-1 flex gap-1 flex-wrap justify-center">
                     {tabs.map((tab) => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl transition-all font-urdu ${activeTab === tab.id ? 'bg-islamic-gold text-islamic-dark' : 'text-white hover:bg-white hover:bg-opacity-10'}`}>
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl transition-all font-urdu ${activeTab === tab.id ? 'bg-accent text-accent-foreground' : 'text-white hover:bg-white hover:bg-opacity-10'}`}>
                             <span>{tab.icon}</span>
                             <span>{tab.name}</span>
                         </button>

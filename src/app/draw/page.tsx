@@ -3,9 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { BismillahButton } from '@/components/BismillahButton';
 import { generateIslamicRandom } from '@/lib/utils';
-import { Home, Redo, Share2, Copy } from 'lucide-react';
+import { Redo, Share2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
+import { useAdmin } from '@/hooks/use-admin';
 
 type DrawStep = 'settings' | 'dua' | 'animation' | 'result';
 
@@ -39,7 +41,7 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
           <div className="grid grid-cols-2 gap-3">
             {ranges.map((range) => (
               <button key={range.value} onClick={() => setSettings({ ...settings, range: range.value })}
-                className={`p-3 rounded-xl border-2 transition-all ${settings.range === range.value ? 'bg-islamic-gold text-islamic-dark border-islamic-gold' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
+                className={`p-3 rounded-xl border-2 transition-all ${settings.range === range.value ? 'bg-accent text-accent-foreground border-accent' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
                 <div className="font-urdu text-sm">{range.label}</div>
               </button>
             ))}
@@ -50,7 +52,7 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
           <div className="flex gap-2 flex-wrap justify-center">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
               <button key={num} onClick={() => setSettings({ ...settings, count: num })}
-                className={`w-12 h-12 rounded-full border-2 text-lg font-bold transition-all ${settings.count === num ? 'bg-islamic-gold text-islamic-dark border-islamic-gold' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
+                className={`w-12 h-12 rounded-full border-2 text-lg font-bold transition-all ${settings.count === num ? 'bg-accent text-accent-foreground border-accent' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
                 {num}
               </button>
             ))}
@@ -70,7 +72,7 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
         </div>
         <div className="flex gap-4">
           <button onClick={onClose} className="flex-1 bg-white bg-opacity-20 text-white py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu">منسوخ کریں</button>
-          <button onClick={() => onSave(settings)} className="flex-1 bg-islamic-gold text-islamic-dark py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">محفوظ کریں</button>
+          <button onClick={() => onSave(settings)} className="flex-1 bg-accent text-accent-foreground py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">محفوظ کریں</button>
         </div>
       </div>
     </div>
@@ -168,7 +170,7 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                 <button onClick={handleShare} className="flex-1 bg-islamic-green text-white px-8 py-4 rounded-2xl hover:bg-islamic-lightGreen transition-colors font-urdu text-lg flex items-center justify-center gap-3">
                     <Share2 size={20} /> نتیجہ شیئر کریں
                 </button>
-                <button onClick={onRestart} className="flex-1 bg-islamic-gold text-islamic-dark px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors font-urdu text-lg font-bold flex items-center justify-center gap-3">
+                <button onClick={onRestart} className="flex-1 bg-accent text-accent-foreground px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors font-urdu text-lg font-bold flex items-center justify-center gap-3">
                     <Redo size={20} /> دوبارہ قرعہ کریں
                 </button>
             </div>
@@ -270,9 +272,19 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
 // --- مین ڈرا پیج ---
 export default function DrawPage() {
   const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const { isAdmin, isAdminLoading } = useAdmin();
   const [step, setStep] = useState<DrawStep>('settings');
   const [settings, setSettings] = useState({ range: '1-99', count: 5, method: 'automatic' });
   const [resultNumbers, setResultNumbers] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!isUserLoading && !isAdminLoading) {
+      if (!user || !isAdmin) {
+        router.push('/');
+      }
+    }
+  }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
 
   const handleSettingsSave = (newSettings: any) => {
     setSettings(newSettings);
@@ -294,14 +306,22 @@ export default function DrawPage() {
   };
 
   const handleGoHome = () => {
-    router.push('/');
+    router.push('/admin');
   };
+  
+  if (isUserLoading || isAdminLoading) {
+    return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Loading Admin...</div></div>;
+  }
+
+  if (!isAdmin) {
+    return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Access Denied.</div></div>;
+  }
 
 
   const renderStep = () => {
     switch (step) {
       case 'settings':
-        return <SettingsModal onSave={handleSettingsSave} onClose={() => router.push('/')} initialSettings={settings} />;
+        return <SettingsModal onSave={handleSettingsSave} onClose={() => router.push('/admin')} initialSettings={settings} />;
       case 'dua':
         return (
           <div className="flex flex-col items-center justify-center p-4 text-center">
@@ -329,5 +349,3 @@ export default function DrawPage() {
 
   return <div className="min-h-full flex items-center justify-center">{renderStep()}</div>;
 }
-
-    
