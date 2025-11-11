@@ -10,6 +10,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { useAdmin } from '@/hooks/use-admin';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useGroups } from '@/hooks/use-groups';
+import { Button } from '@/components/ui/button';
 
 
 type DrawStep = 'settings' | 'dua' | 'animation' | 'result';
@@ -211,15 +212,14 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {groups.map((group) => (
-                            <Button
+                            <button
                                 key={group.id}
-                                variant="secondary"
                                 onClick={() => handleSendToGroup(group.id, group.name)}
                                 disabled={isSaving}
-                                className="px-6 py-4 rounded-xl text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-6 py-4 rounded-xl text-lg flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 <Send size={20} /> {group.name}
-                            </Button>
+                            </button>
                         ))}
                     </div>
                 )}
@@ -389,7 +389,7 @@ export default function DrawPage() {
                     O Allah, choose for me and select for me.
                 </p>
                 <p className="text-lg md:text-xl text-foreground mt-4">
-                    "Ya Allah! Mere liye behtar ko muntakhab farma."
+                    "O Allah! Choose for me and select for me."
                 </p>
             </div>
             <BismillahButton onClick={handleDuaContinue}>

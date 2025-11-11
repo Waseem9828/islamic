@@ -40,7 +40,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {groups.map((group) => (
-                <Card key={group.id} className="text-left">
+                <Card key={group.id} className="text-left cursor-pointer hover:bg-accent transition-all">
                 <CardHeader>
                     <CardTitle className="text-primary text-2xl">{group.name}</CardTitle>
                     <CardDescription>Last Result: Just In</CardDescription>
@@ -68,7 +68,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                     <div className="mt-4 p-4 border-2 border-dashed border-border rounded-xl">
-                    <p className="text-muted-foreground">No results available yet.</p>
+                    <p className="text-muted-foreground">No results available yet. The admin needs to create groups first.</p>
                     </div>
                 </CardContent>
                 </Card>
