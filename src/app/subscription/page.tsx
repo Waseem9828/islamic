@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser, useFirestore, useFirebaseApp } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode.react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { collection, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
@@ -37,8 +37,7 @@ export default function SubscriptionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  const firestore = useFirestore();
-  const firebaseApp = useFirebaseApp(); 
+  const { firestore, firebaseApp } = useFirebase();
 
   const upiId = 'yourbusiness@paytm'; // Placeholder UPI ID
 
