@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, LogIn, UserCircle, Shield, LogOut } from 'lucide-react';
+import { Home, LogIn, UserCircle, Shield, LogOut, Gem } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { useAdmin } from '@/hooks/use-admin';
@@ -22,6 +22,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = user
     ? [
         { href: '/', label: 'Home', icon: Home },
+        { href: '/subscription', label: 'Subscription', icon: Gem },
         { href: '/profile', label: 'Profile', icon: UserCircle },
       ]
     : [{ href: '/login', label: 'Login', icon: LogIn }];
@@ -31,6 +32,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname === '/') return 'User Dashboard';
     if (pathname === '/login') return 'Login / Signup';
     if (pathname === '/profile') return 'User Profile';
+    if (pathname === '/subscription') return 'Subscription Plans';
     return 'Islamic Draw';
   };
 
@@ -68,7 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex justify-around items-center p-2">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className={cn(
-              "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-20",
+              "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-24",
               pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-white hover:bg-white hover:bg-opacity-10'
             )}>
               <item.icon className="w-6 h-6" />
