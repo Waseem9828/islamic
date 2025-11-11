@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { setDocumentNonBlocking } from '@/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -42,11 +43,11 @@ export default function LoginPage() {
         // Create user document in Firestore
         if (newUser) {
           const userDocRef = doc(firestore, 'users', newUser.uid);
-          await setDoc(userDocRef, {
+          setDocumentNonBlocking(userDocRef, {
             id: newUser.uid,
             email: newUser.email,
             username: newUser.email?.split('@')[0] || 'user',
-          });
+          }, {});
         }
         
         toast({ title: 'Success!', description: 'Your account has been created.' });
@@ -74,7 +75,7 @@ export default function LoginPage() {
 
       if (newUser) {
         const userDocRef = doc(firestore, 'users', newUser.uid);
-        await setDoc(userDocRef, {
+        setDocumentNonBlocking(userDocRef, {
             id: newUser.uid,
             email: null,
             username: 'guest_user',
