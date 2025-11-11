@@ -7,10 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export const generateIslamicRandom = (min: number, max: number, count: number, sourceArray?: number[]): Promise<number[]> => {
   return new Promise((resolve) => {
-    // اسلامی طریقہ: تسبیح کی طرح نمبرز کو مکس کرنا
+    // Islamic method: mixing numbers like tasbih beads
     const numbers = sourceArray ? [...sourceArray] : Array.from({ length: max - min + 1 }, (_, i) => min + i);
     
-    // 33 بار مکس کرنا (تسبیح کے دانوں کی طرح)
+    // Mix 33 times (like tasbih beads)
     const shuffleTimes = 33;
     
     const shuffleNumbers = () => {
@@ -24,7 +24,7 @@ export const generateIslamicRandom = (min: number, max: number, count: number, s
     
     shuffleNumbers();
     
-    // نتیجہ واپس کرنا
+    // Return result
     setTimeout(() => {
       if (sourceArray) {
         // If a source array is provided, we might not need to slice, just return the shuffled 'count' items.
@@ -41,6 +41,6 @@ export const generateIslamicRandom = (min: number, max: number, count: number, s
       } else {
          resolve(numbers.slice(0, count));
       }
-    }, 500); // ڈیلے کم کر دیا تاکہ تیز ہو
+    }, 500); // Reduced delay to be faster
   });
 };

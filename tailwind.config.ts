@@ -55,10 +55,6 @@ const config: Config = {
         md: `calc(var(--radius) - 2px)`,
         sm: 'calc(var(--radius) - 4px)',
       },
-      fontFamily: {
-        arabic: ['Amiri', 'serif'],
-        urdu: ['Noto Nastaliq Urdu', 'serif'],
-      },
       keyframes: {
         'accordion-down': {
           from: {height: '0'},

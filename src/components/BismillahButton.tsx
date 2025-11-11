@@ -9,16 +9,16 @@ const BismillahButton = ({ onClick, children, disabled = false }: { onClick: () 
   const handleClick = () => {
     if (disabled) return;
     
-    // Animation شروع کریں
+    // Start animation
     setIsAnimating(true);
     
-    // آڈیو پلے کریں (بسم اللہ کی آواز)
+    // Play audio (Bismillah sound)
     if (typeof window !== 'undefined') {
       const audio = new Audio('/audio/bismillah.mp3');
-      audio.play().catch(() => {}); // خاموش error handling
+      audio.play().catch(() => {}); // silent error handling
     }
     
-    // 1 سیکنڈ بعد اصلی فنکشن کال کریں
+    // Call the main function after 1 second
     setTimeout(() => {
       if (onClick) onClick();
       setIsAnimating(false);
@@ -33,7 +33,7 @@ const BismillahButton = ({ onClick, children, disabled = false }: { onClick: () 
         relative overflow-hidden
         bg-gradient-to-br from-islamic-green to-islamic-dark
         text-white px-8 py-4 rounded-2xl
-        text-2xl font-arabic
+        text-2xl
         shadow-2xl transform transition-all duration-300
         hover:scale-105 hover:shadow-xl
         active:scale-95
@@ -42,7 +42,7 @@ const BismillahButton = ({ onClick, children, disabled = false }: { onClick: () 
         isAnimating ? 'ring-4 ring-islamic-gold animate-pulse' : ''
       )}
     >
-      {/* اسلامی پیٹرن بیکگراؤنڈ */}
+      {/* Islamic pattern background */}
       <div 
         className="absolute inset-0 opacity-20"
         style={{
@@ -50,12 +50,12 @@ const BismillahButton = ({ onClick, children, disabled = false }: { onClick: () 
         }}
       ></div>
       
-      {/* بٹن کا متن */}
+      {/* Button text */}
       <span className="relative z-10 flex items-center justify-center">
-        {children || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}
+        {children || 'Start Draw'}
       </span>
       
-      {/* کلک اینیمیشن */}
+      {/* Click animation */}
       {isAnimating && (
         <div className="absolute inset-0 bg-islamic-gold opacity-40 animate-ping rounded-2xl"></div>
       )}

@@ -33,11 +33,11 @@ const ThreeStageDraw = () => {
         } else if (stage === 3) {
             const all15 = [...round1Numbers, ...round2Numbers, ...round3Numbers];
             setConsolidatedNumbers(all15);
-            const final5 = await generateIslamicRandom(0, all15.length - 1, 5, all15);
+            const final5 = await customGenerateRandom(0, all15.length - 1, 5, all15);
             setFinalFive(final5);
             setStage(4);
         } else if (stage === 4) {
-            const final1 = await generateIslamicRandom(0, finalFive.length - 1, 1, finalFive);
+            const final1 = await customGenerateRandom(0, finalFive.length - 1, 1, finalFive);
             setExactNumber(final1[0]);
             setStage(5);
         }
@@ -63,19 +63,19 @@ const ThreeStageDraw = () => {
 
     const getStageDescription = () => {
         switch (stage) {
-            case 0: return "تین مرحلوں پر مشتمل قرعہ اندازی شروع کریں۔";
-            case 1: return "پہلا مرحلہ مکمل۔ اب دوسرا مرحلہ شروع کریں۔";
-            case 2: return "دوسرا مرحلہ مکمل۔ اب تیسرا مرحلہ شروع کریں۔";
-            case 3: return "تینوں مراحل مکمل۔ اب 15 نمبروں میں سے 5 منتخب کریں۔";
-            case 4: return "5 نمبر منتخب ہوگئے۔ اب ان میں سے حتمی نمبر منتخب کریں۔";
-            case 5: return "الحمدللہ! حتمی نمبر منتخب ہو گیا ہے۔";
+            case 0: return "Start the three-stage draw.";
+            case 1: return "First stage complete. Now start the second stage.";
+            case 2: return "Second stage complete. Now start the third stage.";
+            case 3: return "All three stages complete. Now select 5 from the 15 numbers.";
+            case 4: return "5 numbers selected. Now select the final number from them.";
+            case 5: return "Alhamdulillah! The final number has been selected.";
             default: return "";
         }
     };
 
     const renderNumbers = (numbers: number[], title: string, highlight = false) => (
         <div className={`bg-white bg-opacity-5 rounded-xl p-4 ${highlight ? 'border-2 border-islamic-gold' : ''}`}>
-            <h4 className="text-lg font-urdu text-islamic-gold mb-3">{title}</h4>
+            <h4 className="text-lg font-bold text-islamic-gold mb-3">{title}</h4>
             <div className="flex gap-3 flex-wrap justify-center">
                 {numbers.map((num, idx) => (
                     <div key={idx} className={`text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${highlight ? 'bg-accent text-accent-foreground' : 'bg-islamic-green'}`}>
@@ -89,7 +89,7 @@ const ThreeStageDraw = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <p className="text-white font-urdu text-lg">
+                <p className="text-white text-lg">
                     {getStageDescription()}
                 </p>
             </div>
@@ -97,13 +97,13 @@ const ThreeStageDraw = () => {
             <div className="flex gap-4 justify-center mb-8">
                 {stage < 5 ? (
                     <BismillahButton onClick={startDraw}>
-                        {stage === 0 ? 'پہلا قرعہ' : stage === 1 ? 'دوسرا قرعہ' : stage === 2 ? 'تیسرا قرعہ' : stage === 3 ? '5 منتخب کریں' : 'حتمی نمبر نکالیں'}
+                        {stage === 0 ? 'First Draw' : stage === 1 ? 'Second Draw' : stage === 2 ? 'Third Draw' : stage === 3 ? 'Select 5' : 'Get Final Number'}
                     </BismillahButton>
                 ) : (
                     exactNumber !== null && (
                         <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center animate-pulse">
-                            <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
-                                الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
+                            <h3 className="text-2xl font-bold text-islamic-dark mb-4">
+                                Alhamdulillah! Final Result
                             </h3>
                             <div className="text-8xl font-bold text-islamic-dark mb-4">
                                 {exactNumber}
@@ -114,18 +114,18 @@ const ThreeStageDraw = () => {
                 {(stage > 0) && (
                     <button
                         onClick={resetProcess}
-                        className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu"
+                        className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors"
                     >
-                        دوبارہ شروع کریں
+                        Restart
                     </button>
                 )}
             </div>
             
             <div className="space-y-4">
-                {round1Numbers.length > 0 && renderNumbers(round1Numbers, "پہلے مرحلے کے نمبر")}
-                {round2Numbers.length > 0 && renderNumbers(round2Numbers, "دوسرے مرحلے کے نمبر")}
-                {round3Numbers.length > 0 && renderNumbers(round3Numbers, "تیسرے مرحلے کے نمبر")}
-                {finalFive.length > 0 && renderNumbers(finalFive, "آخری پانچ نمبر", true)}
+                {round1Numbers.length > 0 && renderNumbers(round1Numbers, "First Stage Numbers")}
+                {round2Numbers.length > 0 && renderNumbers(round2Numbers, "Second Stage Numbers")}
+                {round3Numbers.length > 0 && renderNumbers(round3Numbers, "Third Stage Numbers")}
+                {finalFive.length > 0 && renderNumbers(finalFive, "Final Five Numbers", true)}
             </div>
         </div>
     );
@@ -181,8 +181,8 @@ const EliminationMethod = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <p className="text-white font-urdu text-lg">
-                    ایک ایک نمبر ختم ہوتا جائے گا، آخر میں ایک نمبر باقی رہے گا
+                <p className="text-white text-lg">
+                    One number will be eliminated at a time, until only one remains.
                 </p>
             </div>
 
@@ -190,23 +190,23 @@ const EliminationMethod = () => {
                 <button
                     onClick={performSingleDraw}
                     disabled={isComplete}
-                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
+                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-bold disabled:opacity-50"
                 >
-                    {isComplete ? 'مکمل' : 'قرعہ کریں'}
+                    {isComplete ? 'Complete' : 'Perform Draw'}
                 </button>
                 <button
                     onClick={resetProcess}
-                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu"
+                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors"
                 >
-                    دوبارہ شروع کریں
+                    Restart
                 </button>
             </div>
 
             <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6">
                 <div className="flex justify-between items-center text-white mb-4">
-                    <span className="font-urdu">مرحلہ: {currentStep}</span>
-                    <span className="font-urdu">باقی نمبر: {remainingNumbers.length}</span>
-                    <span className="font-urdu">منتخب: {selectedNumbers.length}</span>
+                    <span>Step: {currentStep}</span>
+                    <span>Remaining: {remainingNumbers.length}</span>
+                    <span>Selected: {selectedNumbers.length}</span>
                 </div>
                 <div className="w-full bg-white bg-opacity-20 rounded-full h-3">
                     <div
@@ -218,28 +218,28 @@ const EliminationMethod = () => {
 
             {isComplete && finalNumber != null && (
                 <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
-                    <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
-                        الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
+                    <h3 className="text-2xl font-bold text-islamic-dark mb-4">
+                        Alhamdulillah! Final Result
                     </h3>
                     <div className="text-8xl font-bold text-islamic-dark mb-4">
                         {finalNumber}
                     </div>
-                    <p className="text-islamic-dark font-urdu text-xl">
-                        یہ آپ کا exact نمبر ہے!
+                    <p className="text-islamic-dark text-xl">
+                        This is your exact number!
                     </p>
                 </div>
             )}
 
             <div className="bg-white bg-opacity-10 rounded-2xl p-6">
-                <h3 className="text-xl font-urdu text-islamic-gold mb-4 text-center">
-                    منتخب نمبروں کی تاریخ
+                <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                    History of Selected Numbers
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
                     {selectedNumbers.map((item, index) => (
                         <div key={index} className="bg-white bg-opacity-5 rounded-xl p-3 text-center">
-                            <div className="text-sm text-islamic-cream font-urdu">مرحلہ {item.step}</div>
+                            <div className="text-sm text-islamic-cream">Step {item.step}</div>
                             <div className="text-2xl font-bold text-islamic-gold my-2">{item.number}</div>
-                            <div className="text-xs text-white">باقی: {item.remaining}</div>
+                            <div className="text-xs text-white">Rem: {item.remaining}</div>
                         </div>
                     ))}
                 </div>
@@ -247,8 +247,8 @@ const EliminationMethod = () => {
 
             {remainingNumbers.length > 0 && !isComplete && (
                 <div className="bg-white bg-opacity-10 rounded-2xl p-6 mt-6">
-                    <h3 className="text-xl font-urdu text-islamic-gold mb-4 text-center">
-                        باقی نمبر ({remainingNumbers.length})
+                    <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                        Remaining Numbers ({remainingNumbers.length})
                     </h3>
                     <div className="grid grid-cols-10 gap-2 max-h-60 overflow-y-auto">
                         {remainingNumbers.map((num) => (
@@ -277,13 +277,13 @@ const MultiStageMethod = () => {
     const [isComplete, setIsComplete] = useState(false);
 
     const stages = [
-        { id: 1, name: 'پہلا مرحلہ', range: '1-99', count: 7 },
-        { id: 2, name: 'دوسرا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
-        { id: 3, name: 'تیسرا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
-        { id: 4, name: 'چوتھا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
-        { id: 5, name: 'پانچواں مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
-        { id: 6, name: 'چھٹا مرحلہ', range: 'پچھلے 7 نمبر', count: 7 },
-        { id: 7, name: 'ساتواں مرحلہ', range: 'آخری 7 نمبر', count: 1 }
+        { id: 1, name: 'Stage 1', range: '1-99', count: 7 },
+        { id: 2, name: 'Stage 2', range: 'Previous 7', count: 7 },
+        { id: 3, name: 'Stage 3', range: 'Previous 7', count: 7 },
+        { id: 4, name: 'Stage 4', range: 'Previous 7', count: 7 },
+        { id: 5, name: 'Stage 5', range: 'Previous 7', count: 7 },
+        { id: 6, name: 'Stage 6', range: 'Previous 7', count: 7 },
+        { id: 7, name: 'Stage 7', range: 'Last 7', count: 1 }
     ];
 
     const generateInitialNumbers = async () => {
@@ -370,8 +370,8 @@ const MultiStageMethod = () => {
     return (
         <div className="max-w-6xl mx-auto p-4">
             <div className="text-center mb-8">
-                <p className="text-white font-urdu text-lg">
-                    7 مراحل میں 7 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے
+                <p className="text-white text-lg">
+                    7 numbers are selected in 7 stages. The number that appears most frequently is the exact number.
                 </p>
             </div>
 
@@ -382,7 +382,7 @@ const MultiStageMethod = () => {
                             <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-accent text-accent-foreground' : currentStage === stage.id ? 'bg-islamic-green text-white border-2 border-islamic-gold' : 'bg-white bg-opacity-20 text-white'}`}>
                                 {stage.id}
                             </div>
-                            <div className="text-white text-xs md:text-sm font-urdu">{stage.name}</div>
+                            <div className="text-white text-xs md:text-sm">{stage.name}</div>
                         </div>
                     ))}
                 </div>
@@ -390,11 +390,11 @@ const MultiStageMethod = () => {
 
             {currentStageInfo && !isComplete && (
                 <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6 text-center">
-                    <h3 className="text-2xl font-urdu text-islamic-gold mb-2">
+                    <h3 className="text-2xl font-bold text-islamic-gold mb-2">
                         {currentStageInfo.name}
                     </h3>
                     <p className="text-white">
-                        {currentStageInfo.range} میں سے {currentStageInfo.count} نمبر منتخب ہوں گے
+                        {currentStageInfo.count} numbers will be selected from {currentStageInfo.range}.
                     </p>
                 </div>
             )}
@@ -403,22 +403,22 @@ const MultiStageMethod = () => {
                 <button
                     onClick={performStageDraw}
                     disabled={isComplete}
-                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold disabled:opacity-50"
+                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-bold disabled:opacity-50"
                 >
-                    {isComplete ? 'مکمل' : currentStage >= 7 ? 'حتمی نتیجہ دیکھیں' : 'مرحلہ مکمل کریں'}
+                    {isComplete ? 'Complete' : currentStage >= 7 ? 'See Final Result' : 'Complete Stage'}
                 </button>
                 <button
                     onClick={resetProcess}
-                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu"
+                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors"
                 >
-                    دوبارہ شروع کریں
+                    Restart
                 </button>
             </div>
 
             {!isComplete && currentNumbers.length > 0 && (
                 <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6">
-                    <h3 className="text-xl font-urdu text-islamic-gold mb-4 text-center">
-                        موجودہ نمبر
+                    <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                        Current Numbers
                     </h3>
                     <div className="flex justify-center gap-4 flex-wrap">
                         {currentNumbers.map((num, index) => (
@@ -432,31 +432,31 @@ const MultiStageMethod = () => {
 
             {isComplete && exactNumber !== null && (
                 <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
-                    <h3 className="text-2xl font-arabic text-islamic-dark mb-4">
-                        الْحَمْدُ لِلَّهِ! النَّتِيجَةُ النِّهَائِيَّة
+                    <h3 className="text-2xl font-bold text-islamic-dark mb-4">
+                        Alhamdulillah! Final Result
                     </h3>
                     <div className="text-8xl font-bold text-islamic-dark mb-4">
                         {exactNumber}
                     </div>
-                    <p className="text-islamic-dark font-urdu text-xl">
-                        یہ نمبر سب سے زیادہ {Math.max(...Object.values(calculateFrequency(stageResults)))} بار آیا ہے
+                    <p className="text-islamic-dark text-xl">
+                        This number appeared {Math.max(...Object.values(calculateFrequency(stageResults)))} times.
                     </p>
                 </div>
             )}
 
             {stageResults.length > 0 && (
                 <div className="bg-white bg-opacity-10 rounded-2xl p-6">
-                    <h3 className="text-xl font-urdu text-islamic-gold mb-4 text-center">
-                        مراحل کی تاریخ
+                    <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                        Stage History
                     </h3>
                     <div className="space-y-4 max-h-96 overflow-y-auto">
                         {stageResults.map((result, index) => (
                             <div key={index} className="bg-white bg-opacity-5 rounded-xl p-4">
                                 <div className="flex justify-between items-center mb-3">
-                                    <h4 className="text-lg font-urdu text-islamic-gold">
+                                    <h4 className="text-lg font-bold text-islamic-gold">
                                         {stages.find(s => s.id === result.stage)?.name}
                                     </h4>
-                                    <span className="text-white">مرحلہ {result.stage}</span>
+                                    <span className="text-white">Stage {result.stage}</span>
                                 </div>
                                 <div className="flex gap-3 mb-3 flex-wrap">
                                     {result.numbers.map((num: number, idx: number) => (
@@ -468,7 +468,7 @@ const MultiStageMethod = () => {
                                 <div className="text-sm text-islamic-cream">
                                     {Object.entries(result.frequency).sort(([, a]: [string, any], [, b]: [string, any]) => b - a).slice(0, 3).map(([num, freq]) => (
                                         <span key={num} className="ml-3">
-                                            {num}: {freq as number} بار
+                                            {num}: {freq as number} times
                                         </span>
                                     ))}
                                 </div>
@@ -506,20 +506,20 @@ export default function ExactSelectionPage() {
     const methods = [
         {
             id: 'elimination',
-            name: 'ایک ایک کرکے ختم کریں',
-            description: '99 نمبروں میں سے ایک ایک نمبر ختم ہوتا جائے گا، آخر میں ایک نمبر باقی رہے گا',
+            name: 'Elimination Method',
+            description: 'One number is eliminated from 99 until only one remains.',
             icon: '🎯'
         },
         {
             id: 'multistage',
-            name: 'مرحلہ وار انتخاب',
-            description: '7 مراحل میں 7 نمبر منتخب، جو نمبر سب سے زیادہ بار آئے وہ exact نمبر ہے',
+            name: 'Multi-Stage Selection',
+            description: 'The number that appears most frequently in 7 stages is the exact number.',
             icon: '🔄'
         },
         {
             id: 'three-stage',
-            name: 'تین مرحلہ جاتی قرعہ',
-            description: 'تین مختلف قرعہ اندازیوں کے ذریعے ایک حتمی نمبر منتخب کریں۔',
+            name: 'Three-Stage Draw',
+            description: 'Select a final number through three different draws.',
             icon: '🎲'
         }
     ];
@@ -535,7 +535,7 @@ export default function ExactSelectionPage() {
                             className={`bg-white bg-opacity-10 rounded-2xl p-6 border-2 cursor-pointer transition-all hover:bg-opacity-20 hover:border-islamic-gold ${activeMethod === method.id ? 'border-islamic-gold bg-opacity-20' : 'border-white border-opacity-20'}`}
                         >
                             <div className="text-4xl mb-4 text-center">{method.icon}</div>
-                            <h3 className="text-xl font-urdu text-white text-center mb-3">
+                            <h3 className="text-xl font-bold text-white text-center mb-3">
                                 {method.name}
                             </h3>
                             <p className="text-islamic-cream text-center text-sm">
@@ -554,11 +554,11 @@ export default function ExactSelectionPage() {
 
             <div className="max-w-4xl mx-auto p-4 mt-8">
                 <div className="bg-white bg-opacity-10 rounded-2xl p-6 text-center">
-                    <h3 className="text-xl font-arabic text-islamic-gold mb-4">
-                        تَوْفِيقٌ مِنَ اللَّهِ
+                    <h3 className="text-xl text-islamic-gold mb-4">
+                        Guidance from Allah
                     </h3>
-                    <p className="text-white font-urdu">
-                        "اے اللہ! میرے لیے بہتر کو منتخب فرما اور مجھے اپنی رضا کے مطابق فیصلہ کرنے کی توفیق عطا فرما"
+                    <p className="text-white">
+                        "O Allah, choose for me and select for me, and grant me the ability to make a decision according to Your will."
                     </p>
                 </div>
             </div>

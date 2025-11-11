@@ -49,15 +49,15 @@ export default function LoginPage() {
           });
         }
         
-        toast({ title: 'کامیابی!', description: 'آپ کا اکاؤنٹ بن گیا ہے۔' });
+        toast({ title: 'Success!', description: 'Your account has been created.' });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: 'خوش آمدید!', description: 'آپ کامیابی سے لاگ ان ہو گئے ہیں۔' });
+        toast({ title: 'Welcome Back!', description: 'You have successfully logged in.' });
       }
       router.push('/');
     } catch (err: any) {
       setError(err.message);
-      toast({ variant: 'destructive', title: 'خرابی', description: 'لاگ ان یا سائن اپ میں مسئلہ ہوا۔' });
+      toast({ variant: 'destructive', title: 'Error', description: 'There was a problem with login or sign up.' });
     } finally {
       setLoading(false);
     }
@@ -81,11 +81,11 @@ export default function LoginPage() {
           }, { merge: true });
       }
 
-      toast({ title: 'خوش آمدید!', description: 'آپ مہمان کے طور پر لاگ ان ہیں۔' });
+      toast({ title: 'Welcome!', description: 'You are logged in as a guest.' });
       router.push('/');
     } catch (err: any) {
       setError(err.message);
-      toast({ variant: 'destructive', title: 'خرابی', description: 'مہمان لاگ ان میں مسئلہ ہوا۔' });
+      toast({ variant: 'destructive', title: 'Error', description: 'There was a problem with guest login.' });
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ export default function LoginPage() {
   if (isUserLoading || user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">لوڈ ہو رہا ہے...</div>
+        <div className="text-white">Loading...</div>
       </div>
     );
   }
@@ -103,17 +103,17 @@ export default function LoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
        <Card className="w-full max-w-md bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-arabic text-islamic-gold">
-            {isSigningUp ? 'نیا اکاؤنٹ بنائیں' : 'لاگ ان کریں'}
+          <CardTitle className="text-3xl font-bold text-islamic-gold">
+            {isSigningUp ? 'Create an Account' : 'Login'}
           </CardTitle>
-          <CardDescription className="text-islamic-cream font-urdu">
-            {isSigningUp ? 'جاری رکھنے کے لیے اپنی تفصیلات درج کریں۔' : 'اپنے اکاؤنٹ میں لاگ ان کریں۔'}
+          <CardDescription className="text-islamic-cream">
+            {isSigningUp ? 'Enter your details to continue.' : 'Log in to your account.'}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleAuthAction}>
           <CardContent className="space-y-4">
-            <div className="space-y-2 text-right">
-              <Label htmlFor="email" className="font-urdu">ای میل</Label>
+            <div className="space-y-2 text-left">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -124,8 +124,8 @@ export default function LoginPage() {
                 className="bg-white bg-opacity-20 border-white border-opacity-30 text-white placeholder-gray-400"
               />
             </div>
-            <div className="space-y-2 text-right">
-              <Label htmlFor="password">پاس ورڈ</Label>
+            <div className="space-y-2 text-left">
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -139,20 +139,20 @@ export default function LoginPage() {
             {error && <p className="text-red-500 text-sm">{error}</p>}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full bg-accent text-accent-foreground font-urdu font-bold" disabled={loading}>
-              {loading ? 'انتظار کریں...' : (isSigningUp ? 'سائن اپ' : 'لاگ ان')}
+            <Button type="submit" className="w-full bg-accent text-accent-foreground font-bold" disabled={loading}>
+              {loading ? 'Please wait...' : (isSigningUp ? 'Sign Up' : 'Login')}
             </Button>
-            <Button variant="outline" type="button" className="w-full font-urdu" onClick={() => setIsSigningUp(!isSigningUp)}>
-              {isSigningUp ? 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں' : 'اکاؤنٹ نہیں ہے؟ سائن اپ کریں'}
+            <Button variant="outline" type="button" className="w-full" onClick={() => setIsSigningUp(!isSigningUp)}>
+              {isSigningUp ? 'Already have an account? Login' : "Don't have an account? Sign Up"}
             </Button>
              <div className="relative w-full flex items-center justify-center my-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-white border-opacity-30"></span>
               </div>
-              <span className="relative px-2 bg-background text-xs uppercase text-islamic-cream">یا</span>
+              <span className="relative px-2 bg-background text-xs uppercase text-islamic-cream">Or</span>
             </div>
-             <Button variant="secondary" type="button" className="w-full font-urdu" onClick={handleAnonymousSignIn} disabled={loading}>
-              {loading ? 'انتظار کریں...' : 'مہمان کے طور پر جاری رکھیں'}
+             <Button variant="secondary" type="button" className="w-full" onClick={handleAnonymousSignIn} disabled={loading}>
+              {loading ? 'Please wait...' : 'Continue as Guest'}
             </Button>
           </CardFooter>
         </form>

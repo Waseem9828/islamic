@@ -14,44 +14,44 @@ import { useGroups } from '@/hooks/use-groups';
 
 type DrawStep = 'settings' | 'dua' | 'animation' | 'result';
 
-// --- سیٹنگز موڈل ---
+// --- Settings Modal ---
 const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings: any) => void, onClose: () => void, initialSettings: any }) => {
   const [settings, setSettings] = useState(initialSettings);
 
   const ranges = [
-    { value: '1-33', label: '1 سے 33 تک' },
-    { value: '1-66', label: '1 سے 66 تک' },
-    { value: '1-99', label: '1 سے 99 تک' },
+    { value: '1-33', label: '1 to 33' },
+    { value: '1-66', label: '1 to 66' },
+    { value: '1-99', label: '1 to 99' },
   ];
 
   const methods = [
-    { value: 'automatic', label: 'خودکار طریقہ', desc: '33 بار مکس ہو کر' },
-    { value: 'stepwise', label: 'قدم بہ قدم', desc: 'ہر نمبر الگ سے' },
-    { value: 'tasbih', label: 'تسبیح والا طریقہ', desc: '33 دانوں کی طرح' }
+    { value: 'automatic', label: 'Automatic Method', desc: 'Mixed 33 times' },
+    { value: 'stepwise', label: 'Step by Step', desc: 'Each number separately' },
+    { value: 'tasbih', label: 'Tasbih Method', desc: 'Like 33 beads' }
   ];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
       <div className="bg-gradient-to-br from-islamic-dark to-islamic-green rounded-3xl p-8 max-w-md w-full border-2 border-islamic-gold">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-arabic text-islamic-gold mb-2">
-            إخْتَرْ الْإِعدادَات
+          <h2 className="text-2xl font-bold text-islamic-gold mb-2">
+            Select Settings
           </h2>
-          <p className="text-white font-urdu">قرعہ کی ترتیبات منتخب کریں</p>
+          <p className="text-white">Choose the draw settings</p>
         </div>
         <div className="mb-6">
-          <label className="block text-white font-urdu mb-3 text-right">نمبروں کی حد:</label>
+          <label className="block text-white mb-3 text-left">Number Range:</label>
           <div className="grid grid-cols-3 gap-3">
             {ranges.map((range) => (
               <button key={range.value} onClick={() => setSettings({ ...settings, range: range.value })}
                 className={`p-3 rounded-xl border-2 transition-all ${settings.range === range.value ? 'bg-accent text-accent-foreground border-accent' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
-                <div className="font-urdu text-sm">{range.label}</div>
+                <div className="text-sm">{range.label}</div>
               </button>
             ))}
           </div>
         </div>
         <div className="mb-6">
-          <label className="block text-white font-urdu mb-3 text-right">کتنے نمبر چاہیے:</label>
+          <label className="block text-white mb-3 text-left">How many numbers:</label>
           <div className="flex gap-2 flex-wrap justify-center">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
               <button key={num} onClick={() => setSettings({ ...settings, count: num })}
@@ -62,27 +62,27 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
           </div>
         </div>
         <div className="mb-8">
-          <label className="block text-white font-urdu mb-3 text-right">طریقہ کار:</label>
+          <label className="block text-white mb-3 text-left">Method:</label>
           <div className="space-y-3">
             {methods.map((method) => (
               <div key={method.value} onClick={() => setSettings({ ...settings, method: method.value })}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${settings.method === method.value ? 'bg-islamic-green border-islamic-gold' : 'bg-white bg-opacity-10 border-white border-opacity-20 hover:bg-opacity-20'}`}>
-                <div className="font-urdu text-white text-right">{method.label}</div>
-                <div className="text-islamic-cream text-xs text-right mt-1">{method.desc}</div>
+                <div className="font-bold text-white text-left">{method.label}</div>
+                <div className="text-islamic-cream text-xs text-left mt-1">{method.desc}</div>
               </div>
             ))}
           </div>
         </div>
         <div className="flex gap-4">
-          <button onClick={onClose} className="flex-1 bg-white bg-opacity-20 text-white py-3 rounded-xl hover:bg-opacity-30 transition-colors font-urdu">منسوخ کریں</button>
-          <button onClick={() => onSave(settings)} className="flex-1 bg-accent text-accent-foreground py-3 rounded-xl hover:bg-yellow-600 transition-colors font-urdu font-bold">محفوظ کریں</button>
+          <button onClick={onClose} className="flex-1 bg-white bg-opacity-20 text-white py-3 rounded-xl hover:bg-opacity-30 transition-colors">Cancel</button>
+          <button onClick={() => onSave(settings)} className="flex-1 bg-accent text-accent-foreground py-3 rounded-xl hover:bg-yellow-600 transition-colors font-bold">Save</button>
         </div>
       </div>
     </div>
   );
 };
 
-// --- نتیجہ ڈسپلے ---
+// --- Result Display ---
 const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: number[], settings: any, onRestart: () => void, onHome: () => void }) => {
     const { toast } = useToast();
     const resultCardRef = useRef<HTMLDivElement>(null);
@@ -107,8 +107,8 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
-                    title: 'قرعہ کا نتیجہ',
-                    text: `قرعہ کا نتیجہ: ${numbers.join(', ')}`,
+                    title: 'Draw Result',
+                    text: `The draw result is: ${numbers.join(', ')}`,
                 });
             } else {
                  await navigator.clipboard.write([
@@ -117,8 +117,8 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                     })
                 ]);
                 toast({
-                    title: "نتیجہ کاپی ہوگیا!",
-                    description: "اسکرین شاٹ کلپ بورڈ میں کاپی کر لیا گیا ہے۔",
+                    title: "Result Copied!",
+                    description: "Screenshot has been copied to the clipboard.",
                 });
             }
         } catch (err) {
@@ -126,8 +126,8 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
             const text = numbers.join(', ');
             await navigator.clipboard.writeText(text);
             toast({
-                title: "صرف ٹیکسٹ کاپی ہوا",
-                description: "اسکرین شاٹ شیئر نہیں ہوسکا، صرف نتیجہ کاپی کیا گیا ہے۔",
+                title: "Only text copied",
+                description: "Screenshot could not be shared, only the result was copied.",
                 variant: "destructive",
             });
         }
@@ -149,16 +149,16 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
             });
 
             toast({
-                title: "نتیجہ بھیج دیا گیا!",
-                description: `قرعہ کا نتیجہ کامیابی سے "${groupName}" گروپ کو بھیج دیا گیا ہے۔`,
+                title: "Result Sent!",
+                description: `The draw result has been successfully sent to the "${groupName}" group.`,
             });
             onRestart();
         } catch (error) {
             console.error("Error sending draw result: ", error);
             toast({
                 variant: "destructive",
-                title: "خرابی",
-                description: "نتیجہ بھیجتے وقت ایک مسئلہ پیش آیا۔",
+                title: "Error",
+                description: "An issue occurred while sending the result.",
             });
         } finally {
             setIsSaving(false);
@@ -170,10 +170,10 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
         <div className="flex flex-col items-center justify-center p-4">
             <div ref={resultCardRef} className="bg-gradient-to-br from-islamic-green to-islamic-dark rounded-3xl p-8 mb-8 border-2 border-islamic-gold w-full max-w-4xl">
                  <header className="mb-8 text-center">
-                    <h1 className="text-4xl md:text-6xl font-arabic text-islamic-gold mb-2 font-bold">
-                        الْحَمْدُ لِلَّهِ
+                    <h1 className="text-4xl md:text-6xl font-bold text-islamic-gold mb-2">
+                        Alhamdulillah
                     </h1>
-                    <p className="text-2xl text-white font-urdu">قرعہ کا نتیجہ</p>
+                    <p className="text-2xl text-white">Draw Result</p>
                 </header>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
                     {numbers.map((number, index) => (
@@ -188,27 +188,26 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                     ))}
                 </div>
                 <div className="mb-6 text-center">
-                    <p className="text-2xl font-arabic text-islamic-gold leading-relaxed font-bold">
-                        فَإِنَّ اللَّهَ هُوَ الْغَنِيُّ الْحَمِيدُ
+                    <p className="text-2xl text-islamic-gold leading-relaxed font-bold">
+                        "Indeed, Allah is the Free of need, the Praiseworthy."
                     </p>
-                    <p className="text-white font-urdu mt-2">"بے شک اللہ بے نیاز اور قابل تعریف ہے"</p>
                 </div>
                  <div className="bg-white bg-opacity-10 rounded-2xl p-4 mt-6">
                     <div className="flex justify-around items-center text-sm text-white">
-                        <div><span className="font-urdu font-bold">حد: </span><span>{settings.range}</span></div>
-                        <div><span className="font-urdu font-bold">تعداد: </span><span>{settings.count}</span></div>
+                        <div><span className="font-bold">Range: </span><span>{settings.range}</span></div>
+                        <div><span className="font-bold">Count: </span><span>{settings.count}</span></div>
                         <div>
-                            <span className="font-urdu font-bold">طریقہ: </span>
-                            <span className="font-urdu">{settings.method === 'automatic' ? 'خودکار' : settings.method === 'stepwise' ? 'قدم بہ قدم' : 'تسبیح'}</span>
+                            <span className="font-bold">Method: </span>
+                            <span>{settings.method}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="w-full max-w-4xl mb-8">
-                <h3 className="text-xl font-urdu text-center text-islamic-gold mb-4">نتیجہ گروپ کو بھیجیں</h3>
+                <h3 className="text-xl font-bold text-center text-islamic-gold mb-4">Send Result to Group</h3>
                 {areGroupsLoading ? (
-                     <div className="text-center text-white">گروپس لوڈ ہو رہے ہیں...</div>
+                     <div className="text-center text-white">Loading groups...</div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {groups.map((group) => (
@@ -216,7 +215,7 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
                                 key={group.id}
                                 onClick={() => handleSendToGroup(group.id, group.name)}
                                 disabled={isSaving}
-                                className="bg-white bg-opacity-10 text-white px-6 py-4 rounded-xl hover:bg-opacity-20 transition-colors font-urdu text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="bg-white bg-opacity-10 text-white px-6 py-4 rounded-xl hover:bg-opacity-20 transition-colors text-lg flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 <Send size={20} /> {group.name}
                             </button>
@@ -226,40 +225,40 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-4xl">
-                <button onClick={handleShare} className="flex-1 bg-islamic-green text-white px-8 py-4 rounded-2xl hover:bg-islamic-lightGreen transition-colors font-urdu text-lg flex items-center justify-center gap-3">
-                    <Share2 size={20} /> نتیجہ شیئر کریں
+                <button onClick={handleShare} className="flex-1 bg-islamic-green text-white px-8 py-4 rounded-2xl hover:bg-islamic-lightGreen transition-colors text-lg flex items-center justify-center gap-3">
+                    <Share2 size={20} /> Share Result
                 </button>
-                <button onClick={onRestart} className="flex-1 bg-accent text-accent-foreground px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors font-urdu text-lg font-bold flex items-center justify-center gap-3">
-                    <Redo size={20} /> دوبارہ قرعہ کریں
+                <button onClick={onRestart} className="flex-1 bg-accent text-accent-foreground px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors text-lg font-bold flex items-center justify-center gap-3">
+                    <Redo size={20} /> Draw Again
                 </button>
             </div>
             <footer className="mt-12 text-center">
-                <p className="text-islamic-cream opacity-70 text-sm font-urdu">اللہ آپ کے ہر کام میں آسانی پیدا فرمائے</p>
+                <p className="text-islamic-cream opacity-70 text-sm">May Allah ease all your tasks</p>
             </footer>
         </div>
     );
 };
 
 
-// --- قرعہ اینیمیشن ---
+// --- Draw Animation ---
 const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: (numbers: number[]) => void }) => {
     const [currentNumbers, setCurrentNumbers] = useState<number[]>([]);
     const [phase, setPhase] = useState(0);
     const [isComplete, setIsComplete] = useState(false);
 
     const phases = [
-        { text: "نمبرز مکس ہو رہے ہیں...", duration: 2000 },
-        { text: "پہلا نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "دوسرا نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "تیسرا نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "چوتھا نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "پانچواں نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "چھٹا نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "ساتواں نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "آٹھواں نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "نواں نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "دسواں نمبر منتخب ہو رہا ہے", duration: 1500 },
-        { text: "مکمل ہو گیا!", duration: 1000 }
+        { text: "Mixing numbers...", duration: 2000 },
+        { text: "Selecting first number", duration: 1500 },
+        { text: "Selecting second number", duration: 1500 },
+        { text: "Selecting third number", duration: 1500 },
+        { text: "Selecting fourth number", duration: 1500 },
+        { text: "Selecting fifth number", duration: 1500 },
+        { text: "Selecting sixth number", duration: 1500 },
+        { text: "Selecting seventh number", duration: 1500 },
+        { text: "Selecting eighth number", duration: 1500 },
+        { text: "Selecting ninth number", duration: 1500 },
+        { text: "Selecting tenth number", duration: 1500 },
+        { text: "Completed!", duration: 1000 }
     ];
 
     useEffect(() => {
@@ -295,8 +294,8 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
             <div className="absolute top-8 text-6xl text-islamic-gold opacity-20">﷽</div>
             <div className="text-center max-w-2xl w-full">
                 <div className="mb-12">
-                    <h3 className="text-3xl font-arabic text-islamic-gold mb-4">
-                        {(phases[phase] && phases[phase].text) || "مکمل ہو گیا!"}
+                    <h3 className="text-3xl text-islamic-gold mb-4">
+                        {(phases[phase] && phases[phase].text) || "Completed!"}
                     </h3>
                     <div className="flex justify-center items-center space-x-2 mb-8">
                         {[...Array(33)].map((_, i) => (
@@ -304,7 +303,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
                         ))}
                     </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12" style={{ direction: 'ltr' }}>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
                     {currentNumbers.map((num, index) => (
                         <div key={index} className="relative overflow-hidden bg-gradient-to-br from-islamic-gold to-yellow-400 text-islamic-dark text-3xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-500 hover:scale-110 hover:rotate-3 border-4 border-white animate-bounce">
                             <span className="relative z-10">{num}</span>
@@ -316,8 +315,8 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
                     ))}
                 </div>
                 <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-2xl p-6 border border-islamic-gold border-opacity-30">
-                    <p className="text-xl font-arabic text-islamic-gold mb-2">{phase < settings.count ? "اَللّٰهُمَّ خِرْ لِيْ وَاخْتَرْ لِيْ" : "الْحَمْدُ لِلَّهِ"}</p>
-                    <p className="text-white font-urdu">{phase < settings.count ? "یا اللہ! میرے لیے بہتر منتخب فرما" : "سب تعریف اللہ کے لیے ہے"}</p>
+                    <p className="text-xl text-islamic-gold mb-2">{phase < settings.count ? "O Allah, choose for me and select for me." : "All praise is for Allah."}</p>
+                    <p className="text-white">{phase < settings.count ? "Ya Allah! Mere liye behtar ko muntakhab farma." : "Sab ta'areef Allah ke liye hai."}</p>
                 </div>
                 <div className="mt-8 bg-white bg-opacity-20 rounded-full h-3 overflow-hidden">
                     <div className="bg-islamic-gold h-full rounded-full transition-all duration-1000" style={{ width: `${((phase + 1) / (settings.count + 1)) * 100}%` }}></div>
@@ -328,7 +327,7 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
 };
 
 
-// --- مین ڈرا پیج ---
+// --- Main Draw Page ---
 export default function DrawPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
@@ -385,15 +384,15 @@ export default function DrawPage() {
         return (
           <div className="flex flex-col items-center justify-center p-4 text-center">
              <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-3xl p-8 mb-12 border border-islamic-gold border-opacity-30">
-                <p className="text-2xl md:text-4xl font-arabic text-islamic-gold leading-relaxed">
-                    اَللّٰهُمَّ خِرْ لِيْ وَاخْتَرْ لِيْ
+                <p className="text-2xl md:text-4xl text-islamic-gold leading-relaxed">
+                    O Allah, choose for me and select for me.
                 </p>
-                <p className="text-lg md:text-xl text-white mt-4 font-urdu">
-                    "یا اللہ! میرے لیے بہتر کو منتخب فرما"
+                <p className="text-lg md:text-xl text-white mt-4">
+                    "Ya Allah! Mere liye behtar ko muntakhab farma."
                 </p>
             </div>
             <BismillahButton onClick={handleDuaContinue}>
-              قرعہ شروع کریں
+              Start Draw
             </BismillahButton>
           </div>
         );

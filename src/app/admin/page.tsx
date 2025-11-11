@@ -2,8 +2,7 @@
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dice5, Target, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useAdmin } from '@/hooks/use-admin';
@@ -24,7 +23,7 @@ export default function AdminPage() {
   if (isUserLoading || isAdminLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">ایڈمن لوڈ ہو رہا ہے...</div>
+        <div className="text-white">Loading Admin...</div>
       </div>
     );
   }
@@ -32,27 +31,27 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">رسائی ممنوع ہے۔</div>
+        <div className="text-white">Access Denied.</div>
       </div>
     );
   }
 
   const adminFeatures = [
     {
-      title: 'قرعہ اندازی',
-      description: 'نئے قرعے بنائیں اور ان کا نظم کریں۔',
+      title: 'Draws',
+      description: 'Create and manage new draws.',
       href: '/draw',
       icon: <Dice5 className="w-8 h-8 text-islamic-gold" />,
     },
     {
-      title: 'خاص انتخاب',
-      description: 'مخصوص نمبر منتخب کرنے کے خصوصی طریقے',
+      title: 'Exact Selection',
+      description: 'Special methods for selecting specific numbers.',
       href: '/exact-selection',
       icon: <Target className="w-8 h-8 text-islamic-gold" />,
     },
     {
-      title: 'کمیونٹی',
-      description: 'گروپس اور لیڈر بورڈ کا نظم کریں۔',
+      title: 'Community',
+      description: 'Manage groups and leaderboards.',
       href: '/community',
       icon: <Users className="w-8 h-8 text-islamic-gold" />,
     },
@@ -62,26 +61,26 @@ export default function AdminPage() {
     <main className="flex flex-col items-center justify-center p-4">
       <div className="text-center z-10 max-w-4xl mx-auto w-full">
         <header className="mb-12">
-          <h1 className="text-4xl md:text-6xl font-arabic text-islamic-gold mb-6 leading-tight">
-            ایڈمن ڈیش بورڈ
+          <h1 className="text-4xl md:text-6xl font-bold text-islamic-gold mb-6 leading-tight">
+            Admin Dashboard
           </h1>
-          <p className="text-xl md:text-2xl font-urdu text-white mb-4">
-            خوش آمدید, ایڈمن
+          <p className="text-xl md:text-2xl text-white mb-4">
+            Welcome, Admin
           </p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {adminFeatures.map((feature) => (
             <Link href={feature.href} key={feature.title}>
-                <Card className="bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white text-right h-full hover:bg-opacity-20 transition-all cursor-pointer">
+                <Card className="bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white text-left h-full hover:bg-opacity-20 transition-all cursor-pointer">
                   <CardHeader>
                     <div className="flex items-center gap-4">
                       {feature.icon}
-                      <CardTitle className="font-urdu text-islamic-gold">{feature.title}</CardTitle>
+                      <CardTitle className="text-islamic-gold">{feature.title}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="font-urdu text-islamic-cream">{feature.description}</p>
+                    <p className="text-islamic-cream">{feature.description}</p>
                   </CardContent>
                 </Card>
             </Link>

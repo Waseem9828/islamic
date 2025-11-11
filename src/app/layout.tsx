@@ -5,7 +5,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'اسلامی قرعہ اندازی - Islamic Random Selector',
+  title: 'Islamic Random Selector',
   description: 'Islamic way of random selection',
   manifest: '/manifest.json',
   icons: {
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ur" dir="rtl">
+    <html lang="en" dir="ltr">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0f172a" />
