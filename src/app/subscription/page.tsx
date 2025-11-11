@@ -1,6 +1,6 @@
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useFirebaseApp } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode.react';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
 
 interface Plan {
   id: string;
@@ -30,7 +33,12 @@ export default function SubscriptionPage() {
   const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [transactionId, setTransactionId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  const firestore = useFirestore();
+  const firebaseApp = useFirebaseApp(); // Use the hook to get the app instance
+  const storage = getStorage(firebaseApp);
 
   const upiId = 'yourbusiness@paytm'; // Placeholder UPI ID
 
@@ -109,8 +117,8 @@ export default function SubscriptionPage() {
     }
   };
 
-  const handleSubmitPayment = () => {
-    if (!screenshot || !transactionId) {
+  const handleSubmitPayment = async () => {
+    if (!screenshot || !transactionId || !user || !selectedPlan) {
       toast({
         variant: "destructive",
         title: "Missing Information",
@@ -118,21 +126,46 @@ export default function SubscriptionPage() {
       });
       return;
     }
-    // Placeholder for submission logic
-    console.log({
-      plan: selectedPlan?.id,
-      transactionId,
-      screenshot,
-    });
     
-    toast({
-      title: "Submitted for Verification",
-      description: "Your payment is being verified. Your subscription will be activated soon.",
-    });
+    setIsSubmitting(true);
 
-    setShowPaymentSection(false);
-    setTransactionId('');
-    setScreenshot(null);
+    try {
+      // 1. Upload screenshot to Firebase Storage
+      const storageRef = ref(storage, `payment_proofs/${user.uid}/${Date.now()}_${screenshot.name}`);
+      const uploadResult = await uploadBytes(storageRef, screenshot);
+      const downloadURL = await getDownloadURL(uploadResult.ref);
+
+      // 2. Create a document in Firestore 'deposit_requests' collection
+      await addDoc(collection(firestore, 'deposit_requests'), {
+        userId: user.uid,
+        planId: selectedPlan.id,
+        planName: selectedPlan.name,
+        amount: selectedPlan.priceAmount,
+        transactionId: transactionId,
+        screenshotUrl: downloadURL,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      
+      toast({
+        title: "Submitted for Verification",
+        description: "Your payment is being verified. Your subscription will be activated soon.",
+      });
+
+      setShowPaymentSection(false);
+      setTransactionId('');
+      setScreenshot(null);
+
+    } catch (error) {
+      console.error("Error submitting payment proof: ", error);
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: "There was an error submitting your payment proof. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const getUpiDeepLink = () => {
@@ -268,8 +301,8 @@ export default function SubscriptionPage() {
               </div>
             </CardContent>
             <CardFooter className="flex-col gap-4">
-              <Button onClick={handleSubmitPayment} className="w-full font-bold" disabled={!screenshot || !transactionId}>
-                Submit for Verification
+              <Button onClick={handleSubmitPayment} className="w-full font-bold" disabled={!screenshot || !transactionId || isSubmitting}>
+                 {isSubmitting ? 'Submitting...' : 'Submit for Verification'}
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => setShowPaymentSection(false)}>
                 Back to Plans
