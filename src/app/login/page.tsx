@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc } from 'firebase/firestore';
 import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { setDocumentNonBlocking } from '@/firebase';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -40,7 +40,6 @@ export default function LoginPage() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const newUser = userCredential.user;
         
-        // Create user document in Firestore
         if (newUser) {
           const userDocRef = doc(firestore, 'users', newUser.uid);
           setDocumentNonBlocking(userDocRef, {
@@ -58,7 +57,7 @@ export default function LoginPage() {
       router.push('/');
     } catch (err: any) {
       setError(err.message);
-      toast({ variant: 'destructive', title: 'Error', description: 'There was a problem with login or sign up.' });
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
     } finally {
       setLoading(false);
     }
@@ -86,7 +85,7 @@ export default function LoginPage() {
       router.push('/');
     } catch (err: any) {
       setError(err.message);
-      toast({ variant: 'destructive', title: 'Error', description: 'There was a problem with guest login.' });
+      toast({ variant: 'destructive', title: 'Error', description: err.message });
     } finally {
       setLoading(false);
     }
@@ -95,19 +94,19 @@ export default function LoginPage() {
   if (isUserLoading || user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">Loading...</div>
+        <div>Loading...</div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-       <Card className="w-full max-w-md bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white">
+       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-islamic-gold">
+          <CardTitle className="text-3xl font-bold">
             {isSigningUp ? 'Create an Account' : 'Login'}
           </CardTitle>
-          <CardDescription className="text-islamic-cream">
+          <CardDescription>
             {isSigningUp ? 'Enter your details to continue.' : 'Log in to your account.'}
           </CardDescription>
         </CardHeader>
@@ -122,7 +121,6 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-white bg-opacity-20 border-white border-opacity-30 text-white placeholder-gray-400"
               />
             </div>
             <div className="space-y-2 text-left">
@@ -134,13 +132,12 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-white bg-opacity-20 border-white border-opacity-30 text-white placeholder-gray-400"
               />
             </div>
             {error && <p className="text-red-500 text-sm">{error}</p>}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full bg-accent text-accent-foreground font-bold" disabled={loading}>
+            <Button type="submit" className="w-full font-bold" disabled={loading}>
               {loading ? 'Please wait...' : (isSigningUp ? 'Sign Up' : 'Login')}
             </Button>
             <Button variant="outline" type="button" className="w-full" onClick={() => setIsSigningUp(!isSigningUp)}>
@@ -148,9 +145,9 @@ export default function LoginPage() {
             </Button>
              <div className="relative w-full flex items-center justify-center my-2">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-white border-opacity-30"></span>
+                <span className="w-full border-t"></span>
               </div>
-              <span className="relative px-2 bg-background text-xs uppercase text-islamic-cream">Or</span>
+              <span className="relative px-2 bg-background text-xs uppercase text-muted-foreground">Or</span>
             </div>
              <Button variant="secondary" type="button" className="w-full" onClick={handleAnonymousSignIn} disabled={loading}>
               {loading ? 'Please wait...' : 'Continue as Guest'}

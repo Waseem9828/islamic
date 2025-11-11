@@ -31,51 +31,51 @@ const SettingsModal = ({ onSave, onClose, initialSettings }: { onSave: (settings
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
-      <div className="bg-gradient-to-br from-islamic-dark to-islamic-green rounded-3xl p-8 max-w-md w-full border-2 border-islamic-gold">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-card rounded-3xl p-8 max-w-md w-full border">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-islamic-gold mb-2">
+          <h2 className="text-2xl font-bold text-primary mb-2">
             Select Settings
           </h2>
-          <p className="text-white">Choose the draw settings</p>
+          <p className="text-muted-foreground">Choose the draw settings</p>
         </div>
         <div className="mb-6">
-          <label className="block text-white mb-3 text-left">Number Range:</label>
+          <label className="block text-foreground mb-3 text-left">Number Range:</label>
           <div className="grid grid-cols-3 gap-3">
             {ranges.map((range) => (
               <button key={range.value} onClick={() => setSettings({ ...settings, range: range.value })}
-                className={`p-3 rounded-xl border-2 transition-all ${settings.range === range.value ? 'bg-accent text-accent-foreground border-accent' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
+                className={`p-3 rounded-xl border-2 transition-all ${settings.range === range.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary text-secondary-foreground border-border hover:bg-accent'}`}>
                 <div className="text-sm">{range.label}</div>
               </button>
             ))}
           </div>
         </div>
         <div className="mb-6">
-          <label className="block text-white mb-3 text-left">How many numbers:</label>
+          <label className="block text-foreground mb-3 text-left">How many numbers:</label>
           <div className="flex gap-2 flex-wrap justify-center">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
               <button key={num} onClick={() => setSettings({ ...settings, count: num })}
-                className={`w-12 h-12 rounded-full border-2 text-lg font-bold transition-all ${settings.count === num ? 'bg-accent text-accent-foreground border-accent' : 'bg-white bg-opacity-10 text-white border-white border-opacity-20 hover:bg-opacity-20'}`}>
+                className={`w-12 h-12 rounded-full border-2 text-lg font-bold transition-all ${settings.count === num ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary text-secondary-foreground border-border hover:bg-accent'}`}>
                 {num}
               </button>
             ))}
           </div>
         </div>
         <div className="mb-8">
-          <label className="block text-white mb-3 text-left">Method:</label>
+          <label className="block text-foreground mb-3 text-left">Method:</label>
           <div className="space-y-3">
             {methods.map((method) => (
               <div key={method.value} onClick={() => setSettings({ ...settings, method: method.value })}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${settings.method === method.value ? 'bg-islamic-green border-islamic-gold' : 'bg-white bg-opacity-10 border-white border-opacity-20 hover:bg-opacity-20'}`}>
-                <div className="font-bold text-white text-left">{method.label}</div>
-                <div className="text-islamic-cream text-xs text-left mt-1">{method.desc}</div>
+                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${settings.method === method.value ? 'bg-primary/20 border-primary' : 'bg-secondary border-border hover:bg-accent'}`}>
+                <div className="font-bold text-foreground text-left">{method.label}</div>
+                <div className="text-muted-foreground text-xs text-left mt-1">{method.desc}</div>
               </div>
             ))}
           </div>
         </div>
         <div className="flex gap-4">
-          <button onClick={onClose} className="flex-1 bg-white bg-opacity-20 text-white py-3 rounded-xl hover:bg-opacity-30 transition-colors">Cancel</button>
-          <button onClick={() => onSave(settings)} className="flex-1 bg-accent text-accent-foreground py-3 rounded-xl hover:bg-yellow-600 transition-colors font-bold">Save</button>
+          <button onClick={onClose} className="flex-1 bg-secondary text-secondary-foreground py-3 rounded-xl hover:bg-accent transition-colors">Cancel</button>
+          <button onClick={() => onSave(settings)} className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl hover:bg-primary/90 transition-colors font-bold">Save</button>
         </div>
       </div>
     </div>
@@ -168,32 +168,32 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
 
     return (
         <div className="flex flex-col items-center justify-center p-4">
-            <div ref={resultCardRef} className="bg-gradient-to-br from-islamic-green to-islamic-dark rounded-3xl p-8 mb-8 border-2 border-islamic-gold w-full max-w-4xl">
+            <div ref={resultCardRef} className="bg-card rounded-3xl p-8 mb-8 border w-full max-w-4xl">
                  <header className="mb-8 text-center">
-                    <h1 className="text-4xl md:text-6xl font-bold text-islamic-gold mb-2">
+                    <h1 className="text-4xl md:text-6xl font-bold text-primary mb-2">
                         Alhamdulillah
                     </h1>
-                    <p className="text-2xl text-white">Draw Result</p>
+                    <p className="text-2xl text-foreground">Draw Result</p>
                 </header>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
                     {numbers.map((number, index) => (
                         <div key={index} className="relative group">
-                            <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 text-islamic-dark text-4xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border-4 border-white">
+                            <div className="bg-primary text-primary-foreground text-4xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 border-4 border-card">
                                 {number}
                             </div>
-                            <div className="absolute -top-2 -right-2 bg-islamic-dark text-white text-sm rounded-full w-8 h-8 flex items-center justify-center border-2 border-white font-bold">
+                            <div className="absolute -top-2 -right-2 bg-secondary text-secondary-foreground text-sm rounded-full w-8 h-8 flex items-center justify-center border-2 border-card font-bold">
                                 {index + 1}
                             </div>
                         </div>
                     ))}
                 </div>
                 <div className="mb-6 text-center">
-                    <p className="text-2xl text-islamic-gold leading-relaxed font-bold">
+                    <p className="text-2xl text-primary leading-relaxed font-bold">
                         "Indeed, Allah is the Free of need, the Praiseworthy."
                     </p>
                 </div>
-                 <div className="bg-white bg-opacity-10 rounded-2xl p-4 mt-6">
-                    <div className="flex justify-around items-center text-sm text-white">
+                 <div className="bg-secondary rounded-2xl p-4 mt-6">
+                    <div className="flex justify-around items-center text-sm text-secondary-foreground">
                         <div><span className="font-bold">Range: </span><span>{settings.range}</span></div>
                         <div><span className="font-bold">Count: </span><span>{settings.count}</span></div>
                         <div>
@@ -205,35 +205,36 @@ const ResultDisplay = ({ numbers, settings, onRestart, onHome }: { numbers: numb
             </div>
 
             <div className="w-full max-w-4xl mb-8">
-                <h3 className="text-xl font-bold text-center text-islamic-gold mb-4">Send Result to Group</h3>
+                <h3 className="text-xl font-bold text-center text-primary mb-4">Send Result to Group</h3>
                 {areGroupsLoading ? (
-                     <div className="text-center text-white">Loading groups...</div>
+                     <div className="text-center text-foreground">Loading groups...</div>
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {groups.map((group) => (
-                            <button
+                            <Button
                                 key={group.id}
+                                variant="secondary"
                                 onClick={() => handleSendToGroup(group.id, group.name)}
                                 disabled={isSaving}
-                                className="bg-white bg-opacity-10 text-white px-6 py-4 rounded-xl hover:bg-opacity-20 transition-colors text-lg flex items-center justify-center gap-3 disabled:opacity-50"
+                                className="px-6 py-4 rounded-xl text-lg flex items-center justify-center gap-3 disabled:opacity-50"
                             >
                                 <Send size={20} /> {group.name}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 )}
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 justify-center w-full max-w-4xl">
-                <button onClick={handleShare} className="flex-1 bg-islamic-green text-white px-8 py-4 rounded-2xl hover:bg-islamic-lightGreen transition-colors text-lg flex items-center justify-center gap-3">
+                <Button onClick={handleShare} variant="secondary" className="flex-1 px-8 py-4 rounded-2xl text-lg flex items-center justify-center gap-3">
                     <Share2 size={20} /> Share Result
-                </button>
-                <button onClick={onRestart} className="flex-1 bg-accent text-accent-foreground px-8 py-4 rounded-2xl hover:bg-yellow-600 transition-colors text-lg font-bold flex items-center justify-center gap-3">
+                </Button>
+                <Button onClick={onRestart} className="flex-1 px-8 py-4 rounded-2xl text-lg font-bold flex items-center justify-center gap-3">
                     <Redo size={20} /> Draw Again
-                </button>
+                </Button>
             </div>
             <footer className="mt-12 text-center">
-                <p className="text-islamic-cream opacity-70 text-sm">May Allah ease all your tasks</p>
+                <p className="text-muted-foreground text-sm">May Allah ease all your tasks</p>
             </footer>
         </div>
     );
@@ -291,35 +292,35 @@ const NumberAnimation = ({ settings, onComplete }: { settings: any, onComplete: 
 
     return (
         <div className="flex flex-col items-center justify-center p-4">
-            <div className="absolute top-8 text-6xl text-islamic-gold opacity-20">﷽</div>
+            <div className="absolute top-8 text-6xl text-primary opacity-20">﷽</div>
             <div className="text-center max-w-2xl w-full">
                 <div className="mb-12">
-                    <h3 className="text-3xl text-islamic-gold mb-4">
+                    <h3 className="text-3xl text-primary mb-4">
                         {(phases[phase] && phases[phase].text) || "Completed!"}
                     </h3>
                     <div className="flex justify-center items-center space-x-2 mb-8">
                         {[...Array(33)].map((_, i) => (
-                            <div key={i} className={`w-3 h-3 rounded-full transition-all duration-500 ${i <= phase * (33 / settings.count) ? 'bg-islamic-gold scale-125' : 'bg-white bg-opacity-30 scale-100'}`} />
+                            <div key={i} className={`w-3 h-3 rounded-full transition-all duration-500 ${i <= phase * (33 / settings.count) ? 'bg-primary scale-125' : 'bg-muted scale-100'}`} />
                         ))}
                     </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
                     {currentNumbers.map((num, index) => (
-                        <div key={index} className="relative overflow-hidden bg-gradient-to-br from-islamic-gold to-yellow-400 text-islamic-dark text-3xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-500 hover:scale-110 hover:rotate-3 border-4 border-white animate-bounce">
+                        <div key={index} className="relative overflow-hidden bg-primary text-primary-foreground text-3xl font-bold p-6 rounded-2xl shadow-2xl transform transition-all duration-500 hover:scale-110 hover:rotate-3 border-4 border-card animate-bounce">
                             <span className="relative z-10">{num}</span>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
                         </div>
                     ))}
                     {Array.from({ length: settings.count - currentNumbers.length }).map((_, index) => (
-                        <div key={`empty-${index}`} className="bg-white bg-opacity-10 border-2 border-dashed border-white border-opacity-30 text-white text-3xl p-6 rounded-2xl animate-pulse flex items-center justify-center">?</div>
+                        <div key={`empty-${index}`} className="bg-secondary border-2 border-dashed border-border text-foreground text-3xl p-6 rounded-2xl animate-pulse flex items-center justify-center">?</div>
                     ))}
                 </div>
-                <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-2xl p-6 border border-islamic-gold border-opacity-30">
-                    <p className="text-xl text-islamic-gold mb-2">{phase < settings.count ? "O Allah, choose for me and select for me." : "All praise is for Allah."}</p>
-                    <p className="text-white">{phase < settings.count ? "Ya Allah! Mere liye behtar ko muntakhab farma." : "Sab ta'areef Allah ke liye hai."}</p>
+                <div className="bg-secondary backdrop-blur-sm rounded-2xl p-6 border">
+                    <p className="text-xl text-primary mb-2">{phase < settings.count ? "O Allah, choose for me and select for me." : "All praise is for Allah."}</p>
+                    <p className="text-foreground">{phase < settings.count ? "Ya Allah! Mere liye behtar ko muntakhab farma." : "Sab ta'areef Allah ke liye hai."}</p>
                 </div>
-                <div className="mt-8 bg-white bg-opacity-20 rounded-full h-3 overflow-hidden">
-                    <div className="bg-islamic-gold h-full rounded-full transition-all duration-1000" style={{ width: `${((phase + 1) / (settings.count + 1)) * 100}%` }}></div>
+                <div className="mt-8 bg-secondary rounded-full h-3 overflow-hidden">
+                    <div className="bg-primary h-full rounded-full transition-all duration-1000" style={{ width: `${((phase + 1) / (settings.count + 1)) * 100}%` }}></div>
                 </div>
             </div>
         </div>
@@ -368,11 +369,11 @@ export default function DrawPage() {
   };
   
   if (isUserLoading || isAdminLoading) {
-    return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Loading Admin...</div></div>;
+    return <div className="flex justify-center items-center min-h-screen"><div>Loading Admin...</div></div>;
   }
 
   if (!isAdmin) {
-    return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Access Denied.</div></div>;
+    return <div className="flex justify-center items-center min-h-screen"><div>Access Denied.</div></div>;
   }
 
 
@@ -383,11 +384,11 @@ export default function DrawPage() {
       case 'dua':
         return (
           <div className="flex flex-col items-center justify-center p-4 text-center">
-             <div className="bg-white bg-opacity-15 backdrop-blur-sm rounded-3xl p-8 mb-12 border border-islamic-gold border-opacity-30">
-                <p className="text-2xl md:text-4xl text-islamic-gold leading-relaxed">
+             <div className="bg-secondary backdrop-blur-sm rounded-3xl p-8 mb-12 border">
+                <p className="text-2xl md:text-4xl text-primary leading-relaxed">
                     O Allah, choose for me and select for me.
                 </p>
-                <p className="text-lg md:text-xl text-white mt-4">
+                <p className="text-lg md:text-xl text-foreground mt-4">
                     "Ya Allah! Mere liye behtar ko muntakhab farma."
                 </p>
             </div>

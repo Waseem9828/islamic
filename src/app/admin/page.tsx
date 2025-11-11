@@ -23,7 +23,7 @@ export default function AdminPage() {
   if (isUserLoading || isAdminLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">Loading Admin...</div>
+        <div>Loading Admin...</div>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">Access Denied.</div>
+        <div>Access Denied.</div>
       </div>
     );
   }
@@ -41,19 +41,19 @@ export default function AdminPage() {
       title: 'Draws',
       description: 'Create and manage new draws.',
       href: '/draw',
-      icon: <Dice5 className="w-8 h-8 text-islamic-gold" />,
+      icon: <Dice5 className="w-8 h-8 text-primary" />,
     },
     {
       title: 'Exact Selection',
       description: 'Special methods for selecting specific numbers.',
       href: '/exact-selection',
-      icon: <Target className="w-8 h-8 text-islamic-gold" />,
+      icon: <Target className="w-8 h-8 text-primary" />,
     },
     {
       title: 'Community',
       description: 'Manage groups and leaderboards.',
       href: '/community',
-      icon: <Users className="w-8 h-8 text-islamic-gold" />,
+      icon: <Users className="w-8 h-8 text-primary" />,
     },
   ];
 
@@ -61,10 +61,10 @@ export default function AdminPage() {
     <main className="flex flex-col items-center justify-center p-4">
       <div className="text-center z-10 max-w-4xl mx-auto w-full">
         <header className="mb-12">
-          <h1 className="text-4xl md:text-6xl font-bold text-islamic-gold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-6xl font-bold text-primary mb-6 leading-tight">
             Admin Dashboard
           </h1>
-          <p className="text-xl md:text-2xl text-white mb-4">
+          <p className="text-xl md:text-2xl text-foreground mb-4">
             Welcome, Admin
           </p>
         </header>
@@ -72,15 +72,15 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {adminFeatures.map((feature) => (
             <Link href={feature.href} key={feature.title}>
-                <Card className="bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white text-left h-full hover:bg-opacity-20 transition-all cursor-pointer">
+                <Card className="text-left h-full hover:bg-accent transition-all cursor-pointer">
                   <CardHeader>
                     <div className="flex items-center gap-4">
                       {feature.icon}
-                      <CardTitle className="text-islamic-gold">{feature.title}</CardTitle>
+                      <CardTitle className="text-primary">{feature.title}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-islamic-cream">{feature.description}</p>
+                    <p className="text-muted-foreground">{feature.description}</p>
                   </CardContent>
                 </Card>
             </Link>

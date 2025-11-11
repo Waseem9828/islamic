@@ -74,11 +74,11 @@ const ThreeStageDraw = () => {
     };
 
     const renderNumbers = (numbers: number[], title: string, highlight = false) => (
-        <div className={`bg-white bg-opacity-5 rounded-xl p-4 ${highlight ? 'border-2 border-islamic-gold' : ''}`}>
-            <h4 className="text-lg font-bold text-islamic-gold mb-3">{title}</h4>
+        <div className={`bg-card border rounded-xl p-4 ${highlight ? 'border-2 border-primary' : ''}`}>
+            <h4 className="text-lg font-bold text-primary mb-3">{title}</h4>
             <div className="flex gap-3 flex-wrap justify-center">
                 {numbers.map((num, idx) => (
-                    <div key={idx} className={`text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${highlight ? 'bg-accent text-accent-foreground' : 'bg-islamic-green'}`}>
+                    <div key={idx} className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${highlight ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                         {num}
                     </div>
                 ))}
@@ -89,7 +89,7 @@ const ThreeStageDraw = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <p className="text-white text-lg">
+                <p className="text-muted-foreground text-lg">
                     {getStageDescription()}
                 </p>
             </div>
@@ -101,11 +101,11 @@ const ThreeStageDraw = () => {
                     </BismillahButton>
                 ) : (
                     exactNumber !== null && (
-                        <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center animate-pulse">
-                            <h3 className="text-2xl font-bold text-islamic-dark mb-4">
+                        <div className="bg-primary rounded-3xl p-8 text-center animate-pulse">
+                            <h3 className="text-2xl font-bold text-primary-foreground mb-4">
                                 Alhamdulillah! Final Result
                             </h3>
-                            <div className="text-8xl font-bold text-islamic-dark mb-4">
+                            <div className="text-8xl font-bold text-primary-foreground mb-4">
                                 {exactNumber}
                             </div>
                         </div>
@@ -114,7 +114,7 @@ const ThreeStageDraw = () => {
                 {(stage > 0) && (
                     <button
                         onClick={resetProcess}
-                        className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors"
+                        className="bg-secondary text-secondary-foreground px-6 py-3 rounded-xl hover:bg-accent transition-colors"
                     >
                         Restart
                     </button>
@@ -181,7 +181,7 @@ const EliminationMethod = () => {
     return (
         <div className="max-w-4xl mx-auto p-4">
             <div className="text-center mb-8">
-                <p className="text-white text-lg">
+                <p className="text-muted-foreground text-lg">
                     One number will be eliminated at a time, until only one remains.
                 </p>
             </div>
@@ -190,71 +190,71 @@ const EliminationMethod = () => {
                 <button
                     onClick={performSingleDraw}
                     disabled={isComplete}
-                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-bold disabled:opacity-50"
+                    className="bg-primary text-primary-foreground px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors font-bold disabled:opacity-50"
                 >
                     {isComplete ? 'Complete' : 'Perform Draw'}
                 </button>
                 <button
                     onClick={resetProcess}
-                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors"
+                    className="bg-secondary text-secondary-foreground px-6 py-3 rounded-xl hover:bg-accent transition-colors"
                 >
                     Restart
                 </button>
             </div>
 
-            <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6">
-                <div className="flex justify-between items-center text-white mb-4">
+            <div className="bg-card border rounded-2xl p-6 mb-6">
+                <div className="flex justify-between items-center text-foreground mb-4">
                     <span>Step: {currentStep}</span>
                     <span>Remaining: {remainingNumbers.length}</span>
                     <span>Selected: {selectedNumbers.length}</span>
                 </div>
-                <div className="w-full bg-white bg-opacity-20 rounded-full h-3">
+                <div className="w-full bg-secondary rounded-full h-3">
                     <div
-                        className="bg-islamic-gold h-3 rounded-full transition-all duration-500"
+                        className="bg-primary h-3 rounded-full transition-all duration-500"
                         style={{ width: `${((99 - remainingNumbers.length) / 99) * 100}%` }}
                     ></div>
                 </div>
             </div>
 
             {isComplete && finalNumber != null && (
-                <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
-                    <h3 className="text-2xl font-bold text-islamic-dark mb-4">
+                <div className="bg-primary rounded-3xl p-8 text-center mb-6 animate-pulse">
+                    <h3 className="text-2xl font-bold text-primary-foreground mb-4">
                         Alhamdulillah! Final Result
                     </h3>
-                    <div className="text-8xl font-bold text-islamic-dark mb-4">
+                    <div className="text-8xl font-bold text-primary-foreground mb-4">
                         {finalNumber}
                     </div>
-                    <p className="text-islamic-dark text-xl">
+                    <p className="text-primary-foreground/80 text-xl">
                         This is your exact number!
                     </p>
                 </div>
             )}
 
-            <div className="bg-white bg-opacity-10 rounded-2xl p-6">
-                <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+            <div className="bg-card border rounded-2xl p-6">
+                <h3 className="text-xl font-bold text-primary mb-4 text-center">
                     History of Selected Numbers
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
                     {selectedNumbers.map((item, index) => (
-                        <div key={index} className="bg-white bg-opacity-5 rounded-xl p-3 text-center">
-                            <div className="text-sm text-islamic-cream">Step {item.step}</div>
-                            <div className="text-2xl font-bold text-islamic-gold my-2">{item.number}</div>
-                            <div className="text-xs text-white">Rem: {item.remaining}</div>
+                        <div key={index} className="bg-secondary rounded-xl p-3 text-center">
+                            <div className="text-sm text-muted-foreground">Step {item.step}</div>
+                            <div className="text-2xl font-bold text-primary my-2">{item.number}</div>
+                            <div className="text-xs text-foreground">Rem: {item.remaining}</div>
                         </div>
                     ))}
                 </div>
             </div>
 
             {remainingNumbers.length > 0 && !isComplete && (
-                <div className="bg-white bg-opacity-10 rounded-2xl p-6 mt-6">
-                    <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                <div className="bg-card border rounded-2xl p-6 mt-6">
+                    <h3 className="text-xl font-bold text-primary mb-4 text-center">
                         Remaining Numbers ({remainingNumbers.length})
                     </h3>
                     <div className="grid grid-cols-10 gap-2 max-h-60 overflow-y-auto">
                         {remainingNumbers.map((num) => (
                             <div
                                 key={num}
-                                className="bg-islamic-green text-white text-sm p-2 rounded text-center hover:bg-islamic-lightGreen transition-colors"
+                                className="bg-secondary text-secondary-foreground text-sm p-2 rounded text-center hover:bg-accent transition-colors"
                             >
                                 {num}
                             </div>
@@ -370,30 +370,30 @@ const MultiStageMethod = () => {
     return (
         <div className="max-w-6xl mx-auto p-4">
             <div className="text-center mb-8">
-                <p className="text-white text-lg">
+                <p className="text-muted-foreground text-lg">
                     7 numbers are selected in 7 stages. The number that appears most frequently is the exact number.
                 </p>
             </div>
 
-            <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6">
+            <div className="bg-card border rounded-2xl p-6 mb-6">
                 <div className="flex justify-between mb-4">
                     {stages.map((stage) => (
                         <div key={stage.id} className="text-center flex-1">
-                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-accent text-accent-foreground' : currentStage === stage.id ? 'bg-islamic-green text-white border-2 border-islamic-gold' : 'bg-white bg-opacity-20 text-white'}`}>
+                            <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-2 ${currentStage > stage.id ? 'bg-primary text-primary-foreground' : currentStage === stage.id ? 'bg-secondary text-secondary-foreground border-2 border-primary' : 'bg-muted text-muted-foreground'}`}>
                                 {stage.id}
                             </div>
-                            <div className="text-white text-xs md:text-sm">{stage.name}</div>
+                            <div className="text-foreground text-xs md:text-sm">{stage.name}</div>
                         </div>
                     ))}
                 </div>
             </div>
 
             {currentStageInfo && !isComplete && (
-                <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6 text-center">
-                    <h3 className="text-2xl font-bold text-islamic-gold mb-2">
+                <div className="bg-card border rounded-2xl p-6 mb-6 text-center">
+                    <h3 className="text-2xl font-bold text-primary mb-2">
                         {currentStageInfo.name}
                     </h3>
-                    <p className="text-white">
+                    <p className="text-foreground">
                         {currentStageInfo.count} numbers will be selected from {currentStageInfo.range}.
                     </p>
                 </div>
@@ -403,26 +403,26 @@ const MultiStageMethod = () => {
                 <button
                     onClick={performStageDraw}
                     disabled={isComplete}
-                    className="bg-accent text-accent-foreground px-6 py-3 rounded-xl hover:bg-yellow-600 transition-colors font-bold disabled:opacity-50"
+                    className="bg-primary text-primary-foreground px-6 py-3 rounded-xl hover:bg-primary/90 transition-colors font-bold disabled:opacity-50"
                 >
                     {isComplete ? 'Complete' : currentStage >= 7 ? 'See Final Result' : 'Complete Stage'}
                 </button>
                 <button
                     onClick={resetProcess}
-                    className="bg-white bg-opacity-20 text-white px-6 py-3 rounded-xl hover:bg-opacity-30 transition-colors"
+                    className="bg-secondary text-secondary-foreground px-6 py-3 rounded-xl hover:bg-accent transition-colors"
                 >
                     Restart
                 </button>
             </div>
 
             {!isComplete && currentNumbers.length > 0 && (
-                <div className="bg-white bg-opacity-10 rounded-2xl p-6 mb-6">
-                    <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                <div className="bg-card border rounded-2xl p-6 mb-6">
+                    <h3 className="text-xl font-bold text-primary mb-4 text-center">
                         Current Numbers
                     </h3>
                     <div className="flex justify-center gap-4 flex-wrap">
                         {currentNumbers.map((num, index) => (
-                            <div key={index} className="bg-islamic-green text-white text-2xl font-bold w-16 h-16 rounded-full flex items-center justify-center">
+                            <div key={index} className="bg-secondary text-secondary-foreground text-2xl font-bold w-16 h-16 rounded-full flex items-center justify-center">
                                 {num}
                             </div>
                         ))}
@@ -431,41 +431,41 @@ const MultiStageMethod = () => {
             )}
 
             {isComplete && exactNumber !== null && (
-                <div className="bg-gradient-to-br from-islamic-gold to-yellow-400 rounded-3xl p-8 text-center mb-6 animate-pulse">
-                    <h3 className="text-2xl font-bold text-islamic-dark mb-4">
+                <div className="bg-primary rounded-3xl p-8 text-center mb-6 animate-pulse">
+                    <h3 className="text-2xl font-bold text-primary-foreground mb-4">
                         Alhamdulillah! Final Result
                     </h3>
-                    <div className="text-8xl font-bold text-islamic-dark mb-4">
+                    <div className="text-8xl font-bold text-primary-foreground mb-4">
                         {exactNumber}
                     </div>
-                    <p className="text-islamic-dark text-xl">
+                    <p className="text-primary-foreground/80 text-xl">
                         This number appeared {Math.max(...Object.values(calculateFrequency(stageResults)))} times.
                     </p>
                 </div>
             )}
 
             {stageResults.length > 0 && (
-                <div className="bg-white bg-opacity-10 rounded-2xl p-6">
-                    <h3 className="text-xl font-bold text-islamic-gold mb-4 text-center">
+                <div className="bg-card border rounded-2xl p-6">
+                    <h3 className="text-xl font-bold text-primary mb-4 text-center">
                         Stage History
                     </h3>
                     <div className="space-y-4 max-h-96 overflow-y-auto">
                         {stageResults.map((result, index) => (
-                            <div key={index} className="bg-white bg-opacity-5 rounded-xl p-4">
+                            <div key={index} className="bg-secondary rounded-xl p-4">
                                 <div className="flex justify-between items-center mb-3">
-                                    <h4 className="text-lg font-bold text-islamic-gold">
+                                    <h4 className="text-lg font-bold text-primary">
                                         {stages.find(s => s.id === result.stage)?.name}
                                     </h4>
-                                    <span className="text-white">Stage {result.stage}</span>
+                                    <span className="text-foreground">Stage {result.stage}</span>
                                 </div>
                                 <div className="flex gap-3 mb-3 flex-wrap">
                                     {result.numbers.map((num: number, idx: number) => (
-                                        <div key={idx} className="bg-islamic-green text-white w-12 h-12 rounded-full flex items-center justify-center font-bold">
+                                        <div key={idx} className="bg-muted text-muted-foreground w-12 h-12 rounded-full flex items-center justify-center font-bold">
                                             {num}
                                         </div>
                                     ))}
                                 </div>
-                                <div className="text-sm text-islamic-cream">
+                                <div className="text-sm text-muted-foreground">
                                     {Object.entries(result.frequency).sort(([, a]: [string, any], [, b]: [string, any]) => b - a).slice(0, 3).map(([num, freq]) => (
                                         <span key={num} className="ml-3">
                                             {num}: {freq as number} times
@@ -496,11 +496,11 @@ export default function ExactSelectionPage() {
     }, [user, isUserLoading, isAdmin, isAdminLoading, router]);
 
      if (isUserLoading || isAdminLoading) {
-        return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Loading Admin...</div></div>;
+        return <div className="flex justify-center items-center min-h-screen"><div>Loading Admin...</div></div>;
     }
 
     if (!isAdmin) {
-        return <div className="flex justify-center items-center min-h-screen"><div className="text-white">Access Denied.</div></div>;
+        return <div className="flex justify-center items-center min-h-screen"><div>Access Denied.</div></div>;
     }
 
     const methods = [
@@ -532,13 +532,13 @@ export default function ExactSelectionPage() {
                         <div
                             key={method.id}
                             onClick={() => setActiveMethod(method.id)}
-                            className={`bg-white bg-opacity-10 rounded-2xl p-6 border-2 cursor-pointer transition-all hover:bg-opacity-20 hover:border-islamic-gold ${activeMethod === method.id ? 'border-islamic-gold bg-opacity-20' : 'border-white border-opacity-20'}`}
+                            className={`bg-card border rounded-2xl p-6 cursor-pointer transition-all hover:bg-accent hover:border-primary ${activeMethod === method.id ? 'border-primary bg-accent' : 'border-border'}`}
                         >
                             <div className="text-4xl mb-4 text-center">{method.icon}</div>
-                            <h3 className="text-xl font-bold text-white text-center mb-3">
+                            <h3 className="text-xl font-bold text-foreground text-center mb-3">
                                 {method.name}
                             </h3>
-                            <p className="text-islamic-cream text-center text-sm">
+                            <p className="text-muted-foreground text-center text-sm">
                                 {method.description}
                             </p>
                         </div>
@@ -553,11 +553,11 @@ export default function ExactSelectionPage() {
             </div>
 
             <div className="max-w-4xl mx-auto p-4 mt-8">
-                <div className="bg-white bg-opacity-10 rounded-2xl p-6 text-center">
-                    <h3 className="text-xl text-islamic-gold mb-4">
+                <div className="bg-card border rounded-2xl p-6 text-center">
+                    <h3 className="text-xl text-primary mb-4">
                         Guidance from Allah
                     </h3>
-                    <p className="text-white">
+                    <p className="text-foreground">
                         "O Allah, choose for me and select for me, and grant me the ability to make a decision according to Your will."
                     </p>
                 </div>

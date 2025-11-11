@@ -41,23 +41,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Do not render layout for login page or while loading
   if (pathname === '/login' || isUserLoading) {
-     return <>{children}</>;
+     return <main className="bg-background">{children}</main>;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-islamic-dark via-islamic-green to-islamic-dark text-white">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 bg-white bg-opacity-10 backdrop-blur-md p-4 flex justify-between items-center z-40 border-b border-islamic-gold border-opacity-20">
-        <h1 className="text-xl font-bold text-islamic-gold">{getPageTitle()}</h1>
+      <header className="fixed top-0 left-0 right-0 bg-background/80 backdrop-blur-md p-4 flex justify-between items-center z-40 border-b">
+        <h1 className="text-xl font-bold text-primary">{getPageTitle()}</h1>
         <div className="flex items-center gap-4">
             {isAdmin && (
-                 <Link href="/admin" className="p-2 rounded-full hover:bg-white hover:bg-opacity-20" title="Admin Panel">
-                    <Shield className="text-islamic-gold" />
+                 <Link href="/admin" className="p-2 rounded-full hover:bg-secondary" title="Admin Panel">
+                    <Shield className="text-primary" />
                 </Link>
             )}
             {user && (
-                 <button onClick={handleLogout} className="p-2 rounded-full hover:bg-white hover:bg-opacity-20" title="Logout">
-                    <LogOut className="text-islamic-gold" />
+                 <button onClick={handleLogout} className="p-2 rounded-full hover:bg-secondary" title="Logout">
+                    <LogOut className="text-primary" />
                 </button>
             )}
         </div>
@@ -69,12 +69,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white bg-opacity-10 backdrop-blur-md z-40 border-t border-islamic-gold border-opacity-20">
+      <footer className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md z-40 border-t">
         <nav className="flex justify-around items-center p-2">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className={cn(
               "flex flex-col items-center justify-center gap-1 p-2 rounded-lg transition-colors w-24",
-              pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-white hover:bg-white hover:bg-opacity-10'
+              pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-accent'
             )}>
               <item.icon className="w-6 h-6" />
               <span className="text-xs">{item.label}</span>

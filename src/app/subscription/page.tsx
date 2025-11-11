@@ -143,7 +143,7 @@ export default function SubscriptionPage() {
   if (isUserLoading || !user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">Loading...</div>
+        <div>Loading...</div>
       </div>
     );
   }
@@ -152,10 +152,10 @@ export default function SubscriptionPage() {
     <main className="flex flex-col items-center justify-center p-4">
       <div className="text-center z-10 max-w-4xl mx-auto w-full">
         <header className="mb-12">
-          <h1 className="text-4xl md:text-6xl font-bold text-islamic-gold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-6xl font-bold text-primary mb-6 leading-tight">
             Subscription Plans
           </h1>
-          <p className="text-xl md:text-2xl text-white mb-4">
+          <p className="text-xl md:text-2xl text-foreground mb-4">
             Choose a plan that works for you.
           </p>
         </header>
@@ -167,29 +167,29 @@ export default function SubscriptionPage() {
                 <Card 
                   key={plan.id} 
                   className={cn(
-                    "bg-white bg-opacity-10 border-white border-opacity-20 text-white text-left flex flex-col transition-all cursor-pointer",
-                    selectedPlan?.id === plan.id ? 'border-islamic-gold border-2 scale-105' : 'hover:scale-105',
+                    "text-left flex flex-col transition-all cursor-pointer",
+                    selectedPlan?.id === plan.id ? 'border-primary border-2 scale-105' : 'hover:scale-105',
                     plan.popular ? 'relative' : ''
                   )}
                   onClick={() => setSelectedPlan(plan)}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 right-4 bg-islamic-gold text-islamic-dark text-xs font-bold px-3 py-1 rounded-full">
+                    <div className="absolute -top-4 right-4 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
                       MOST POPULAR
                     </div>
                   )}
                   <CardHeader>
-                    <CardTitle className="text-islamic-gold text-2xl">{plan.name}</CardTitle>
-                    <CardDescription className="text-islamic-cream">
-                      <span className="text-4xl font-bold text-white">{plan.price}</span>
-                      <span className="text-lg">{plan.duration}</span>
+                    <CardTitle className="text-primary text-2xl">{plan.name}</CardTitle>
+                    <CardDescription>
+                      <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                      <span className="text-lg text-muted-foreground">{plan.duration}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
                     <ul className="space-y-3">
                       {plan.features.map((feature, index) => (
                         <li key={index} className="flex items-center gap-3">
-                          <CheckCircle className="w-5 h-5 text-islamic-gold" />
+                          <CheckCircle className="w-5 h-5 text-primary" />
                           <span>{feature}</span>
                         </li>
                       ))}
@@ -199,7 +199,6 @@ export default function SubscriptionPage() {
                     <Button 
                       className={cn(
                         "w-full font-bold text-lg py-6",
-                        selectedPlan?.id === plan.id ? 'bg-islamic-gold text-islamic-dark' : 'bg-white bg-opacity-20'
                       )}
                       variant={selectedPlan?.id === plan.id ? 'default' : 'secondary'}
                     >
@@ -213,7 +212,7 @@ export default function SubscriptionPage() {
             <div className="mt-12">
                 <Button 
                     size="lg" 
-                    className="bg-accent text-accent-foreground text-xl font-bold px-12 py-8"
+                    className="text-xl font-bold px-12 py-8"
                     onClick={handleProceedToPayment}
                     disabled={!selectedPlan}
                 >
@@ -222,21 +221,21 @@ export default function SubscriptionPage() {
             </div>
           </>
         ) : (
-          <Card className="w-full max-w-2xl mx-auto bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white">
+          <Card className="w-full max-w-2xl mx-auto">
             <CardHeader>
-              <CardTitle className="text-3xl font-bold text-islamic-gold">
+              <CardTitle className="text-3xl font-bold text-primary">
                 Complete Your Payment
               </CardTitle>
-              <CardDescription className="text-islamic-cream">
-                Pay <strong className="text-white">{selectedPlan?.price}</strong> for the <strong className="text-white">{selectedPlan?.name}</strong>.
+              <CardDescription>
+                Pay <strong className="text-foreground">{selectedPlan?.price}</strong> for the <strong className="text-foreground">{selectedPlan?.name}</strong>.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="text-center bg-white bg-opacity-10 rounded-lg p-4 border border-white border-opacity-20">
-                <p className="text-islamic-cream">Pay using the UPI ID or scan the QR Code:</p>
-                <p className="text-2xl font-mono my-2 text-islamic-gold">{upiId}</p>
-                 <div className="flex justify-center my-4">
-                  {selectedPlan && <QRCode value={getUpiDeepLink()} size={128} bgColor="transparent" fgColor="#FFD700" />}
+              <div className="text-center bg-secondary rounded-lg p-4 border">
+                <p className="text-muted-foreground">Pay using the UPI ID or scan the QR Code:</p>
+                <p className="text-2xl font-mono my-2 text-primary">{upiId}</p>
+                 <div className="flex justify-center my-4 bg-white p-2 rounded-md">
+                  {selectedPlan && <QRCode value={getUpiDeepLink()} size={128} fgColor="#000" />}
                 </div>
                 <Button variant="outline" size="sm" onClick={() => {
                   navigator.clipboard.writeText(upiId);
@@ -245,7 +244,7 @@ export default function SubscriptionPage() {
               </div>
 
               <div className="space-y-4">
-                <p className="text-center font-semibold text-islamic-cream">After payment, submit the details below:</p>
+                <p className="text-center font-semibold text-muted-foreground">After payment, submit the details below:</p>
                 <div className="space-y-2">
                   <Label htmlFor="transaction_id">Transaction ID / UTR</Label>
                   <Input 
@@ -253,7 +252,6 @@ export default function SubscriptionPage() {
                     placeholder="Enter the 12-digit transaction ID" 
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
-                    className="bg-white bg-opacity-20 border-white border-opacity-30 text-white placeholder-gray-400"
                   />
                 </div>
                 <div className="space-y-2">
@@ -263,14 +261,14 @@ export default function SubscriptionPage() {
                     type="file" 
                     accept="image/*"
                     onChange={handleFileChange}
-                    className="bg-white bg-opacity-20 border-white border-opacity-30 text-white file:text-islamic-cream"
+                    className="file:text-primary"
                   />
-                  {screenshot && <p className="text-sm text-islamic-cream">Selected: {screenshot.name}</p>}
+                  {screenshot && <p className="text-sm text-muted-foreground">Selected: {screenshot.name}</p>}
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex-col gap-4">
-              <Button onClick={handleSubmitPayment} className="w-full bg-accent text-accent-foreground font-bold" disabled={!screenshot || !transactionId}>
+              <Button onClick={handleSubmitPayment} className="w-full font-bold" disabled={!screenshot || !transactionId}>
                 Submit for Verification
               </Button>
               <Button variant="ghost" className="w-full" onClick={() => setShowPaymentSection(false)}>

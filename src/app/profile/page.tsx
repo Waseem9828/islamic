@@ -30,34 +30,34 @@ export default function ProfilePage() {
   if (isUserLoading || !user) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-white">Loading...</div>
+        <div>Loading...</div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold text-islamic-gold">
+          <CardTitle className="text-3xl font-bold text-primary">
             User Profile
           </CardTitle>
-          <CardDescription className="text-islamic-cream">
+          <CardDescription>
             Your profile and settings
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-left">
           <div className="space-y-1">
-            <p className="text-islamic-cream">Email:</p>
+            <p className="text-muted-foreground">Email:</p>
             <p className="font-mono text-lg">{user.isAnonymous ? 'Guest User' : user.email}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-islamic-cream">User ID:</p>
+            <p className="text-muted-foreground">User ID:</p>
             <p className="font-mono text-sm opacity-70">{user.uid}</p>
           </div>
            <div className="space-y-1">
-            <p className="text-islamic-cream">Subscription:</p>
-            <p className="text-lg text-islamic-gold">None</p>
+            <p className="text-muted-foreground">Subscription:</p>
+            <p className="text-lg text-primary">None</p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
