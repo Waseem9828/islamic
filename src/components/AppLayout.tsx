@@ -33,6 +33,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname === '/login') return 'Login / Signup';
     if (pathname === '/profile') return 'User Profile';
     if (pathname === '/subscription') return 'Subscription Plans';
+    if (pathname === '/draw') return 'Islamic Draw';
+    if (pathname === '/exact-selection') return 'Exact Selection';
+    if (pathname === '/community') return 'Community';
     return 'Islamic Draw';
   };
 
