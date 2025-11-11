@@ -67,8 +67,20 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const auth = getAuth();
+    const firestore = getFirestore();
     try {
-      await signInAnonymously(auth);
+      const userCredential = await signInAnonymously(auth);
+      const newUser = userCredential.user;
+
+      if (newUser) {
+        const userDocRef = doc(firestore, 'users', newUser.uid);
+        await setDoc(userDocRef, {
+            id: newUser.uid,
+            email: null,
+            username: 'guest_user',
+          }, { merge: true });
+      }
+
       toast({ title: 'خوش آمدید!', description: 'آپ مہمان کے طور پر لاگ ان ہیں۔' });
       router.push('/');
     } catch (err: any) {
@@ -81,14 +93,14 @@ export default function LoginPage() {
 
   if (isUserLoading || user) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-islamic-dark">
+      <div className="flex justify-center items-center min-h-screen">
         <div className="text-white">لوڈ ہو رہا ہے...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-islamic-dark via-islamic-green to-islamic-dark">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
        <Card className="w-full max-w-md bg-white bg-opacity-10 border-islamic-gold border-opacity-20 text-white">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-arabic text-islamic-gold">
@@ -137,7 +149,7 @@ export default function LoginPage() {
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-white border-opacity-30"></span>
               </div>
-              <span className="relative px-2 bg-islamic-dark text-xs uppercase text-islamic-cream">یا</span>
+              <span className="relative px-2 bg-background text-xs uppercase text-islamic-cream">یا</span>
             </div>
              <Button variant="secondary" type="button" className="w-full font-urdu" onClick={handleAnonymousSignIn} disabled={loading}>
               {loading ? 'انتظار کریں...' : 'مہمان کے طور پر جاری رکھیں'}
