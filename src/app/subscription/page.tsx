@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode.react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 interface Plan {
@@ -37,8 +38,7 @@ export default function SubscriptionPage() {
   const { toast } = useToast();
 
   const firestore = useFirestore();
-  const firebaseApp = useFirebaseApp(); // Use the hook to get the app instance
-  const storage = getStorage(firebaseApp);
+  const firebaseApp = useFirebaseApp(); 
 
   const upiId = 'yourbusiness@paytm'; // Placeholder UPI ID
 
@@ -118,7 +118,7 @@ export default function SubscriptionPage() {
   };
 
   const handleSubmitPayment = async () => {
-    if (!screenshot || !transactionId || !user || !selectedPlan) {
+    if (!screenshot || !transactionId || !user || !selectedPlan || !firebaseApp) {
       toast({
         variant: "destructive",
         title: "Missing Information",
@@ -128,6 +128,7 @@ export default function SubscriptionPage() {
     }
     
     setIsSubmitting(true);
+    const storage = getStorage(firebaseApp);
 
     try {
       // 1. Upload screenshot to Firebase Storage
@@ -136,7 +137,7 @@ export default function SubscriptionPage() {
       const downloadURL = await getDownloadURL(uploadResult.ref);
 
       // 2. Create a document in Firestore 'deposit_requests' collection
-      await addDoc(collection(firestore, 'deposit_requests'), {
+      addDocumentNonBlocking(collection(firestore, 'deposit_requests'), {
         userId: user.uid,
         planId: selectedPlan.id,
         planName: selectedPlan.name,
