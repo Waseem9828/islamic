@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,23 +18,48 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
   const handleSignUp = async () => {
+    if (!auth) return;
     setLoading(true);
-    toast({
-      title: 'Feature not implemented',
-      description: 'Sign up is not yet available.',
-    });
-    setLoading(false);
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      toast({
+        title: 'Sign up successful!',
+        description: 'You are now logged in.',
+      });
+      router.push('/');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignIn = async () => {
+    if (!auth) return;
     setLoading(true);
-    toast({
-      title: 'Feature not implemented',
-      description: 'Sign in is not yet available.',
-    });
-    setLoading(false);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({
+        title: 'Login successful!',
+        description: 'Welcome back.',
+      });
+      router.push('/');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,10 +93,19 @@ export default function LoginPage() {
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleSignIn} className="w-full" disabled={loading}>
+            <Button
+              onClick={handleSignIn}
+              className="w-full"
+              disabled={loading || !email || !password}
+            >
               {loading ? 'Logging in...' : 'Login'}
             </Button>
-            <Button onClick={handleSignUp} variant="outline" className="w-full" disabled={loading}>
+            <Button
+              onClick={handleSignUp}
+              variant="outline"
+              className="w-full"
+              disabled={loading || !email || !password}
+            >
               {loading ? 'Signing up...' : 'Sign Up'}
             </Button>
           </div>
