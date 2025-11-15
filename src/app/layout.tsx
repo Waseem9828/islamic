@@ -1,5 +1,5 @@
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import './globals.css';
 import { Toaster as ShadToaster } from "@/components/ui/toaster"
@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   title: 'Premium Numbers',
   description: 'Your premium number prediction service',
   manifest: '/manifest.json',
+};
+
+export const viewport: Viewport = {
   themeColor: '#ffffff',
 };
 
