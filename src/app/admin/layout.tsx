@@ -1,6 +1,8 @@
+
 import React from 'react';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import AdminHeader from '@/components/layout/AdminHeader';
+import AdminSidebar from '@/components/layout/AdminSidebar';
 
 export default function AdminLayout({
   children,
@@ -8,18 +10,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <header className="sticky top-0 z-50 flex items-center justify-between h-16 px-4 border-b bg-background shadow-sm">
-        <div className="flex items-center gap-4">
-          <Link href="/profile">
-            <ArrowLeft className="h-5 w-5 text-primary cursor-pointer" />
-          </Link>
-          <h1 className="text-xl font-bold text-primary">Admin Panel</h1>
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-muted/20">
+        <AdminSidebar />
+        <div className="flex flex-col flex-1">
+          <AdminHeader />
+          <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
-      </header>
-      <main className="p-4">
-        {children}
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 }
