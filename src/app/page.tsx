@@ -23,7 +23,7 @@ export default function Home() {
          <h1 className="text-3xl font-bold mb-4 text-center tracking-wider">Dashboard</h1>
          <Skeleton className="h-32 w-full rounded-lg" />
          <Skeleton className="h-32 w-full rounded-lg" />
-         <Skeleton className-="h-32 w-full rounded-lg" />
+         <Skeleton className="h-32 w-full rounded-lg" />
          <Skeleton className="h-32 w-full rounded-lg" />
       </div>
     );
