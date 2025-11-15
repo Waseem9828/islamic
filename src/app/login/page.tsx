@@ -2,11 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,50 +11,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleSignUp = async () => {
-    if (!auth) return;
     setLoading(true);
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Success',
-        description: 'Account created successfully. You are now logged in.',
-      });
-      router.push('/');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message,
-      });
-    } finally {
-      setLoading(false);
-    }
+    toast({
+      title: 'Feature not implemented',
+      description: 'Sign up is not yet available.',
+    });
+    setLoading(false);
   };
 
   const handleSignIn = async () => {
-    if (!auth) return;
     setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Success',
-        description: 'Logged in successfully.',
-      });
-      router.push('/');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message,
-      });
-    } finally {
-      setLoading(false);
-    }
+    toast({
+      title: 'Feature not implemented',
+      description: 'Sign in is not yet available.',
+    });
+    setLoading(false);
   };
 
   return (
