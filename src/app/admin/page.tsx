@@ -2,13 +2,13 @@
 
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { Users, ListNumbers, Gem } from 'lucide-react';
+import { Users, List, Gem } from 'lucide-react';
 
 const adminFeatures = [
   {
     title: 'Manage Numbers',
     description: 'Update daily numbers for all groups.',
-    icon: ListNumbers,
+    icon: List,
     path: '/admin/numbers',
   },
   {
