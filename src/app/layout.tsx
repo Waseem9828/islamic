@@ -34,7 +34,7 @@ export default function RootLayout({
           <SidebarProvider>
             <div className="flex flex-col min-h-screen">
               <Header />
-              <div className="flex flex-1">
+              <div className="flex flex-1 w-full">
                 <Sidebar side="left" collapsible="offcanvas" className="md:hidden">
                   <SidebarContent>
                     <SidebarMenu>
