@@ -11,6 +11,7 @@
  * - /roles_admin/{adminId}: Presence of a document grants admin privileges.
  * - /users/{userId}/drawResults/{drawResultId}: Stores draw results, accessible only to the owning user.
  * - /prayerTimes/{prayerTimeId}: Stores prayer times, publicly readable.
+ * - /groups/{groupId}: Publicly readable, admin writable.
  *
  * Key Security Decisions:
  * - User listing is disallowed to protect privacy, except for admins.
