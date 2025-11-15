@@ -12,6 +12,7 @@ import {
   initiateEmailSignIn,
 } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
+import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,18 +21,42 @@ export default function LoginPage() {
   const auth = useAuth();
   const { toast } = useToast();
 
+  const handleAuthError = (error: FirebaseError) => {
+    let description = 'An unexpected error occurred. Please try again.';
+    if (error.code === 'auth/invalid-credential') {
+      description = 'Incorrect email or password. Please try again.';
+    } else if (error.code === 'auth/email-already-in-use') {
+      description = 'An account with this email already exists.';
+    } else if (error.code === 'auth/weak-password') {
+      description = 'The password is too weak. Please use at least 6 characters.';
+    }
+    toast({
+      variant: 'destructive',
+      title: 'Authentication Failed',
+      description,
+    });
+  };
+
   const handleSignIn = () => {
     if (!email || !password) return;
-    initiateEmailSignIn(auth, email, password);
-    // Non-blocking, will redirect via auth state listener in a protected route or main layout
-    router.push('/');
+    initiateEmailSignIn(auth, email, password, (error) => {
+      if (error) {
+        handleAuthError(error);
+      } else {
+        router.push('/');
+      }
+    });
   };
 
   const handleSignUp = () => {
     if (!email || !password) return;
-    initiateEmailSignUp(auth, email, password);
-    // Non-blocking, will redirect via auth state listener
-    router.push('/');
+    initiateEmailSignUp(auth, email, password, (error) => {
+      if (error) {
+        handleAuthError(error);
+      } else {
+        router.push('/');
+      }
+    });
   };
 
   return (
