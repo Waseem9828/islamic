@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, setDocumentNonBlocking } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-// Pre-defined group IDs and names
 const groupOptions = [
     { id: 'faridabad', name: 'Faridabad' },
     { id: 'ghaziabad', name: 'Ghaziabad' },
@@ -51,22 +50,29 @@ export default function ManageNumbersPage() {
     const groupRef = doc(firestore, 'groups', selectedGroup);
     const selectedGroupName = groupOptions.find(g => g.id === selectedGroup)?.name;
 
-    // Use setDoc with { merge: true } to create or update the document.
-    // This is a non-blocking "upsert" operation.
-    setDocumentNonBlocking(groupRef, { 
-        id: selectedGroup,
-        name: selectedGroupName,
-        number: newNumber,
-        updatedAt: serverTimestamp() 
-    }, { merge: true });
+    try {
+        await setDoc(groupRef, { 
+            id: selectedGroup,
+            name: selectedGroupName,
+            number: newNumber,
+            updatedAt: serverTimestamp() 
+        }, { merge: true });
 
-    toast({
-      title: 'Success!',
-      description: `Lucky number for ${selectedGroupName} has been set to ${newNumber}.`,
-    });
+        toast({
+          title: 'Success!',
+          description: `Lucky number for ${selectedGroupName} has been set to ${newNumber}.`,
+        });
 
-    setNewNumber('');
-    setSelectedGroup('');
+        setNewNumber('');
+        setSelectedGroup('');
+    } catch (error) {
+        console.error("Error updating group:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Database Error',
+            description: 'Could not update the group. Please try again.',
+        });
+    }
   };
 
   return (
@@ -76,7 +82,7 @@ export default function ManageNumbersPage() {
                 <CardTitle>Manage/Create Groups & Numbers</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group. Creating a number for a new group will make it appear on the user dashboard.</p>
+                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group. This will make them appear on the user dashboard.</p>
                 
                 <div className="space-y-4">
                     <div className="space-y-2">
