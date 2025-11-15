@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from "react";
 import { doc, getDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
@@ -5,9 +6,10 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth, useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode.react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const DepositPage = () => {
   const { user } = useAuth();
@@ -15,16 +17,19 @@ const DepositPage = () => {
   const [upiId, setUpiId] = useState("");
   const [amount, setAmount] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     if (!db) return;
     const fetchUpiId = async () => {
+      setIsLoading(true);
       const upiRef = doc(db, "settings", "payment");
       const upiSnap = await getDoc(upiRef);
       if (upiSnap.exists()) {
         setUpiId(upiSnap.data().upiId);
       }
+      setIsLoading(false);
     };
     fetchUpiId();
   }, [db]);
@@ -58,11 +63,30 @@ const DepositPage = () => {
     }
   };
 
+  if (isLoading) {
+      return (
+          <div className="flex justify-center items-center h-full">
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <CardTitle>Create Deposit Request</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </CardContent>
+            </Card>
+          </div>
+      )
+  }
+
   return (
     <div className="flex justify-center items-center h-full">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Deposit Request</CardTitle>
+           {!upiId && <CardDescription className="text-destructive">Deposits are currently unavailable. Please check back later.</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
@@ -70,6 +94,7 @@ const DepositPage = () => {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount to deposit (INR)"
+            disabled={!upiId}
           />
           {upiId && amount && (
             <div className="flex flex-col items-center space-y-3 p-4 border rounded-md">
@@ -89,6 +114,7 @@ const DepositPage = () => {
               type="file"
               onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)}
               className="mt-1"
+              disabled={!upiId}
             />
             <p className="text-xs text-muted-foreground mt-1">After payment, upload the screenshot here.</p>
           </div>

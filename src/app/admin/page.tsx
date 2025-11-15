@@ -1,8 +1,9 @@
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { Users, List, Gem } from 'lucide-react';
+import { Users, List, Gem, IndianRupee, Settings } from 'lucide-react';
 
 const adminFeatures = [
   {
@@ -19,9 +20,21 @@ const adminFeatures = [
   },
   {
     title: 'Manage Subscriptions',
-    description: 'View and manage user subscriptions.',
+    description: 'View active user subscriptions.',
     icon: Gem,
     path: '/admin/subscriptions',
+  },
+  {
+    title: 'Deposit Requests',
+    description: 'Approve or reject user deposits.',
+    icon: IndianRupee,
+    path: '/admin/deposit-requests',
+  },
+   {
+    title: 'Payment Settings',
+    description: 'Set your UPI ID for deposits.',
+    icon: Settings,
+    path: '/admin/payment-settings',
   },
 ];
 
@@ -38,11 +51,11 @@ export default function AdminDashboardPage() {
                     className="cursor-pointer hover:border-primary transition-colors duration-300 active:scale-95 bg-muted/30"
                     onClick={() => router.push(feature.path)}
                 >
-                    <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                    <CardHeader className="flex flex-row items-center gap-4 space-y-0 p-4">
                         <feature.icon className="w-8 h-8 text-muted-foreground" />
                         <div>
                             <CardTitle>{feature.title}</CardTitle>
-                            <CardDescription>{feature.description}</CardDescription>
+                            <CardDescription className="text-xs">{feature.description}</CardDescription>
                         </div>
                     </CardHeader>
                 </Card>
@@ -51,3 +64,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
