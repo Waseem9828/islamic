@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Bell, Shield, LogOut, MessageCircle, Smartphone, Send } from 'lucide-react';
+import { ChevronRight, Bell, Shield, LogOut, MessageCircle, Smartphone, Send, UserCog } from 'lucide-react';
 
 const ProfilePage = () => {
   const router = useRouter();
@@ -25,6 +25,11 @@ const ProfilePage = () => {
       label: 'My Subscriptions',
       icon: Bell,
       action: () => router.push('/subscriptions'),
+    },
+    {
+      label: 'Admin Panel',
+      icon: UserCog,
+      action: () => router.push('/admin'),
     },
     {
       label: 'Privacy Policy',
@@ -140,5 +145,3 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
-
-    
