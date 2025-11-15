@@ -2,22 +2,27 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { getGroups } from '@/lib/store';
-
-const groups = getGroups();
+import { useCollection, useFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
 export default function Home() {
   const router = useRouter();
+  const { firestore } = useFirebase();
+  const { data: groups, isLoading } = useCollection(collection(firestore, 'groups'));
 
   const handleGroupClick = (groupId: string) => {
     router.push(`/${groupId}`);
   };
 
+  if (isLoading) {
+    return <div>Loading groups...</div>;
+  }
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-6 text-center">Dashboard</h1>
       <div className="grid grid-cols-2 gap-4">
-        {groups.map((group) => (
+        {groups?.map((group) => (
           <Card
             key={group.id}
             className="cursor-pointer hover:border-primary transition-colors duration-300 active:scale-95 bg-muted/30"

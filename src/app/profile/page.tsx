@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,14 +9,25 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut, MessageCircle, Smartphone, Send, UserCog } from 'lucide-react';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 const ProfilePage = () => {
   const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
   const [isWhatsAppEnabled, setIsWhatsAppEnabled] = useState(false);
   const [isSmsEnabled, setIsSmsEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
   const handleLogout = () => {
+    signOut(auth);
     router.push('/login');
   };
   
@@ -40,10 +51,8 @@ const ProfilePage = () => {
     },
   ];
 
-  const user = {
-      photoURL: "https://github.com/shadcn.png",
-      email: "user@example.com",
-      displayName: "Username"
+  if (isUserLoading || !user) {
+      return <div>Loading...</div>
   }
 
   return (

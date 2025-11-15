@@ -3,20 +3,32 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useParams } from 'next/navigation';
-import { getGroupData, isUserSubscribed } from '@/lib/store';
+import { useDoc, useUser, useFirebase } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
 
 export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const group = params.group as string;
 
-  // Fetch data on every render to ensure it's always up-to-date
-  const isSubscribed = isUserSubscribed(group);
-  const groupData = getGroupData(group);
+  const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
+
+  const groupRef = doc(firestore, 'groups', group);
+  const { data: groupData, isLoading: isGroupLoading } = useDoc(groupRef);
+
+  const userSubscriptionsRef = user ? doc(firestore, 'users', user.uid) : null;
+  const { data: userData, isLoading: isUserSubLoading } = useDoc(userSubscriptionsRef);
+
+  const isSubscribed = userData?.subscriptions?.includes(group);
 
   const handleSubscribe = () => {
     router.push('/subscriptions');
   };
+
+  if (isGroupLoading || isUserLoading || isUserSubLoading) {
+    return <div className="p-4 text-center">Loading...</div>;
+  }
 
   if (!groupData) {
     return (
@@ -52,14 +64,14 @@ export default function GroupDetailPage() {
         </CardContent>
       </Card>
       
-       {isSubscribed && (
+       {isSubscribed && groupData.pastResults && (
         <Card className="mt-6 bg-muted/30">
           <CardHeader>
             <CardTitle>Past Results</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-center text-muted-foreground">
-              {groupData.pastResults.map(result => (
+              {groupData.pastResults.map((result: {date: string; number: string}) => (
                  <li key={result.date} className="flex justify-between items-center"><span>{result.date}:</span> <span className="font-mono text-lg text-foreground">{result.number}</span></li>
               ))}
             </ul>

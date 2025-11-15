@@ -1,5 +1,5 @@
-// This is a temporary in-memory data store to simulate a backend.
-// Changes will not persist across page reloads.
+// This file is being deprecated and will be removed in a future step.
+// All data is now being managed through Firebase.
 
 interface Group {
   id: string;
@@ -64,13 +64,10 @@ let store: {
       {
           id: 'user123',
           email: 'user@example.com',
-          // Let's assume the user is subscribed to Faridabad and Gali for simulation
           subscriptions: ['faridabad', 'gali']
       }
   ]
 };
-
-// --- Admin Functions ---
 
 export function getGroups() {
     return store.groups.map(g => ({ id: g.id, name: g.name }));
@@ -79,26 +76,18 @@ export function getGroups() {
 export function updateLuckyNumber(groupId: string, newNumber: string) {
   const group = store.groups.find(g => g.id === groupId);
   if (group) {
-    // Add current number to past results
     group.pastResults.unshift({ date: 'Today', number: group.number });
-    // Keep only the last 3 results for display
     group.pastResults.pop();
-    
-    // Update the current number
     group.number = newNumber;
-
-    // Shift date labels
     group.pastResults[1].date = "Yesterday";
     group.pastResults[2].date = "Day before";
   }
 }
 
-// --- User Functions ---
-
 export function getGroupData(groupId: string) {
     const group = store.groups.find(g => g.id === groupId);
     if (!group) return null;
-    return JSON.parse(JSON.stringify(group)); // Return a copy to prevent direct mutation
+    return JSON.parse(JSON.stringify(group));
 }
 
 export function isUserSubscribed(groupId: string, userId: string = 'user123') {

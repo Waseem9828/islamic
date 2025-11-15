@@ -6,14 +6,31 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/firebase';
+import {
+  initiateEmailSignUp,
+  initiateEmailSignIn,
+} from '@/firebase/non-blocking-login';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
+  const auth = useAuth();
+  const { toast } = useToast();
 
   const handleSignIn = () => {
-    // Simulate login
+    if (!email || !password) return;
+    initiateEmailSignIn(auth, email, password);
+    // Non-blocking, will redirect via auth state listener in a protected route or main layout
+    router.push('/');
+  };
+
+  const handleSignUp = () => {
+    if (!email || !password) return;
+    initiateEmailSignUp(auth, email, password);
+    // Non-blocking, will redirect via auth state listener
     router.push('/');
   };
 
@@ -54,7 +71,7 @@ export default function LoginPage() {
               Login
             </Button>
             <Button
-              onClick={handleSignIn}
+              onClick={handleSignUp}
               variant="outline"
               className="w-full"
               disabled={!email || !password}
