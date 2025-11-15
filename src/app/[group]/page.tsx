@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useParams } from 'next/navigation';
-import { useDoc, useUser, useFirebase } from '@/firebase';
+import { useDoc, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 export default function GroupDetailPage() {
@@ -50,8 +50,8 @@ export default function GroupDetailPage() {
           {isSubscribed ? (
             <>
               <p className="text-muted-foreground">Today's Lucky Number is:</p>
-              <p className="text-6xl font-bold tracking-widest text-primary">{groupData.number}</p>
-              <p className="text-sm text-muted-foreground pt-4">Result Declared: 10:00 AM</p>
+              <p className="text-6xl font-bold tracking-widest text-primary">{groupData.number || '??'}</p>
+              <p className="text-sm text-muted-foreground pt-4">{groupData.number ? 'Result Declared: 10:00 AM' : 'Result Awaited'}</p>
             </>
           ) : (
             <>

@@ -44,7 +44,7 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div className='flex flex-col'>
                     <p className="text-2xl font-bold text-primary">{group.name}</p>
-                    <p className="text-xs text-muted-foreground">Updated Today</p>
+                    <p className="text-xs text-muted-foreground">{group.number ? 'Updated Today' : 'Result Awaited'}</p>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 h-20 w-28 bg-background/50 rounded-lg border border-dashed border-primary/50">
                     <p className="text-3xl font-mono font-bold tracking-widest text-primary/90">{group.number || '??'}</p>
