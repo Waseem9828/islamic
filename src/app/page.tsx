@@ -5,8 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { useCollection, useFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   const router = useRouter();
@@ -22,10 +22,10 @@ export default function Home() {
     return (
       <div className="p-4 space-y-4">
          <h1 className="text-3xl font-bold mb-4 text-center tracking-wider">Dashboard</h1>
-         <Skeleton className="h-32 w-full rounded-lg" />
-         <Skeleton className="h-32 w-full rounded-lg" />
-         <Skeleton className="h-32 w-full rounded-lg" />
-         <Skeleton className="h-32 w-full rounded-lg" />
+         <Skeleton className="h-48 w-full rounded-lg" />
+         <Skeleton className="h-48 w-full rounded-lg" />
+         <Skeleton className="h-48 w-full rounded-lg" />
+         <Skeleton className="h-48 w-full rounded-lg" />
       </div>
     );
   }
@@ -37,7 +37,7 @@ export default function Home() {
         {groups?.map((group) => (
           <Card
             key={group.id}
-            className="cursor-pointer transition-all duration-300 active:scale-[0.98] bg-muted/20 border-border/50 hover:border-primary/50"
+            className="cursor-pointer transition-all duration-300 active:scale-[0.98] bg-muted/20 border-border/50 hover:border-primary/50 overflow-hidden"
             onClick={() => handleGroupClick(group.id)}
           >
             <CardContent className="p-4">
@@ -50,6 +50,22 @@ export default function Home() {
                     <p className="text-3xl font-mono font-bold tracking-widest text-primary/90">{group.number || '??'}</p>
                 </div>
               </div>
+               {group.pastResults && group.pastResults.length > 0 && (
+                <>
+                  <Separator className="my-3 bg-border/40" />
+                  <div className="px-2">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Past Results</p>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {group.pastResults.slice(0, 3).map((result: {date: string; number: string}) => (
+                         <li key={result.date} className="flex justify-between items-center text-xs">
+                            <span>{result.date}:</span> 
+                            <span className="font-mono text-foreground tracking-widest">{result.number}</span>
+                         </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
