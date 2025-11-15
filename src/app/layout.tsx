@@ -35,7 +35,7 @@ export default function RootLayout({
             <div className="flex flex-col min-h-screen">
               <Header />
               <div className="flex flex-1 w-full">
-                <Sidebar side="left" collapsible="offcanvas" className="md:hidden">
+                <Sidebar side="left" collapsible="offcanvas">
                   <SidebarContent>
                     <SidebarMenu>
                       <SidebarMenuItem>
