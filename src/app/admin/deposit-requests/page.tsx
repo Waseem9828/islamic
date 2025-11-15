@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "@/firebase/config";
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -16,10 +16,12 @@ interface DepositRequest {
 }
 
 const DepositRequestsPage = () => {
+  const { firestore: db } = useFirebase();
   const [requests, setRequests] = useState<DepositRequest[]>([]);
   const { toast } = useToast();
 
   const fetchRequests = async () => {
+    if (!db) return;
     const querySnapshot = await getDocs(collection(db, "depositRequests"));
     const requestsData = querySnapshot.docs.map(
       (doc) => ({ id: doc.id, ...doc.data() } as DepositRequest)
@@ -29,9 +31,10 @@ const DepositRequestsPage = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, []);
+  }, [db]);
 
   const handleApprove = async (request: DepositRequest) => {
+    if (!db) return;
     try {
       const requestRef = doc(db, "depositRequests", request.id);
       await updateDoc(requestRef, { status: "approved" });

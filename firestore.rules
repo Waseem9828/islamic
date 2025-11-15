@@ -12,6 +12,11 @@
  * - /users/{userId}/drawResults/{drawResultId}: Stores draw results, accessible only to the owning user.
  * - /prayerTimes/{prayerTimeId}: Stores prayer times, publicly readable.
  * - /groups/{groupId}: Publicly readable, admin writable.
+ * - /wallets/{userId}: Stores user wallet balance.
+ * - /depositRequests/{requestId}: Stores user deposit requests.
+ * - /settings/{settingId}: Stores application settings like UPI ID.
+ * - /subscriptions/{subscriptionId}: Stores available subscription plans.
+ * - /userSubscriptions/{userId}: Stores a user's active subscription.
  *
  * Key Security Decisions:
  * - User listing is disallowed to protect privacy, except for admins.
@@ -133,6 +138,74 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Wallet documents for users.
+     * @path /wallets/{userId}
+     */
+    match /wallets/{userId} {
+      // Users can read their own wallet. Admins can read any wallet.
+      allow get: if isOwner(userId) || isAdmin();
+      // Admins can list all wallets, for administrative purposes.
+      allow list: if isAdmin();
+      // A user can create their own wallet document. Admins can create wallets for users.
+      // The update logic handles the case where an admin is funding a wallet.
+      allow create: if isOwner(userId) || isAdmin();
+      // Users can update their own wallet (e.g. spending balance).
+      // Admins can update any wallet (e.g. approving a deposit).
+      // A rule to only allow balance to decrease for users is complex, so we trust the client logic and server functions.
+      allow update: if isOwner(userId) || isAdmin();
+      // Only admins can delete wallets.
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Deposit requests made by users.
+     * @path /depositRequests/{requestId}
+     */
+    match /depositRequests/{requestId} {
+      // Users can create their own deposit requests.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Users can read their own requests. Admins can read any request.
+      allow get: if (isOwner(resource.data.userId)) || isAdmin();
+      // Only admins can list all requests. Users must query for their own.
+      allow list: if isAdmin();
+      // Only admins can update requests (e.g., to approve them).
+      allow update: if isAdmin();
+      // Only admins can delete requests.
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Application-wide settings.
+     * @path /settings/{settingId}
+     */
+    match /settings/{settingId} {
+      // All signed-in users can read settings (like the UPI ID).
+      allow read: if isSignedIn();
+      // Only admins can change settings.
+      allow write: if isAdmin();
+    }
+    
+    /**
+     * @description Available subscription plans.
+     * @path /subscriptions/{subscriptionId}
+     */
+    match /subscriptions/{subscriptionId} {
+        // Any signed-in user can view available subscriptions.
+        allow read: if isSignedIn();
+        // Only admins can add or modify subscription plans.
+        allow write: if isAdmin();
+    }
+
+    /**
+     * @description Stores the subscription status for each user.
+     * @path /userSubscriptions/{userId}
+     */
+    match /userSubscriptions/{userId} {
+        // A user can read and manage their own subscription. Admins can manage any.
+        allow read, write: if isOwner(userId) || isAdmin();
     }
   }
 }

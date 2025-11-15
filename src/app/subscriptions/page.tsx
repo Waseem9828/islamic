@@ -5,6 +5,7 @@ import { useAuth, useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface Subscription {
   id: string;
@@ -19,6 +20,7 @@ const SubscriptionsPage = () => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchSubscriptionsAndWallet = async () => {
@@ -49,7 +51,7 @@ const SubscriptionsPage = () => {
     if (walletBalance < subscription.price) {
       toast({
         title: 'Error',
-        description: 'Insufficient wallet balance.',
+        description: 'Insufficient wallet balance. Please deposit funds.',
         variant: 'destructive',
       });
       return;
@@ -91,13 +93,16 @@ const SubscriptionsPage = () => {
   };
 
   return (
-    <div className='grid gap-4 md:grid-cols-3'>
-        <Card className="col-span-3">
+    <div className='p-4 grid gap-4 md:grid-cols-3'>
+        <Card className="col-span-full">
             <CardHeader>
                 <CardTitle>Your Wallet</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-2xl font-bold">₹{walletBalance.toFixed(2)}</p>
+                <div className="flex items-center justify-between">
+                    <p className="text-3xl font-bold">₹{walletBalance.toFixed(2)}</p>
+                    <Button onClick={() => router.push('/deposit')}>Deposit</Button>
+                </div>
             </CardContent>
         </Card>
 
@@ -113,6 +118,9 @@ const SubscriptionsPage = () => {
           </CardContent>
         </Card>
       ))}
+      {subscriptions.length === 0 && (
+        <p className="col-span-full text-center text-muted-foreground">No subscription plans available yet.</p>
+      )}
     </div>
   );
 };

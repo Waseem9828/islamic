@@ -1,10 +1,12 @@
 import React from 'react';
 import { Button } from '../ui/button';
 import { Bell } from 'lucide-react';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const Header = () => {
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between h-16 px-4 border-b bg-background shadow-sm">
+      <SidebarTrigger />
       <h1 className="text-xl font-bold text-primary">Premium Numbers</h1>
       <Button variant="ghost" size="icon">
         <Bell className="h-5 w-5" />
