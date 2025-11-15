@@ -2,13 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
+import { getGroups } from '@/lib/store';
 
-const groups = [
-  { id: 'faridabad', name: 'Faridabad' },
-  { id: 'ghaziabad', name: 'Ghaziabad' },
-  { id: 'gali', name: 'Gali' },
-  { id: 'disawar', name: 'Disawar' },
-];
+const groups = getGroups();
 
 export default function Home() {
   const router = useRouter();

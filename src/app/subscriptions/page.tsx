@@ -9,50 +9,22 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { getSubscriptions } from '@/lib/store';
 
-const subscriptionGroups = [
-  {
-    id: 'faridabad',
-    name: 'Faridabad',
+const subscriptionGroups = getSubscriptions().map(group => ({
+    ...group,
     plans: [
       { id: 'weekly', name: 'Weekly', price: '₹50' },
       { id: 'monthly', name: 'Monthly', price: '₹150' },
       { id: 'yearly', name: 'Yearly', price: '₹1500' },
-    ],
-  },
-  {
-    id: 'ghaziabad',
-    name: 'Ghaziabad',
-    plans: [
-      { id: 'weekly', name: 'Weekly', price: '₹50' },
-      { id: 'monthly', name: 'Monthly', price: '₹150' },
-      { id: 'yearly', name: 'Yearly', price: '₹1500' },
-    ],
-  },
-  {
-    id: 'gali',
-    name: 'Gali',
-    plans: [
-      { id: 'weekly', name: 'Weekly', price: '₹50' },
-      { id: 'monthly', name: 'Monthly', price: '₹150' },
-      { id: 'yearly', name: 'Yearly', price: '₹1500' },
-    ],
-  },
-  {
-    id: 'disawar',
-    name: 'Disawar',
-    plans: [
-      { id: 'weekly', name: 'Weekly', price: '₹50' },
-      { id: 'monthly', name: 'Monthly', price: '₹150' },
-      { id: 'yearly', name: 'Yearly', price: '₹1500' },
-    ],
-  },
-];
+    ]
+}));
+
 
 export default function SubscriptionsPage() {
   const handleSubscribe = (groupId: string, planId: string) => {
     console.log(`Subscribing to ${groupId} with ${planId} plan.`);
-    // Future: Handle payment logic
+    // Future: Handle payment logic and update store
   };
 
   return (

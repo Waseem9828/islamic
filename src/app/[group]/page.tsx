@@ -1,35 +1,50 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useParams } from 'next/navigation';
+import { getGroupData, isUserSubscribed } from '@/lib/store';
 
 export default function GroupDetailPage() {
   const router = useRouter();
   const params = useParams();
   const group = params.group as string;
 
-  const groupName = group.charAt(0).toUpperCase() + group.slice(1);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [groupData, setGroupData] = useState<{ name: string; number: string; pastResults: { date: string; number: string }[] } | null>(null);
+
+  useEffect(() => {
+    setIsSubscribed(isUserSubscribed(group));
+    setGroupData(getGroupData(group));
+  }, [group]);
+
 
   const handleSubscribe = () => {
     router.push('/subscriptions');
   };
 
-  const isSubscribed = false; // Placeholder for subscription logic
+  if (!groupData) {
+    return (
+      <div className="p-4 text-center">
+        <p>Group not found.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">
       <Card className="bg-muted/30">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">
-            {groupName}
+            {groupData.name}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center min-h-[200px] space-y-4">
           {isSubscribed ? (
             <>
               <p className="text-muted-foreground">Today's Lucky Number is:</p>
-              <p className="text-6xl font-bold tracking-widest text-primary">77</p>
+              <p className="text-6xl font-bold tracking-widest text-primary">{groupData.number}</p>
               <p className="text-sm text-muted-foreground pt-4">Result Declared: 10:00 AM</p>
             </>
           ) : (
@@ -50,9 +65,9 @@ export default function GroupDetailPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-center text-muted-foreground">
-              <li className="flex justify-between items-center"><span>Yesterday:</span> <span className="font-mono text-lg text-foreground">45</span></li>
-              <li className="flex justify-between items-center"><span>Day before:</span> <span className="font-mono text-lg text-foreground">81</span></li>
-              <li className="flex justify-between items-center"><span>2 days ago:</span> <span className="font-mono text-lg text-foreground">23</span></li>
+              {groupData.pastResults.map(result => (
+                 <li key={result.date} className="flex justify-between items-center"><span>{result.date}:</span> <span className="font-mono text-lg text-foreground">{result.number}</span></li>
+              ))}
             </ul>
           </CardContent>
         </Card>
