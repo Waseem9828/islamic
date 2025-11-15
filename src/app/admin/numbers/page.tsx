@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirebase, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 
 export default function ManageNumbersPage() {
@@ -16,7 +16,8 @@ export default function ManageNumbersPage() {
   const { toast } = useToast();
   const { firestore } = useFirebase();
 
-  const { data: groups, isLoading } = useCollection(collection(firestore, 'groups'));
+  const groupsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'groups') : null, [firestore]);
+  const { data: groups, isLoading } = useCollection(groupsQuery);
 
   const handleUpdate = async () => {
     if (!selectedGroup || !newNumber) {

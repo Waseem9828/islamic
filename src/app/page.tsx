@@ -2,20 +2,21 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { useCollection, useFirebase } from '@/firebase';
+import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 
 export default function Home() {
   const router = useRouter();
   const { firestore } = useFirebase();
-  const { data: groups, isLoading } = useCollection(collection(firestore, 'groups'));
+  const groupsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'groups') : null, [firestore]);
+  const { data: groups, isLoading } = useCollection(groupsQuery);
 
   const handleGroupClick = (groupId: string) => {
     router.push(`/${groupId}`);
   };
 
   if (isLoading) {
-    return <div>Loading groups...</div>;
+    return <div className="p-4 text-center">Loading groups...</div>;
   }
 
   return (
