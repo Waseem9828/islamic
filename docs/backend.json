@@ -1,0 +1,266 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Islamic Random Selector app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "Admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Admin",
+      "type": "object",
+      "description": "Represents an administrator user of the Islamic Random Selector app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the admin user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the admin user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the admin user.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the admin user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the admin user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the admin account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the admin account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email"
+      ]
+    },
+    "DrawResult": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DrawResult",
+      "type": "object",
+      "description": "Represents the result of a draw.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the draw result."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N DrawResult) The user who initiated the draw."
+        },
+        "numbers": {
+          "type": "array",
+          "description": "The numbers selected in the draw.",
+          "items": {
+            "type": "number"
+          }
+        },
+        "drawDate": {
+          "type": "string",
+          "description": "The date and time when the draw was performed.",
+          "format": "date-time"
+        },
+        "rangeStart": {
+          "type": "number",
+          "description": "The starting number of the range used for the draw (e.g., 1)."
+        },
+        "rangeEnd": {
+          "type": "number",
+          "description": "The ending number of the range used for the draw (e.g., 99 or 100)."
+        },
+        "selectionCount": {
+          "type": "number",
+          "description": "The number of numbers selected in the draw (e.g., 4 or 5)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "numbers",
+        "drawDate",
+        "rangeStart",
+        "rangeEnd",
+        "selectionCount"
+      ]
+    },
+    "PrayerTime": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PrayerTime",
+      "type": "object",
+      "description": "Represents prayer times for a specific day.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the prayer time entry."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date for which the prayer times are valid.",
+          "format": "date-time"
+        },
+        "fajr": {
+          "type": "string",
+          "description": "The time for Fajr prayer."
+        },
+        "dhuhr": {
+          "type": "string",
+          "description": "The time for Dhuhr prayer."
+        },
+        "asr": {
+          "type": "string",
+          "description": "The time for Asr prayer."
+        },
+        "maghrib": {
+          "type": "string",
+          "description": "The time for Maghrib prayer."
+        },
+        "isha": {
+          "type": "string",
+          "description": "The time for Isha prayer."
+        }
+      },
+      "required": [
+        "id",
+        "date",
+        "fajr",
+        "dhuhr",
+        "asr",
+        "maghrib",
+        "isha"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Uses path-based ownership for simplified security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "Admin",
+          "schema": {
+            "$ref": "#/backend/entities/Admin"
+          },
+          "description": "Stores admin user IDs. Document existence determines admin role.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique identifier of the admin user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/drawResults/{drawResultId}",
+        "definition": {
+          "entityName": "DrawResult",
+          "schema": {
+            "$ref": "#/backend/entities/DrawResult"
+          },
+          "description": "Stores draw results for each user. Subcollection inherits ownership from the user document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "drawResultId",
+              "description": "The unique identifier of the draw result."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/prayerTimes/{prayerTimeId}",
+        "definition": {
+          "entityName": "PrayerTime",
+          "schema": {
+            "$ref": "#/backend/entities/PrayerTime"
+          },
+          "description": "Stores prayer times data.",
+          "params": [
+            {
+              "name": "prayerTimeId",
+              "description": "The unique identifier for the prayer time entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage user data, admin roles, draw results, and prayer times for the Islamic Random Selector application. The structure prioritizes authorization independence and clarity.  \n\n*   **Users Collection:** Stores user profiles. Path-based ownership `/users/{userId}` provides a simple and secure way to manage user-specific data.\n*   **Admins Collection:**  Admin roles are managed via document existence in the `/roles_admin/{adminId}` collection. This approach avoids complex role-based access control logic within the documents themselves and simplifies security rules.\n*   **Draw Results Collection:** Draw results are stored under each user's document using the path `/users/{userId}/drawResults/{drawResultId}`. This establishes a 1:N relationship between users and their draw results, ensuring clear ownership and simplified queries for a user's draw history. The drawResults subcollection inherits ownership from the user document. \n*   **Prayer Times Collection:** Stores prayer times data in a top-level collection `/prayerTimes/{prayerTimeId}`. Given the prompt, it can be assumed that prayer times are global data; therefore, they are stored in a top-level collection without user ownership.\n\n**Authorization Independence:**\nAuthorization independence is achieved by storing data in hierarchical paths that directly associate data with the user. Specifically, placing `drawResults` as a subcollection of `/users/{userId}` eliminates the need for `get()` calls to verify ownership because security rules can directly check the `request.auth.uid` against the `userId` path parameter.\n\n**QAPs Support:**\n*   **Secure List Operations:** The segregation of user-specific data (drawResults) within their respective user documents ensures that list operations can be securely performed without exposing data from other users. Admin roles are managed in `/roles_admin` which allows for secure listing of admins."
+  }
+}
