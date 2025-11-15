@@ -53,20 +53,18 @@ service cloud.firestore {
         let incoming = incomingData();
         return incoming.id == userId &&
                incoming.email == request.auth.token.email &&
-               !('isAdmin' in incoming) &&
-               (!('subscriptions' in incoming) || incoming.subscriptions.size() == 0);
+               !('isAdmin' in incoming);
       }
 
       function canUpdateProfile(userId) {
-        let incoming = incomingData();
-        // Users can update their own profile, but cannot change immutable fields.
-        // They can change their subscriptions.
-        // They also cannot make themselves an admin unless they already are one.
+        let incoming = request.resource.data;
+        let existing = resource.data;
+        // Users can update their profile, but cannot change immutable or admin-only fields.
         return isOwner(userId) &&
-               incoming.id == resource.data.id &&
-               incoming.email == resource.data.email &&
-               incoming.createdAt == resource.data.createdAt &&
-               (!('isAdmin' in incoming) || incoming.isAdmin == false || (incoming.isAdmin == true && resource.data.isAdmin == true));
+               incoming.id == existing.id &&
+               incoming.email == existing.email &&
+               incoming.createdAt == existing.createdAt &&
+               incoming.isAdmin == existing.isAdmin;
       }
       
       function canAdminUpdateProfile() {
@@ -76,7 +74,12 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin(); // Only admins can list users.
       allow create: if isOwner(userId) && hasValidCreateData(userId);
-      allow update: if canUpdateProfile(userId) || canAdminUpdateProfile();
+      allow update: if (isOwner(userId) &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.email == resource.data.email &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.isAdmin == resource.data.isAdmin
+        ) || isAdmin();
       allow delete: if isOwner(userId) || isAdmin();
     }
 
