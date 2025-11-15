@@ -11,7 +11,7 @@ export default function AdminLayout({
 }) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-muted/20">
+      <div className="flex min-h-screen bg-background text-foreground">
         <AdminSidebar />
         <div className="flex flex-col flex-1">
           <AdminHeader />

@@ -8,15 +8,20 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/subscriptions', label: 'Subscriptions', icon: Gem },
+  { href: '/subscriptions', label: 'Plans', icon: Gem },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
 const Footer = () => {
   const pathname = usePathname();
+  
+  if (pathname.startsWith('/admin')) {
+    return null;
+  }
+
 
   return (
-    <footer className="sticky bottom-0 z-50 bg-background border-t">
+    <footer className="sticky bottom-0 z-50 bg-background/95 border-t backdrop-blur-sm md:hidden">
       <nav className="flex justify-around items-center h-16">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -30,7 +35,7 @@ const Footer = () => {
                     : 'text-muted-foreground hover:text-primary'
                 )}
               >
-                <item.icon className="h-6 w-6" />
+                <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
               </div>
             </Link>
