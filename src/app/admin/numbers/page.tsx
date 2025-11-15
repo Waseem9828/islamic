@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useFirebase, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { useFirebase, setDocumentNonBlocking } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
 
 // Pre-defined group IDs and names
@@ -43,6 +43,11 @@ export default function ManageNumbersPage() {
       return;
     }
     
+    if (!firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Database not available.' });
+        return;
+    }
+    
     const groupRef = doc(firestore, 'groups', selectedGroup);
     const selectedGroupName = groupOptions.find(g => g.id === selectedGroup)?.name;
 
@@ -70,7 +75,7 @@ export default function ManageNumbersPage() {
                 <CardTitle>Manage/Create Groups & Numbers</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group.</p>
+                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group. Creating a number for a group will make it appear on the user dashboard.</p>
                 
                 <div className="space-y-4">
                     <div className="space-y-2">
