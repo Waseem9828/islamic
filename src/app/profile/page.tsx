@@ -2,8 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut } from 'lucide-react';
 
@@ -11,7 +10,6 @@ const ProfilePage = () => {
   const router = useRouter();
 
   const handleLogout = () => {
-    // In a real app, you'd clear the user session here
     router.push('/login');
   };
   
@@ -33,7 +31,7 @@ const ProfilePage = () => {
   return (
     <div className="p-4">
       <div className="flex flex-col items-center mb-8">
-        <Avatar className="w-24 h-24 mb-4">
+        <Avatar className="w-24 h-24 mb-4 border-2 border-primary">
           <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
           <AvatarFallback>CN</AvatarFallback>
         </Avatar>
@@ -41,13 +39,13 @@ const ProfilePage = () => {
         <p className="text-muted-foreground">user@example.com</p>
       </div>
 
-      <Card>
+      <Card className="bg-muted/30">
         <CardContent className="p-0">
-          <ul className="divide-y">
+          <ul className="divide-y divide-border">
             {menuItems.map((item, index) => (
                <li
                 key={index}
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 active:bg-muted/80"
                 onClick={item.action}
               >
                 <div className="flex items-center gap-4">

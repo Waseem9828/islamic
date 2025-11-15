@@ -19,7 +19,7 @@ export default function GroupDetailPage() {
 
   return (
     <div className="p-4">
-      <Card>
+      <Card className="bg-muted/30">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">
             {groupName}
@@ -29,7 +29,7 @@ export default function GroupDetailPage() {
           {isSubscribed ? (
             <>
               <p className="text-muted-foreground">Today's Lucky Number is:</p>
-              <p className="text-6xl font-bold tracking-widest">77</p>
+              <p className="text-6xl font-bold tracking-widest text-primary">77</p>
               <p className="text-sm text-muted-foreground pt-4">Result Declared: 10:00 AM</p>
             </>
           ) : (
@@ -44,15 +44,15 @@ export default function GroupDetailPage() {
       </Card>
       
        {isSubscribed && (
-        <Card className="mt-6">
+        <Card className="mt-6 bg-muted/30">
           <CardHeader>
             <CardTitle>Past Results</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-center text-muted-foreground">
-              <li className="flex justify-between"><span>Yesterday:</span> <span>45</span></li>
-              <li className="flex justify-between"><span>Day before:</span> <span>81</span></li>
-              <li className="flex justify-between"><span>2 days ago:</span> <span>23</span></li>
+              <li className="flex justify-between items-center"><span>Yesterday:</span> <span className="font-mono text-lg text-foreground">45</span></li>
+              <li className="flex justify-between items-center"><span>Day before:</span> <span className="font-mono text-lg text-foreground">81</span></li>
+              <li className="flex justify-between items-center"><span>2 days ago:</span> <span className="font-mono text-lg text-foreground">23</span></li>
             </ul>
           </CardContent>
         </Card>

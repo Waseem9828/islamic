@@ -59,7 +59,7 @@ export default function SubscriptionsPage() {
     <div className="p-4 space-y-6">
       <h1 className="text-2xl font-bold text-center">Subscription Plans</h1>
       {subscriptionGroups.map((group) => (
-        <Card key={group.id}>
+        <Card key={group.id} className="bg-muted/30">
           <CardHeader>
             <CardTitle>{group.name}</CardTitle>
             <CardDescription>

@@ -15,9 +15,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-gray-100 dark:bg-gray-900">
-        <div className="flex flex-col min-h-screen max-w-sm mx-auto bg-white dark:bg-black">
+    <html lang="en" className="dark">
+      <body>
+        <div className="flex flex-col min-h-screen max-w-sm mx-auto bg-background">
           <Header />
           <main className="flex-grow">
             {children}
