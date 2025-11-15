@@ -14,8 +14,7 @@ export default function Home() {
   const router = useRouter();
 
   const handleGroupClick = (groupId: string) => {
-    console.log(`User clicked on group: ${groupId}`);
-    // Future: router.push(`/group/${groupId}`);
+    router.push(`/${groupId}`);
   };
 
   return (
@@ -33,7 +32,7 @@ export default function Home() {
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="flex flex-col items-center justify-center h-20 bg-muted rounded-md">
-                <p className="text-sm text-muted-foreground">View</p>
+                <p className="text-sm text-muted-foreground">View Number</p>
               </div>
             </CardContent>
           </Card>
