@@ -9,9 +9,17 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getSubscriptions } from '@/lib/store';
+import { useUser, useFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { doc, arrayUnion } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
-const subscriptionGroups = getSubscriptions().map(group => ({
+const subscriptionGroups = [
+  { id: 'faridabad', name: 'Faridabad' },
+  { id: 'ghaziabad', name: 'Ghaziabad' },
+  { id: 'gali', name: 'Gali' },
+  { id: 'disawar', name: 'Disawar' },
+].map(group => ({
     ...group,
     plans: [
       { id: 'weekly', name: 'Weekly', price: '₹50' },
@@ -20,12 +28,38 @@ const subscriptionGroups = getSubscriptions().map(group => ({
     ]
 }));
 
-
 export default function SubscriptionsPage() {
+  const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+
   const handleSubscribe = (groupId: string, planId: string) => {
-    console.log(`Subscribing to ${groupId} with ${planId} plan.`);
-    // Future: Handle payment logic and update store
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Logged In',
+        description: 'You must be logged in to subscribe.',
+      });
+      router.push('/login');
+      return;
+    }
+    
+    // For now, we will just add the subscription without a real payment flow.
+    const userDocRef = doc(firestore, 'users', user.uid);
+    updateDocumentNonBlocking(userDocRef, {
+        subscriptions: arrayUnion(groupId)
+    });
+
+    toast({
+      title: 'Subscribed!',
+      description: `You have subscribed to the ${groupId} group.`,
+    });
   };
+
+  if (isUserLoading) {
+      return <div className="p-4 text-center">Loading...</div>
+  }
 
   return (
     <div className="p-4 space-y-6">

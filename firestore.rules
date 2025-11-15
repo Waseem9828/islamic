@@ -13,7 +13,7 @@
  * - /prayerTimes/{prayerTimeId}: Stores prayer times, publicly readable.
  *
  * Key Security Decisions:
- * - User listing is disallowed to protect privacy.
+ * - User listing is disallowed to protect privacy, except for admins.
  * - Admin status is determined by document existence, simplifying rule logic.
  * - Prayer times are publicly readable to avoid unnecessary authorization checks.
  *
@@ -24,20 +24,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
     /**
-     * @description Enforces access control for user profiles. Only the user can read or write their own profile.
+     * @description Enforces access control for user profiles. Only the user can read or write their own profile. Admins can read any profile.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user_abc' can create their profile: request.auth.uid == 'user_abc'
-     * @allow (get, update, delete) User with ID 'user_abc' can read/update/delete their profile: request.auth.uid == 'user_abc'
-     * @deny (create) User with ID 'user_xyz' cannot create a profile for 'user_abc': request.auth.uid != 'user_abc'
-     * @deny (get, update, delete) User with ID 'user_xyz' cannot read/update/delete the profile for 'user_abc': request.auth.uid != 'user_abc'
-     * @principle Enforces document ownership for all operations.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
@@ -51,34 +54,31 @@ service cloud.firestore {
                incomingData().email == request.auth.token.email &&
                incomingData().createdAt == request.time &&
                incomingData().updatedAt == request.time &&
+               !incomingData().isAdmin && // Users can't make themselves admins
                incomingData().subscriptions.size() == 0;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if false; // User listing is disallowed.
+      function canUpdateProfile(userId) {
+        // Users can update their profile, but cannot change their ID, email, creation time, or admin status.
+        return isExistingOwner(userId) && 
+               incomingData().id == resource.data.id &&
+               incomingData().email == resource.data.email &&
+               incomingData().createdAt == resource.data.createdAt &&
+               incomingData().isAdmin == resource.data.isAdmin;
+      }
+
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin(); // Only admins can list users.
       allow create: if isOwner(userId) && hasValidCreateData(userId);
-      allow update: if isExistingOwner(userId) && incomingData().id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow update: if canUpdateProfile(userId);
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     /**
      * @description Manages admin roles. Presence of a document grants admin privileges.
      * @path /roles_admin/{adminId}
-     * @allow (get) Any authenticated user can check if an admin exists.
-     * @allow (create) Only an existing admin can create new admin roles. (This requires custom backend logic to bootstrap the first admin.)
-     * @allow (update, delete) Only an existing admin can modify admin roles.
-     * @deny (create) Non-admin user cannot create admin roles.
-     * @principle Admin roles are managed via document existence.
      */
     match /roles_admin/{adminId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isAdmin() {
-        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-      }
-
       allow get: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isAdmin();
@@ -89,17 +89,8 @@ service cloud.firestore {
     /**
      * @description Enforces access control for draw results. Only the owning user can read or write their draw results.
      * @path /users/{userId}/drawResults/{drawResultId}
-     * @allow (create) User with ID 'user_abc' can create a draw result under their profile: request.auth.uid == 'user_abc'
-     * @allow (get, update, delete) User with ID 'user_abc' can read/update/delete their draw results: request.auth.uid == 'user_abc'
-     * @deny (create) User with ID 'user_xyz' cannot create a draw result under 'user_abc': request.auth.uid != 'user_abc'
-     * @deny (get, update, delete) User with ID 'user_xyz' cannot read/update/delete draw results for 'user_abc': request.auth.uid != 'user_abc'
-     * @principle Enforces document ownership for all operations within the user's data tree.
      */
     match /users/{userId}/drawResults/{drawResultId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
@@ -112,11 +103,8 @@ service cloud.firestore {
     }
 
     /**
-     * @description Allows public read access to prayer times data.  Write access is not permitted in this prototype.
+     * @description Allows public read access to prayer times data. Write access is not permitted in this prototype.
      * @path /prayerTimes/{prayerTimeId}
-     * @allow (get, list) Any user can read prayer times.
-     * @deny (create, update, delete) No one can create, update, or delete prayer times.
-     * @principle Allows public read access for global data.
      */
     match /prayerTimes/{prayerTimeId} {
       allow get: if true;
@@ -129,15 +117,8 @@ service cloud.firestore {
     /**
      * @description Allows public read access to groups data, but write access is restricted to admins.
      * @path /groups/{groupId}
-     * @allow (get, list) Any user can read group information.
-     * @allow (create, update, delete) Only admins can modify groups.
-     * @principle Allows public read for global data while securing write operations.
      */
     match /groups/{groupId} {
-      function isAdmin() {
-        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-      }
-
       allow get: if true;
       allow list: if true;
       allow create: if isAdmin();
