@@ -5,16 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut } from 'lucide-react';
-import { useUser } from '@/firebase/auth/use-user';
-import { getAuth, signOut } from 'firebase/auth';
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { user, loading } = useUser();
-  const auth = getAuth();
 
-  const handleLogout = async () => {
-    await signOut(auth);
+  const handleLogout = () => {
     router.push('/login');
   };
   
@@ -33,13 +28,10 @@ const ProfilePage = () => {
     },
   ];
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full"><p>Loading...</p></div>;
-  }
-
-  if (!user) {
-     router.push('/login');
-     return null;
+  const user = {
+      photoURL: "https://github.com/shadcn.png",
+      email: "user@example.com",
+      displayName: "Username"
   }
 
   return (

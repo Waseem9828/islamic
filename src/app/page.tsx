@@ -2,8 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase/auth/use-user';
-import { useEffect } from 'react';
 
 const groups = [
   { id: 'faridabad', name: 'Faridabad' },
@@ -14,22 +12,10 @@ const groups = [
 
 export default function Home() {
   const router = useRouter();
-  const { user, loading } = useUser();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
-
 
   const handleGroupClick = (groupId: string) => {
     router.push(`/${groupId}`);
   };
-
-  if (loading || !user) {
-    return <div className="flex items-center justify-center h-full"><p>Loading...</p></div>;
-  }
 
   return (
     <div className="p-4">
