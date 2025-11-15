@@ -41,11 +41,23 @@ service cloud.firestore {
       function isExistingOwner(userId) {
         return isOwner(userId) && resource != null;
       }
+      
+      function incomingData() {
+        return request.resource.data;
+      }
+      
+      function hasValidCreateData(userId) {
+        return incomingData().id == userId &&
+               incomingData().email == request.auth.token.email &&
+               incomingData().createdAt == request.time &&
+               incomingData().updatedAt == request.time &&
+               incomingData().subscriptions.size() == 0;
+      }
 
       allow get: if isOwner(userId);
       allow list: if false; // User listing is disallowed.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId) && hasValidCreateData(userId);
+      allow update: if isExistingOwner(userId) && incomingData().id == resource.data.id;
       allow delete: if isExistingOwner(userId);
     }
 

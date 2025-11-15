@@ -36,11 +36,17 @@
           "type": "string",
           "description": "Timestamp indicating when the user account was last updated.",
           "format": "date-time"
+        },
+        "subscriptions": {
+          "type": "array",
+          "description": "A list of group IDs the user is subscribed to.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
         "id",
-        "username",
         "email"
       ]
     },
