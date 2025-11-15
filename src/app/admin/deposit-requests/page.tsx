@@ -1,14 +1,16 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc, setDoc, getDoc, query, where, serverTimestamp, increment } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc, query, where } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { increment, serverTimestamp } from "firebase/firestore";
 
 interface DepositRequest {
   id: string;
@@ -23,8 +25,7 @@ const DepositRequestsPage = () => {
   const [requests, setRequests] = useState<DepositRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  const { toast } = useToast();
-
+  
   const fetchRequests = async () => {
     if (!db) return;
     setIsLoading(true);
@@ -37,11 +38,7 @@ const DepositRequestsPage = () => {
         setRequests(requestsData);
     } catch (error) {
         console.error("Error fetching deposit requests:", error);
-        toast({
-            title: "Error",
-            description: "Failed to fetch deposit requests.",
-            variant: "destructive",
-        });
+        toast.error("Failed to fetch deposit requests.");
     } finally {
         setIsLoading(false);
     }
@@ -58,38 +55,30 @@ const DepositRequestsPage = () => {
       const requestRef = doc(db, "depositRequests", request.id);
       const walletRef = doc(db, "wallets", request.userId);
 
-      // Check if wallet exists to decide between set and update
       const walletSnap = await getDoc(walletRef);
 
       if (walletSnap.exists()) {
-         // Atomically increment the balance
-        await updateDoc(walletRef, {
+        updateDocumentNonBlocking(walletRef, {
             balance: increment(request.amount)
         });
       } else {
-        // Create the wallet if it doesn't exist
-        await setDoc(walletRef, { 
+        setDocumentNonBlocking(walletRef, { 
             userId: request.userId,
             balance: request.amount 
-        });
+        }, {});
       }
       
-      // Mark the request as approved
-      await updateDoc(requestRef, { 
+      updateDocumentNonBlocking(requestRef, { 
           status: "approved",
           approvedAt: serverTimestamp()
       });
 
-      toast({ title: "Success", description: "Deposit approved and wallet updated." });
+      toast.success("Deposit approved and wallet updated.");
       setRequests(prev => prev.filter(r => r.id !== request.id));
 
     } catch (error) {
       console.error("Error approving deposit:", error);
-      toast({
-        title: "Error",
-        description: "Failed to approve deposit. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to approve deposit. Please try again.");
     } finally {
         setApprovingId(null);
     }

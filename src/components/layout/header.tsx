@@ -17,7 +17,7 @@ const Header = () => {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden">
           <Menu />
@@ -27,10 +27,10 @@ const Header = () => {
         </Link>
       </div>
 
-      <nav className="hidden md:flex items-center gap-4">
-        <Link href="/subscriptions" className="text-sm font-medium text-muted-foreground hover:text-primary">Subscriptions</Link>
-        <Link href="/deposit" className="text-sm font-medium text-muted-foreground hover:text-primary">Deposit</Link>
-        <Link href="/wallet" className="text-sm font-medium text-muted-foreground hover:text-primary">Wallet</Link>
+      <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <Link href="/subscriptions" className="text-muted-foreground hover:text-primary transition-colors">Subscriptions</Link>
+        <Link href="/deposit" className="text-muted-foreground hover:text-primary transition-colors">Deposit</Link>
+        <Link href="/wallet" className="text-muted-foreground hover:text-primary transition-colors">Wallet</Link>
       </nav>
 
       <div className="flex items-center gap-2">
@@ -38,7 +38,7 @@ const Header = () => {
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
-        {!user && <Button asChild size="sm" variant="outline"><Link href="/login">Login</Link></Button>}
+        {!user && <Button asChild size="sm"><Link href="/login">Login</Link></Button>}
       </div>
     </header>
   );

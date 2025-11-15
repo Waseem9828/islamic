@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: 'Premium Numbers',
   description: 'Your premium number prediction service',
   manifest: '/manifest.json',
-  themeColor: '#000000',
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({
@@ -25,7 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body className="bg-background text-foreground">
         <ClientFirebaseProvider>
           <FirebaseErrorListener />
           <SidebarProvider>
@@ -78,7 +78,7 @@ export default function RootLayout({
                     </SidebarMenu>
                   </SidebarContent>
                 </Sidebar>
-                <main className="flex-1 p-4 w-full">
+                <main className="flex-1 w-full max-w-5xl mx-auto">
                   {children}
                 </main>
               </div>
@@ -87,7 +87,7 @@ export default function RootLayout({
           </SidebarProvider>
         </ClientFirebaseProvider>
         <ShadToaster />
-        <SonnerToaster />
+        <SonnerToaster richColors />
       </body>
     </html>
   );

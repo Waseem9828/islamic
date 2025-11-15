@@ -40,29 +40,29 @@ export default function Home() {
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-3xl font-bold mb-6 text-center tracking-wider">Dashboard</h1>
-      <div className="space-y-4">
+    <div className="p-2 sm:p-4">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-center tracking-wide">Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {groups?.map((group) => {
           const isSubscribed = !!user && !!userData?.subscriptions?.includes(group.id);
 
           return (
             <Card
               key={group.id}
-              className={`transition-all duration-300 bg-muted/20 border-border/50 ${isSubscribed ? 'cursor-pointer hover:border-primary/50 active:scale-[0.98]' : ''} overflow-hidden`}
+              className={`transition-all duration-300 bg-card shadow-sm hover:shadow-md ${isSubscribed ? 'cursor-pointer active:scale-[0.98]' : ''} overflow-hidden`}
               onClick={() => handleGroupClick(isSubscribed, group.id)}
             >
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between">
                   <div className='flex flex-col'>
-                      <p className="text-2xl font-bold text-primary">{group.name}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-foreground">{group.name}</p>
                       <p className="text-xs text-muted-foreground">{group.number ? 'Updated Today' : 'Result Awaited'}</p>
                   </div>
-                  <div className="flex flex-col items-center justify-center p-4 h-20 w-28 bg-background/50 rounded-lg border border-dashed border-primary/50">
+                  <div className="flex flex-col items-center justify-center p-3 h-20 w-24 bg-secondary/50 rounded-lg border-2 border-dashed">
                     {isSubscribed ? (
-                      <p className="text-3xl font-mono font-bold tracking-widest text-primary/90">{group.number || '??'}</p>
+                      <p className="text-3xl font-mono font-bold tracking-widest text-primary">{group.number || '??'}</p>
                     ) : (
-                      <Button variant="secondary" size="sm" onClick={(e) => { e.stopPropagation(); router.push('/subscriptions'); }}>
+                      <Button variant="default" size="sm" onClick={(e) => { e.stopPropagation(); router.push('/subscriptions'); }}>
                         Subscribe
                       </Button>
                     )}
@@ -70,14 +70,14 @@ export default function Home() {
                 </div>
                  {isSubscribed && group.pastResults && group.pastResults.length > 0 && (
                   <>
-                    <Separator className="my-3 bg-border/40" />
-                    <div className="px-2">
+                    <Separator className="my-3" />
+                    <div>
                       <p className="text-xs font-semibold text-muted-foreground mb-2">Past Results</p>
-                      <ul className="space-y-1 text-sm text-muted-foreground">
+                      <ul className="flex justify-between text-sm text-muted-foreground">
                         {group.pastResults.slice(0, 3).map((result: {date: string; number: string}) => (
-                           <li key={result.date} className="flex justify-between items-center text-xs">
-                              <span>{result.date}:</span> 
-                              <span className="font-mono text-foreground tracking-widest">{result.number}</span>
+                           <li key={result.date} className="flex flex-col items-center text-xs">
+                              <span className="font-mono text-foreground tracking-widest text-base">{result.number}</span>
+                              <span className="text-xs text-muted-foreground/80">{result.date}</span> 
                            </li>
                         ))}
                       </ul>
@@ -90,7 +90,7 @@ export default function Home() {
         })}
 
         {(!groups || groups.length === 0) && (
-            <div className="text-center text-muted-foreground pt-10">
+            <div className="text-center text-muted-foreground pt-10 col-span-full">
                 <p>No groups available yet.</p>
                 <p className="text-sm">Please check back later.</p>
             </div>
