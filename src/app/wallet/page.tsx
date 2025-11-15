@@ -1,14 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
-import { useAuth, useFirebase } from "@/firebase/provider";
+import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 
 const WalletPage = () => {
-  const { user } = useAuth();
-  const { firestore: db } = useFirebase();
+  const { user, firestore: db } = useFirebase();
   const [walletBalance, setWalletBalance] = useState(0);
 
   useEffect(() => {

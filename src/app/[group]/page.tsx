@@ -1,9 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useParams } from 'next/navigation';
-import { useDoc, useUser, useFirebase, useMemoFirebase } from '@/firebase';
+import { useDoc, useUser, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 export default function GroupDetailPage() {
@@ -11,13 +12,12 @@ export default function GroupDetailPage() {
   const params = useParams();
   const group = params.group as string;
 
-  const { firestore } = useFirebase();
-  const { user, isUserLoading } = useUser();
+  const { firestore, user, isUserLoading } = useFirebase();
 
-  const groupRef = useMemoFirebase(() => firestore && group ? doc(firestore, 'groups', group) : null, [firestore, group]);
+  const groupRef = useMemo(() => firestore && group ? doc(firestore, 'groups', group) : null, [firestore, group]);
   const { data: groupData, isLoading: isGroupLoading } = useDoc(groupRef);
 
-  const userDocRef = useMemoFirebase(() => firestore && user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const userDocRef = useMemo(() => firestore && user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userData, isLoading: isUserSubLoading } = useDoc(userDocRef);
 
   const isSubscribed = userData?.subscriptions?.includes(group);

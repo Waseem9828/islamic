@@ -1,14 +1,15 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
 export default function ManageUsersPage() {
   const { firestore } = useFirebase();
-  const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+  const usersQuery = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const { data: users, isLoading } = useCollection(usersQuery);
 
   return (

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
-import { useAuth, useFirebase } from '@/firebase/provider';
+import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -15,8 +15,7 @@ interface Subscription {
 }
 
 const SubscriptionsPage = () => {
-  const { user } = useAuth();
-  const { firestore: db } = useFirebase();
+  const { user, firestore: db } = useFirebase();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const router = useRouter();

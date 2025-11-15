@@ -1,8 +1,9 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Home() {
   const router = useRouter();
   const { firestore } = useFirebase();
-  const groupsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'groups') : null, [firestore]);
+  const groupsQuery = useMemo(() => firestore ? collection(firestore, 'groups') : null, [firestore]);
   const { data: groups, isLoading } = useCollection(groupsQuery);
 
   const handleGroupClick = (groupId: string) => {
