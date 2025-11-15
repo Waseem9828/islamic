@@ -50,21 +50,21 @@ service cloud.firestore {
       }
       
       function hasValidCreateData(userId) {
-        return incomingData().id == userId &&
-               incomingData().email == request.auth.token.email &&
-               incomingData().createdAt == request.time &&
-               incomingData().updatedAt == request.time &&
-               !incomingData().isAdmin && // Users can't make themselves admins
-               incomingData().subscriptions.size() == 0;
+        let incoming = incomingData();
+        return incoming.id == userId &&
+               incoming.email == request.auth.token.email &&
+               !('isAdmin' in incoming) &&
+               (!('subscriptions' in incoming) || incoming.subscriptions.size() == 0);
       }
 
       function canUpdateProfile(userId) {
+        let incoming = incomingData();
         // Users can update their profile, but cannot change their ID, email, creation time, or admin status.
         return isExistingOwner(userId) && 
-               incomingData().id == resource.data.id &&
-               incomingData().email == resource.data.email &&
-               incomingData().createdAt == resource.data.createdAt &&
-               incomingData().isAdmin == resource.data.isAdmin;
+               incoming.id == resource.data.id &&
+               incoming.email == resource.data.email &&
+               incoming.createdAt == resource.data.createdAt &&
+               (!('isAdmin' in incoming) || incoming.isAdmin == resource.data.isAdmin);
       }
 
       allow get: if isOwner(userId) || isAdmin();
