@@ -1,13 +1,14 @@
+
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import './globals.css';
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster as ShadToaster } from "@/components/ui/toaster"
+import { Toaster as SonnerToaster } from 'sonner';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-// Import directly from the source file to avoid circular dependencies
 import { ClientFirebaseProvider } from '@/firebase/client-provider';
 import { Sidebar, SidebarProvider, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { Home, Wallet, Landmark } from 'lucide-react';
-// Import directly from the source file
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
@@ -24,7 +25,6 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ClientFirebaseProvider>
-          {/* The listener must be inside the provider to access its context */}
           <FirebaseErrorListener />
           <SidebarProvider>
             <div className="flex flex-col min-h-screen">
@@ -34,18 +34,27 @@ export default function RootLayout({
                   <SidebarContent>
                     <SidebarMenu>
                       <SidebarMenuItem>
-                        <SidebarMenuButton href="/" icon={<Home />}>
-                          Home
+                        <SidebarMenuButton asChild>
+                          <Link href="/">
+                            <Home className="h-4 w-4" />
+                            Home
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton href="/deposit" icon={<Wallet />}>
-                          Deposit
+                        <SidebarMenuButton asChild>
+                          <Link href="/deposit">
+                            <Wallet className="h-4 w-4" />
+                            Deposit
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton href="/withdraw" icon={<Landmark />}>
-                          Withdraw
+                        <SidebarMenuButton asChild>
+                          <Link href="/withdraw">
+                            <Landmark className="h-4 w-4" />
+                            Withdraw
+                          </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </SidebarMenu>
@@ -59,7 +68,8 @@ export default function RootLayout({
             </div>
           </SidebarProvider>
         </ClientFirebaseProvider>
-        <Toaster />
+        <ShadToaster />
+        <SonnerToaster />
       </body>
     </html>
   );
