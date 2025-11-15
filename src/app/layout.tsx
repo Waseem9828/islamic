@@ -78,7 +78,7 @@ export default function RootLayout({
                     </SidebarMenu>
                   </SidebarContent>
                 </Sidebar>
-                <main className="flex-1 w-full max-w-5xl mx-auto">
+                <main className="flex-1 w-full">
                   {children}
                 </main>
               </div>
