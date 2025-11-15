@@ -7,10 +7,11 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from '@/firebase';
+import { Skeleton } from '../ui/skeleton';
 
 const Header = () => {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   
   if (pathname.startsWith('/admin')) {
     return null;
@@ -38,7 +39,11 @@ const Header = () => {
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
-        {!user && <Button asChild size="sm"><Link href="/login">Login</Link></Button>}
+        {isUserLoading ? (
+            <Skeleton className="h-9 w-20" />
+        ) : (
+            !user && <Button asChild size="sm"><Link href="/login">Login</Link></Button>
+        )}
       </div>
     </header>
   );
