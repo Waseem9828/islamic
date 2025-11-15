@@ -43,6 +43,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "isAdmin": {
+            "type": "boolean",
+            "description": "Flag to indicate if the user is an administrator."
         }
       },
       "required": [

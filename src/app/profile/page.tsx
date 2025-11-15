@@ -9,13 +9,19 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut, MessageCircle, Smartphone, Send, UserCog } from 'lucide-react';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 
 const ProfilePage = () => {
   const router = useRouter();
   const auth = useAuth();
+  const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+
+  const userDocRef = useMemoFirebase(() => firestore && user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
   const [isWhatsAppEnabled, setIsWhatsAppEnabled] = useState(false);
   const [isSmsEnabled, setIsSmsEnabled] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -38,11 +44,6 @@ const ProfilePage = () => {
       action: () => router.push('/subscriptions'),
     },
     {
-      label: 'Admin Panel',
-      icon: UserCog,
-      action: () => router.push('/admin'),
-    },
-    {
       label: 'Privacy Policy',
       icon: Shield,
       action: () => {
@@ -50,9 +51,22 @@ const ProfilePage = () => {
       },
     },
   ];
+  
+  const adminMenuItem = {
+    label: 'Admin Panel',
+    icon: UserCog,
+    action: () => router.push('/admin'),
+  };
 
-  if (isUserLoading || !user) {
+  const isLoading = isUserLoading || isUserDataLoading;
+
+  if (isLoading || !user) {
       return <div>Loading...</div>
+  }
+
+  const finalMenuItems = [...menuItems];
+  if(userData?.isAdmin) {
+    finalMenuItems.splice(1, 0, adminMenuItem);
   }
 
   return (
@@ -62,14 +76,14 @@ const ProfilePage = () => {
           <AvatarImage src={user.photoURL || "https://github.com/shadcn.png"} alt="User avatar" />
           <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
         </Avatar>
-        <h1 className="text-2xl font-bold">{user.displayName || 'Username'}</h1>
+        <h1 className="text-2xl font-bold">{userData?.username || user.displayName || 'Username'}</h1>
         <p className="text-muted-foreground">{user.email}</p>
       </div>
 
       <Card className="bg-muted/30">
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
-            {menuItems.map((item, index) => (
+            {finalMenuItems.map((item, index) => (
                <li
                 key={index}
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 active:bg-muted/80"
