@@ -1,7 +1,7 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc, setDoc, getDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc, query, where, serverTimestamp, increment } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -56,23 +56,33 @@ const DepositRequestsPage = () => {
     setApprovingId(request.id);
     try {
       const requestRef = doc(db, "depositRequests", request.id);
-      await updateDoc(requestRef, { status: "approved" });
-
       const walletRef = doc(db, "wallets", request.userId);
+
+      // Check if wallet exists to decide between set and update
       const walletSnap = await getDoc(walletRef);
 
       if (walletSnap.exists()) {
-        const currentBalance = walletSnap.data().balance || 0;
+         // Atomically increment the balance
         await updateDoc(walletRef, {
-          balance: currentBalance + request.amount,
+            balance: increment(request.amount)
         });
       } else {
-        await setDoc(walletRef, { balance: request.amount, userId: request.userId });
+        // Create the wallet if it doesn't exist
+        await setDoc(walletRef, { 
+            userId: request.userId,
+            balance: request.amount 
+        });
       }
+      
+      // Mark the request as approved
+      await updateDoc(requestRef, { 
+          status: "approved",
+          approvedAt: serverTimestamp()
+      });
 
       toast({ title: "Success", description: "Deposit approved and wallet updated." });
-      // Refresh the list by filtering out the approved request
       setRequests(prev => prev.filter(r => r.id !== request.id));
+
     } catch (error) {
       console.error("Error approving deposit:", error);
       toast({
