@@ -59,13 +59,14 @@ service cloud.firestore {
 
       function canUpdateProfile(userId) {
         let incoming = incomingData();
-        // Users can update their profile, but cannot change their ID, email, or creation time.
-        // They also cannot make themselves an admin.
-        return isExistingOwner(userId) && 
+        // Users can update their own profile, but cannot change immutable fields.
+        // They can change their subscriptions.
+        // They also cannot make themselves an admin unless they already are one.
+        return isOwner(userId) &&
                incoming.id == resource.data.id &&
                incoming.email == resource.data.email &&
                incoming.createdAt == resource.data.createdAt &&
-               (!('isAdmin' in incoming) || incoming.isAdmin == resource.data.isAdmin || isAdmin());
+               (!('isAdmin' in incoming) || incoming.isAdmin == false || (incoming.isAdmin == true && resource.data.isAdmin == true));
       }
       
       function canAdminUpdateProfile() {
