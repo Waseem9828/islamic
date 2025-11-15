@@ -48,6 +48,10 @@ service cloud.firestore {
       function incomingData() {
         return request.resource.data;
       }
+
+      function existingData() {
+        return resource.data;
+      }
       
       function hasValidCreateData(userId) {
         let incoming = incomingData();
@@ -57,14 +61,14 @@ service cloud.firestore {
       }
 
       function canUpdateProfile(userId) {
-        let incoming = request.resource.data;
-        let existing = resource.data;
+        let incoming = incomingData();
+        let existing = existingData();
         // Users can update their profile, but cannot change immutable or admin-only fields.
         return isOwner(userId) &&
                incoming.id == existing.id &&
                incoming.email == existing.email &&
                incoming.createdAt == existing.createdAt &&
-               incoming.isAdmin == existing.isAdmin;
+               (!('isAdmin' in incoming) || incoming.isAdmin == existing.isAdmin);
       }
       
       function canAdminUpdateProfile() {
@@ -74,12 +78,7 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin(); // Only admins can list users.
       allow create: if isOwner(userId) && hasValidCreateData(userId);
-      allow update: if (isOwner(userId) &&
-          request.resource.data.id == resource.data.id &&
-          request.resource.data.email == resource.data.email &&
-          request.resource.data.createdAt == resource.data.createdAt &&
-          request.resource.data.isAdmin == resource.data.isAdmin
-        ) || isAdmin();
+      allow update: if canUpdateProfile(userId) || canAdminUpdateProfile();
       allow delete: if isOwner(userId) || isAdmin();
     }
 
