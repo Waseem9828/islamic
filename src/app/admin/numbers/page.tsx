@@ -51,7 +51,8 @@ export default function ManageNumbersPage() {
     const groupRef = doc(firestore, 'groups', selectedGroup);
     const selectedGroupName = groupOptions.find(g => g.id === selectedGroup)?.name;
 
-    // Non-blocking update/create
+    // Use setDoc with { merge: true } to create or update the document.
+    // This is a non-blocking "upsert" operation.
     setDocumentNonBlocking(groupRef, { 
         id: selectedGroup,
         name: selectedGroupName,
@@ -75,7 +76,7 @@ export default function ManageNumbersPage() {
                 <CardTitle>Manage/Create Groups & Numbers</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group. Creating a number for a group will make it appear on the user dashboard.</p>
+                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group. Creating a number for a new group will make it appear on the user dashboard.</p>
                 
                 <div className="space-y-4">
                     <div className="space-y-2">
