@@ -4,7 +4,7 @@ import { collection, getDocs, doc, updateDoc, getDoc, setDoc } from 'firebase/fi
 import { useAuth, useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 interface Subscription {
@@ -19,7 +19,6 @@ const SubscriptionsPage = () => {
   const { firestore: db } = useFirebase();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
-  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
@@ -49,11 +48,7 @@ const SubscriptionsPage = () => {
     if (!user || !db) return;
 
     if (walletBalance < subscription.price) {
-      toast({
-        title: 'Error',
-        description: 'Insufficient wallet balance. Please deposit funds.',
-        variant: 'destructive',
-      });
+      toast.error('Insufficient wallet balance. Please deposit funds.');
       return;
     }
 
@@ -82,13 +77,9 @@ const SubscriptionsPage = () => {
 
       setWalletBalance(newBalance);
 
-      toast({ title: 'Success', description: 'Subscription purchased successfully' });
+      toast.success('Subscription purchased successfully');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to purchase subscription.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to purchase subscription.');
     }
   };
 

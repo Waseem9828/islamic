@@ -11,7 +11,7 @@ import {
   initiateEmailSignUp,
   initiateEmailSignIn,
 } from '@/firebase/non-blocking-login';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { FirebaseError } from 'firebase/app';
 
 export default function LoginPage() {
@@ -19,93 +19,62 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const router = useRouter();
   const auth = useAuth();
-  const { toast } = useToast();
 
-  const handleAuthError = (error: FirebaseError) => {
-    let description = 'An unexpected error occurred. Please try again.';
-    if (error.code === 'auth/invalid-credential') {
-      description = 'Incorrect email or password. Please try again.';
-    } else if (error.code === 'auth/email-already-in-use') {
-      description = 'An account with this email already exists.';
-    } else if (error.code === 'auth/weak-password') {
-      description = 'The password is too weak. Please use at least 6 characters.';
+  const handleAuthAction = (action: (auth: any, email: any, password: any, callback: any) => void, successMessage: string) => {
+    if (!auth) {
+      toast.error('Auth service is not available. Please try again later.');
+      return;
     }
-    toast({
-      variant: 'destructive',
-      title: 'Authentication Failed',
-      description,
-    });
-  };
-
-  const handleSignIn = () => {
-    if (!email || !password) return;
-    initiateEmailSignIn(auth, email, password, (error) => {
+    action(auth, email, password, (error?: FirebaseError) => {
       if (error) {
-        handleAuthError(error);
+        toast.error(error.message);
       } else {
+        toast.success(successMessage);
         router.push('/');
       }
     });
+  };
+
+  const handleLogin = () => {
+    handleAuthAction(initiateEmailSignIn, 'Logged in successfully');
   };
 
   const handleSignUp = () => {
-    if (!email || !password) return;
-    initiateEmailSignUp(auth, email, password, (error) => {
-      if (error) {
-        handleAuthError(error);
-      } else {
-        router.push('/');
-      }
-    });
+    handleAuthAction(initiateEmailSignUp, 'Signed up successfully');
   };
 
   return (
-    <main className="flex flex-col items-center justify-center flex-grow p-4 sm:p-6">
-      <Card className="w-full max-w-sm bg-muted/30">
+    <div className="flex justify-center items-center h-full">
+      <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Login or Sign Up</CardTitle>
+          <CardTitle>Login or Sign Up</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2">
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
               placeholder="m@example.com"
-              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="grid gap-2">
+          <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
-              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button
-              onClick={handleSignIn}
-              className="w-full"
-              disabled={!email || !password}
-            >
-              Login
-            </Button>
-            <Button
-              onClick={handleSignUp}
-              variant="outline"
-              className="w-full"
-              disabled={!email || !password}
-            >
-              Sign Up
-            </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleLogin} className="w-full">Login</Button>
+            <Button onClick={handleSignUp} className="w-full" variant="outline">Sign Up</Button>
           </div>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

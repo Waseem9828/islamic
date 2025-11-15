@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/sonner"
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
-import { FirebaseClientProvider } from '@/firebase';
-import { Sidebar, SidebarProvider, SidebarTrigger, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+// Import directly from the source file to avoid circular dependencies
+import { ClientFirebaseProvider } from '@/firebase/client-provider';
+import { Sidebar, SidebarProvider, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { Home, Wallet, Landmark } from 'lucide-react';
+// Import directly from the source file
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'Premium Numbers',
@@ -14,50 +17,49 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body>
-        <FirebaseClientProvider>
+        <ClientFirebaseProvider>
+          {/* The listener must be inside the provider to access its context */}
+          <FirebaseErrorListener />
           <SidebarProvider>
-            <div className="flex flex-col min-h-screen max-w-sm mx-auto bg-background">
+            <div className="flex flex-col min-h-screen">
               <Header />
               <div className="flex flex-1">
-                <Sidebar className="w-64">
+                <Sidebar>
                   <SidebarContent>
                     <SidebarMenu>
                       <SidebarMenuItem>
-                        <SidebarMenuButton href="/" tooltip="Home">
-                          <Home className="h-5 w-5" />
+                        <SidebarMenuButton href="/" icon={<Home />}>
                           Home
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton href="/wallet" tooltip="Wallet">
-                          <Wallet className="h-5 w-5" />
-                          Wallet
+                        <SidebarMenuButton href="/deposit" icon={<Wallet />}>
+                          Deposit
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                       <SidebarMenuItem>
-                        <SidebarMenuButton href="/deposit" tooltip="Deposit">
-                          <Landmark className="h-5 w-5" />
-                          Deposit
+                        <SidebarMenuButton href="/withdraw" icon={<Landmark />}>
+                          Withdraw
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     </SidebarMenu>
                   </SidebarContent>
                 </Sidebar>
-                <main className="flex-grow">
+                <main className="flex-1 p-4">
                   {children}
                 </main>
               </div>
               <Footer />
             </div>
-            <Toaster />
           </SidebarProvider>
-        </FirebaseClientProvider>
+        </ClientFirebaseProvider>
+        <Toaster />
       </body>
     </html>
   );

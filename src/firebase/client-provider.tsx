@@ -1,27 +1,40 @@
 'use client';
 
-import React, { useMemo, type ReactNode } from 'react';
-import { FirebaseProvider } from '@/firebase/provider';
-import { initializeFirebase } from '@/firebase';
+import React, { useMemo } from 'react';
+import { FirebaseProvider } from './provider';
+import { initializeFirebase } from './core';
 
-interface FirebaseClientProviderProps {
-  children: ReactNode;
-}
-
-export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  const firebaseServices = useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
+/**
+ * A hook that initializes Firebase services and memoizes the result.
+ * This ensures that Firebase is initialized only once per application lifecycle.
+ */
+const useFirebaseServices = () => {
+  const services = useMemo(() => {
+    // The initializeFirebase function handles the entire initialization process,
+    // including checking for existing apps and returning all necessary SDKs.
     return initializeFirebase();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
+  return services;
+};
 
+/**
+ * Client-side component responsible for initializing Firebase and providing its services
+ * to the rest of the application through the FirebaseProvider.
+ * This should wrap the root layout of the application.
+ */
+export const ClientFirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Get the singleton instances of Firebase services.
+  const { firebaseApp, auth, firestore, storage } = useFirebaseServices();
+
+  // Pass the initialized services down to the context provider.
   return (
     <FirebaseProvider
-      firebaseApp={firebaseServices.firebaseApp}
-      auth={firebaseServices.auth}
-      firestore={firebaseServices.firestore}
-      storage={firebaseServices.storage}
+      firebaseApp={firebaseApp}
+      auth={auth}
+      firestore={firestore}
+      storage={storage}
     >
       {children}
     </FirebaseProvider>
   );
-}
+};

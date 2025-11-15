@@ -9,7 +9,7 @@ import {
 import { FirebaseError } from 'firebase/app';
 import { getFirestore, doc, serverTimestamp } from 'firebase/firestore';
 import { setDocumentNonBlocking } from './non-blocking-updates';
-import { getSdks } from '.';
+import { getSdks } from './core';
 
 type AuthCallback = (error?: FirebaseError) => void;
 

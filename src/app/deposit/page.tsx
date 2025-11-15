@@ -3,24 +3,25 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { useAuth, useFirebase } from "@/firebase/provider";
+import { useUser, useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import QRCode from "qrcode.react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 const DepositPage = () => {
-  const { user } = useAuth();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const { firestore: db, storage } = useFirebase();
   const [upiId, setUpiId] = useState("");
   const [amount, setAmount] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [isSettingsLoading, setIsSettingsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     if (!db) return;
@@ -34,25 +35,25 @@ const DepositPage = () => {
         }
       } catch (error) {
         console.error("Error fetching UPI ID:", error);
-        toast({
-          title: "Error",
-          description: "Could not fetch payment settings.",
-          variant: "destructive",
-        });
+        toast.error("Could not fetch payment settings.");
       } finally {
         setIsSettingsLoading(false);
       }
     };
     fetchUpiId();
-  }, [db, toast]);
+  }, [db]);
 
   const handleDeposit = async () => {
-    if (!amount || !screenshot || !user || !db || !storage) {
-        toast({
-            title: "Missing Information",
-            description: "Please fill out all fields and upload a screenshot.",
-            variant: "destructive"
-        });
+    if (!user) {
+        toast.error("You must be logged in to make a deposit.");
+        return;
+    }
+    if (!amount || !screenshot) {
+        toast.error("Please fill out all fields and upload a screenshot.");
+        return;
+    }
+    if (!db || !storage) {
+        toast.error("Could not connect to the database. Please try again later.");
         return;
     }
 
@@ -71,7 +72,7 @@ const DepositPage = () => {
         createdAt: serverTimestamp(),
       });
 
-      toast({ title: "Success", description: "Deposit request submitted successfully. It will be reviewed by an admin." });
+      toast.success("Deposit request submitted successfully. It will be reviewed by an admin.");
       setAmount("");
       setScreenshot(null);
       // Reset file input
@@ -80,17 +81,13 @@ const DepositPage = () => {
 
     } catch (error) {
       console.error("Error submitting deposit request:", error);
-      toast({
-        title: "Error",
-        description: "Failed to submit deposit request. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to submit deposit request. Please try again.");
     } finally {
         setIsSubmitting(false);
     }
   };
-
-  if (isSettingsLoading) {
+  
+  if (isAuthLoading || isSettingsLoading) {
       return (
           <div className="flex justify-center items-center h-full p-4">
             <Card className="w-full max-w-md">
@@ -106,6 +103,22 @@ const DepositPage = () => {
             </Card>
           </div>
       )
+  }
+
+  if (!user) {
+    return (
+        <div className="flex justify-center items-start h-full p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Create Deposit Request</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>Please log in to create a deposit request.</p>
+                <Button onClick={() => router.push('/login')} className="w-full mt-4">Login</Button>
+            </CardContent>
+          </Card>
+        </div>
+    )
   }
 
   return (
@@ -146,7 +159,7 @@ const DepositPage = () => {
             />
             <p className="text-xs text-muted-foreground mt-1">After payment, upload the screenshot here.</p>
           </div>
-          <Button onClick={handleDeposit} disabled={!amount || !screenshot || !upiId || isSubmitting} className="w-full">
+          <Button onClick={handleDeposit} disabled={!amount || !screenshot || !upiId || isSubmitting || !user} className="w-full">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
           </Button>

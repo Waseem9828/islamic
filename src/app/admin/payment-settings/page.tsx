@@ -5,12 +5,11 @@ import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const PaymentSettingsPage = () => {
   const { firestore: db } = useFirebase();
   const [upiId, setUpiId] = useState("");
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!db) return;
@@ -29,13 +28,9 @@ const PaymentSettingsPage = () => {
     try {
       const docRef = doc(db, "settings", "payment");
       await setDoc(docRef, { upiId });
-      toast({ title: "Success", description: "UPI ID saved successfully" });
+      toast.success("UPI ID saved successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save UPI ID",
-        variant: "destructive",
-      });
+      toast.error("Failed to save UPI ID");
     }
   };
 
