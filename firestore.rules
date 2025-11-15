@@ -113,5 +113,24 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    /**
+     * @description Allows public read access to groups data, but write access is restricted to admins.
+     * @path /groups/{groupId}
+     * @allow (get, list) Any user can read group information.
+     * @allow (create, update, delete) Only admins can modify groups.
+     * @principle Allows public read for global data while securing write operations.
+     */
+    match /groups/{groupId} {
+      function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }
