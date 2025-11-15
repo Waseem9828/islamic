@@ -5,11 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut } from 'lucide-react';
+import { useUser } from '@/firebase/auth/use-user';
+import { getAuth, signOut } from 'firebase/auth';
 
 const ProfilePage = () => {
   const router = useRouter();
+  const { user, loading } = useUser();
+  const auth = getAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut(auth);
     router.push('/login');
   };
   
@@ -28,15 +33,24 @@ const ProfilePage = () => {
     },
   ];
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-full"><p>Loading...</p></div>;
+  }
+
+  if (!user) {
+     router.push('/login');
+     return null;
+  }
+
   return (
     <div className="p-4">
       <div className="flex flex-col items-center mb-8">
         <Avatar className="w-24 h-24 mb-4 border-2 border-primary">
-          <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-          <AvatarFallback>CN</AvatarFallback>
+          <AvatarImage src={user.photoURL || "https://github.com/shadcn.png"} alt="User avatar" />
+          <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
         </Avatar>
-        <h1 className="text-2xl font-bold">Username</h1>
-        <p className="text-muted-foreground">user@example.com</p>
+        <h1 className="text-2xl font-bold">{user.displayName || 'Username'}</h1>
+        <p className="text-muted-foreground">{user.email}</p>
       </div>
 
       <Card className="bg-muted/30">
