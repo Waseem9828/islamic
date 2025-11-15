@@ -5,14 +5,20 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet } from 'lucide-react';
-import { useUser, useDoc, useFirebase } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2 } from 'lucide-react';
+import { useUser, useFirebase } from '@/firebase';
+import { signOut, updateProfile } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+
 
 const ProfilePage = () => {
   const router = useRouter();
-  const { user, loading } = useUser();
-  const { auth } = useFirebase();
+  const { user, isUserLoading } = useUser();
+  const { auth, storage, firestore } = useFirebase();
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -21,10 +27,41 @@ const ProfilePage = () => {
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
+      toast.error("Failed to log out.");
+    }
+  };
+  
+  const handlePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !storage || !firestore || !auth.currentUser) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+
+    try {
+        await uploadBytes(storageRef, file);
+        const photoURL = await getDownloadURL(storageRef);
+
+        // Update auth profile
+        await updateProfile(auth.currentUser, { photoURL });
+        
+        // Update firestore document
+        const userDocRef = doc(firestore, "users", user.uid);
+        await updateDoc(userDocRef, { photoURL });
+        
+        toast.success("Profile picture updated successfully!");
+        // Force a reload of the user object to see the change, or manage state more granularly
+    } catch (error) {
+        console.error("Error uploading profile picture:", error);
+        toast.error("Failed to upload profile picture.");
+    } finally {
+        setIsUploading(false);
     }
   };
 
-  if (loading) {
+
+  if (isUserLoading) {
     return <div>Loading...</div>;
   }
 
@@ -32,16 +69,38 @@ const ProfilePage = () => {
     router.push('/login');
     return null;
   }
+  
+  const avatarSrc = user.photoURL || `https://avatar.vercel.sh/${user.email}.png`;
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <Card className="max-w-md mx-auto">
         <CardHeader className="text-center">
-          <Avatar className="mx-auto w-24 h-24 mb-4">
-            <AvatarImage src={user.photoURL || "/avatar.png"} alt={user.displayName || 'User'} />
-            <AvatarFallback>{user.displayName ? user.displayName[0] : 'U'}</AvatarFallback>
-          </Avatar>
-          <CardTitle className="text-xl">{user.displayName || 'User Profile'}</CardTitle>
+          <div className="relative mx-auto w-24 h-24 mb-4">
+            <Avatar className="w-full h-full">
+              <AvatarImage src={avatarSrc} alt={user.displayName || 'User'} />
+              <AvatarFallback>{user.email ? user.email[0].toUpperCase() : 'U'}</AvatarFallback>
+            </Avatar>
+            {isUploading && (
+                <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-full">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            )}
+          </div>
+           <Input
+              id="picture"
+              type="file"
+              accept="image/*"
+              onChange={handlePictureUpload}
+              className="hidden"
+              disabled={isUploading}
+            />
+            <label htmlFor="picture" className="cursor-pointer">
+              <Button asChild disabled={isUploading} variant="link">
+                <span>Change Picture</span>
+              </Button>
+            </label>
+          <CardTitle className="text-xl">{user.displayName || user.email}</CardTitle>
           <p className="text-sm text-gray-500">UID: {user.uid}</p>
         </CardHeader>
         <CardContent>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -28,7 +29,7 @@ export default function ManageUsersPage() {
                 <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-4">
                     <Avatar>
-                        <AvatarImage src={user.photoURL || `https://avatar.vercel.sh/${user.email}.png`} />
+                        <AvatarImage src={user.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.email || 'User'} />
                         <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
