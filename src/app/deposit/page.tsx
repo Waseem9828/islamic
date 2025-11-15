@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode.react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
 
 const DepositPage = () => {
   const { user } = useAuth();
@@ -17,28 +18,48 @@ const DepositPage = () => {
   const [upiId, setUpiId] = useState("");
   const [amount, setAmount] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (!db) return;
     const fetchUpiId = async () => {
-      setIsLoading(true);
+      setIsSettingsLoading(true);
       const upiRef = doc(db, "settings", "payment");
-      const upiSnap = await getDoc(upiRef);
-      if (upiSnap.exists()) {
-        setUpiId(upiSnap.data().upiId);
+      try {
+        const upiSnap = await getDoc(upiRef);
+        if (upiSnap.exists()) {
+          setUpiId(upiSnap.data().upiId);
+        }
+      } catch (error) {
+        console.error("Error fetching UPI ID:", error);
+        toast({
+          title: "Error",
+          description: "Could not fetch payment settings.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSettingsLoading(false);
       }
-      setIsLoading(false);
     };
     fetchUpiId();
-  }, [db]);
+  }, [db, toast]);
 
   const handleDeposit = async () => {
-    if (!amount || !screenshot || !user || !db || !storage) return;
+    if (!amount || !screenshot || !user || !db || !storage) {
+        toast({
+            title: "Missing Information",
+            description: "Please fill out all fields and upload a screenshot.",
+            variant: "destructive"
+        });
+        return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      const storageRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}`);
+      const storageRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}-${screenshot.name}`);
       await uploadBytes(storageRef, screenshot);
       const screenshotUrl = await getDownloadURL(storageRef);
 
@@ -53,6 +74,10 @@ const DepositPage = () => {
       toast({ title: "Success", description: "Deposit request submitted successfully. It will be reviewed by an admin." });
       setAmount("");
       setScreenshot(null);
+      // Reset file input
+      const fileInput = document.getElementById('screenshot') as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
     } catch (error) {
       console.error("Error submitting deposit request:", error);
       toast({
@@ -60,12 +85,14 @@ const DepositPage = () => {
         description: "Failed to submit deposit request. Please try again.",
         variant: "destructive",
       });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
+  if (isSettingsLoading) {
       return (
-          <div className="flex justify-center items-center h-full">
+          <div className="flex justify-center items-center h-full p-4">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle>Create Deposit Request</CardTitle>
@@ -82,11 +109,11 @@ const DepositPage = () => {
   }
 
   return (
-    <div className="flex justify-center items-center h-full">
+    <div className="flex justify-center items-start h-full p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Deposit Request</CardTitle>
-           {!upiId && <CardDescription className="text-destructive">Deposits are currently unavailable. Please check back later.</CardDescription>}
+           {!upiId && <CardDescription className="text-destructive pt-2">Deposits are currently unavailable. The admin has not configured payment settings.</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
@@ -94,16 +121,16 @@ const DepositPage = () => {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Amount to deposit (INR)"
-            disabled={!upiId}
+            disabled={!upiId || isSubmitting}
           />
           {upiId && amount && (
-            <div className="flex flex-col items-center space-y-3 p-4 border rounded-md">
+            <div className="flex flex-col items-center space-y-3 p-4 border rounded-md bg-muted/30">
               <p className="text-sm font-medium">Scan the QR code to pay</p>
               <QRCode value={`upi://pay?pa=${upiId}&am=${amount}&cu=INR`} size={128} />
               <p className="text-xs text-muted-foreground">or pay to UPI ID:</p>
               <p className="font-semibold">{upiId}</p>
               <a href={`upi://pay?pa=${upiId}&am=${amount}&cu=INR`} className="w-full">
-                <Button className="w-full">Pay with UPI</Button>
+                <Button className="w-full" disabled={isSubmitting}>Pay with UPI App</Button>
               </a>
             </div>
           )}
@@ -112,14 +139,16 @@ const DepositPage = () => {
             <Input
               id="screenshot"
               type="file"
+              accept="image/*"
               onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)}
               className="mt-1"
-              disabled={!upiId}
+              disabled={!upiId || isSubmitting}
             />
             <p className="text-xs text-muted-foreground mt-1">After payment, upload the screenshot here.</p>
           </div>
-          <Button onClick={handleDeposit} disabled={!amount || !screenshot || !upiId} className="w-full">
-            Submit Deposit Request
+          <Button onClick={handleDeposit} disabled={!amount || !screenshot || !upiId || isSubmitting} className="w-full">
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Submitting...' : 'Submit Deposit Request'}
           </Button>
         </CardContent>
       </Card>
