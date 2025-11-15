@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useParams } from 'next/navigation';
@@ -11,14 +10,9 @@ export default function GroupDetailPage() {
   const params = useParams();
   const group = params.group as string;
 
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [groupData, setGroupData] = useState<{ name: string; number: string; pastResults: { date: string; number: string }[] } | null>(null);
-
-  useEffect(() => {
-    setIsSubscribed(isUserSubscribed(group));
-    setGroupData(getGroupData(group));
-  }, [group]);
-
+  // Fetch data on every render to ensure it's always up-to-date
+  const isSubscribed = isUserSubscribed(group);
+  const groupData = getGroupData(group);
 
   const handleSubscribe = () => {
     router.push('/subscriptions');
