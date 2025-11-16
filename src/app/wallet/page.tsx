@@ -1,7 +1,7 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
@@ -131,13 +131,15 @@ const WalletPage = () => {
       const storageRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}-${screenshot.name}`);
       await uploadBytes(storageRef, screenshot);
       const screenshotUrl = await getDownloadURL(storageRef);
+      
       await addDocumentNonBlocking(collection(db, "depositRequests"), {
         userId: user.uid,
         amount: parseFloat(depositAmount),
         screenshotUrl,
         status: "pending",
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
+
       toast.success("Deposit request submitted!");
       setDepositAmount("");
       setScreenshot(null);
@@ -165,7 +167,7 @@ const WalletPage = () => {
             amount: amount,
             upiId: withdrawUpiId,
             status: "pending",
-            createdAt: new Date(),
+            createdAt: serverTimestamp(),
         });
         toast.success("Withdrawal request submitted!");
         setWithdrawAmount("");
