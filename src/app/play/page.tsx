@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,8 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from 'sonner';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, ChevronRight, CheckCircle, Copy, Share2, List, Info, Wallet } from 'lucide-react';
 import { useUser } from '@/firebase/provider';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { firestore } from '@/firebase/config';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const entryFees = [10, 50, 100, 500, 1000];
 const timeLimits = ['15 min', '30 min', '1 hour'];
@@ -41,7 +42,7 @@ export default function CreateMatchPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userWallet, setUserWallet] = useState(0);
 
-  useState(() => {
+  useEffect(() => {
     if (user) {
       const userDocRef = doc(firestore, "users", user.uid);
       getDoc(userDocRef).then(docSnap => {
@@ -50,56 +51,53 @@ export default function CreateMatchPage() {
         }
       });
     }
-  });
+  }, [user]);
 
   const handleCreateMatch = async () => {
     if (!user) { toast.error('You must be logged in to create a match.'); return; }
-    setIsSubmitting(true);
+    
     const finalEntryFee = entryFee === 'custom' ? parseFloat(customEntryFee) : entryFee;
-    if (isNaN(finalEntryFee) || finalEntryFee <= 0) { toast.error('Please enter a valid entry fee.'); setIsSubmitting(false); return; }
-    if (userWallet < finalEntryFee) { toast.error('Insufficient balance.', { description: `Your balance is ₹${userWallet}.` }); setIsSubmitting(false); return; }
-    if (!roomCode || roomCode.trim().length < 4) { toast.error('Please enter a valid Room Code (at least 4 characters).'); setIsSubmitting(false); return; }
-    if (!matchTitle) { toast.error('Please enter a match title.'); setIsSubmitting(false); return; }
+    if (isNaN(finalEntryFee) || finalEntryFee <= 0) { toast.error('Please enter a valid entry fee.'); return; }
+    if (userWallet < finalEntryFee) { toast.error('Insufficient balance.', { description: `Your balance is ₹${userWallet}.` }); return; }
+    if (!roomCode || roomCode.trim().length < 4) { toast.error('Please enter a valid Room Code (at least 4 characters).'); return; }
+    if (!matchTitle) { toast.error('Please enter a match title.'); return; }
+    
+    setIsSubmitting(true);
 
     const matchId = roomCode.toUpperCase();
     const matchRef = doc(firestore, 'matches', matchId);
 
-    try {
-      const matchSnap = await getDoc(matchRef);
-      if (matchSnap.exists()) {
-        toast.error('Room code already exists.', { description: "Please choose a different room code." });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const newMatch = {
-        id: matchId,
-        room: matchId,
-        matchTitle,
-        entry: finalEntryFee,
-        maxPlayers,
-        privacy,
-        timeLimit,
-        status: 'Waiting for Players',
-        createdBy: user.uid,
-        creatorName: user.displayName || 'Anonymous',
-        createdAt: serverTimestamp(),
-        players: [user.uid],
-        playerInfo: { [user.uid]: { name: user.displayName, photoURL: user.photoURL } },
-      };
-
-      await setDoc(matchRef, newMatch);
-      
-      setCreatedMatchDetails({ ...newMatch, roomCode: matchId, entryFee: finalEntryFee });
-      setMatchCreated(true);
-      toast.success('Match Created Successfully!');
-
-    } catch (error) {
-      console.error("Error creating match:", error);
-      toast.error('Failed to create match.', { description: "Please try again later." });
-    } finally {
+    const matchSnap = await getDoc(matchRef);
+    if (matchSnap.exists()) {
+      toast.error('Room code already exists.', { description: "Please choose a different room code." });
       setIsSubmitting(false);
+      return;
     }
+
+    const newMatch = {
+      id: matchId,
+      room: matchId,
+      matchTitle,
+      entry: finalEntryFee,
+      maxPlayers,
+      privacy,
+      timeLimit,
+      status: 'Waiting for Players',
+      createdBy: user.uid,
+      creatorName: user.displayName || 'Anonymous',
+      createdAt: serverTimestamp(),
+      players: [user.uid],
+      playerInfo: { [user.uid]: { name: user.displayName, photoURL: user.photoURL, isReady: false } },
+    };
+
+    // Use non-blocking write which handles permission errors
+    setDocumentNonBlocking(matchRef, newMatch, {});
+
+    // Optimistically update UI
+    setCreatedMatchDetails({ ...newMatch, roomCode: matchId, entryFee: finalEntryFee });
+    setMatchCreated(true);
+    toast.success('Match creation initiated!');
+    setIsSubmitting(false);
   };
 
   const handleCopyCode = () => { if (createdMatchDetails?.roomCode) { navigator.clipboard.writeText(createdMatchDetails.roomCode); toast.success('Room code copied to clipboard!'); } };
@@ -130,7 +128,7 @@ export default function CreateMatchPage() {
           <CardDescription>Fill in the details below to start a new match.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Wallet Balance</span><span className="font-bold text-lg">₹{userWallet}</span></div>
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Wallet Balance</span><span className="font-bold text-lg">₹{userWallet.toFixed(2)}</span></div>
           <div className="space-y-2">
             <Label className="text-lg font-semibold flex items-center"><IndianRupee className="mr-2 h-5 w-5" />Entry Fee</Label>
             <RadioGroup value={entryFee.toString()} onValueChange={(value) => setEntryFee(value === 'custom' ? 'custom' : parseInt(value))} className="grid grid-cols-3 gap-2">
