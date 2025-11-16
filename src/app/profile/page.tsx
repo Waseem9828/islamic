@@ -50,7 +50,7 @@ const ProfilePage = () => {
     if (!file) return;
 
     setIsUploading(true);
-    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+    const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
 
     try {
         await uploadBytes(storageRef, file);
