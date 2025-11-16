@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +14,7 @@ import { useUser } from '@/firebase/provider';
 import { doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { firestore } from '@/firebase/config';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 const entryFees = [10, 50, 100, 500, 1000];
 const timeLimits = ['15 min', '30 min', '1 hour'];
@@ -67,12 +69,23 @@ export default function CreateMatchPage() {
     const matchId = roomCode.toUpperCase();
     const matchRef = doc(firestore, 'matches', matchId);
 
-    const matchSnap = await getDoc(matchRef);
-    if (matchSnap.exists()) {
-      toast.error('Room code already exists.', { description: "Please choose a different room code." });
-      setIsSubmitting(false);
-      return;
+    try {
+        const matchSnap = await getDoc(matchRef);
+        if (matchSnap.exists()) {
+          toast.error('Room code already exists.', { description: "Please choose a different room code." });
+          setIsSubmitting(false);
+          return;
+        }
+    } catch (e) {
+        const permissionError = new FirestorePermissionError({
+            path: matchRef.path,
+            operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setIsSubmitting(false);
+        return;
     }
+
 
     const newMatch = {
       id: matchId,
