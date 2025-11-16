@@ -38,7 +38,7 @@ const WalletPage = () => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawUpiId, setWithdrawUpiId] = useState("");
+  const [withdrawUpiId, setWithdrawUpiId = useState("");
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
   const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
   const [isWithdrawalHistoryLoading, setIsWithdrawalHistoryLoading] = useState(true);
@@ -72,10 +72,10 @@ const WalletPage = () => {
         setIsBalanceLoading(false);
         return;
     }
-    const userRef = doc(db, "users", user.uid);
-    const unsubscribe = onSnapshot(userRef, (doc) => {
+    const walletRef = doc(db, "wallets", user.uid);
+    const unsubscribe = onSnapshot(walletRef, (doc) => {
         if (doc.exists()) {
-            setWalletBalance(doc.data().walletBalance || 0);
+            setWalletBalance(doc.data().balance || 0);
         }
         setIsBalanceLoading(false);
     }, (error) => {
@@ -285,3 +285,5 @@ const WalletPage = () => {
 };
 
 export default WalletPage;
+
+    

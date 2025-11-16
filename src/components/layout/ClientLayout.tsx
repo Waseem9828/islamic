@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { ClientFirebaseProvider } from '@/firebase/client-provider';
 import { Sidebar, SidebarProvider, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Home, Wallet, Landmark, User, Swords } from 'lucide-react';
+import { Home, Landmark, User, Swords } from 'lucide-react';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export default function ClientLayout({
@@ -49,17 +50,9 @@ export default function ClientLayout({
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild>
-                        <Link href="/deposit">
-                          <Wallet className="h-4 w-4" />
-                          Deposit
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <Link href="/withdraw">
+                        <Link href="/wallet">
                           <Landmark className="h-4 w-4" />
-                          Withdraw
+                          Wallet
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -87,3 +80,5 @@ export default function ClientLayout({
     </ClientFirebaseProvider>
   );
 }
+
+    

@@ -1,23 +1,23 @@
+
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Wallet, Landmark, User, Swords } from 'lucide-react';
+import { Home, Landmark, User, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/play', label: 'Play', icon: Swords },
-  { href: '/deposit', label: 'Deposit', icon: Wallet },
-  { href: '/withdraw', label: 'Withdraw', icon: Landmark },
+  { href: '/wallet', label: 'Wallet', icon: Landmark },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 
 const Footer = () => {
   const pathname = usePathname();
   
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname === '/login' || pathname === '/signup') {
     return null;
   }
 
@@ -49,3 +49,5 @@ const Footer = () => {
 };
 
 export default Footer;
+
+    
