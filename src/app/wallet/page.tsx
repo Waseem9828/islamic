@@ -14,7 +14,7 @@ import QRCode from "qrcode.react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
-import { addDocumentNonBlocking } from "@/firebase";
+import { addDocumentNonBlocking, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const MIN_DEPOSIT_AMOUNT = 100;
@@ -127,18 +127,34 @@ const WalletPage = () => {
     if (parseFloat(depositAmount) < MIN_DEPOSIT_AMOUNT) return toast.error(`Minimum deposit amount is ₹${MIN_DEPOSIT_AMOUNT}.`);
 
     setIsSubmittingDeposit(true);
+    let screenshotUrl = '';
     try {
       const storageRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}-${screenshot.name}`);
       await uploadBytes(storageRef, screenshot);
-      const screenshotUrl = await getDownloadURL(storageRef);
+      screenshotUrl = await getDownloadURL(storageRef);
       
-      await addDocumentNonBlocking(collection(db, "depositRequests"), {
+      const depositData = {
         userId: user.uid,
         amount: parseFloat(depositAmount),
         screenshotUrl,
         status: "pending",
         createdAt: serverTimestamp(),
-      });
+      };
+
+      const reqCol = collection(db, "depositRequests");
+
+      await addDocumentNonBlocking(reqCol, depositData)
+        .catch(error => {
+            // This is where we create and emit the contextual error
+            const permissionError = new FirestorePermissionError({
+                path: reqCol.path,
+                operation: 'create',
+                requestResourceData: depositData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            // Re-throw to be caught by the outer try-catch
+            throw permissionError;
+        });
 
       toast.success("Deposit request submitted!");
       setDepositAmount("");
@@ -147,7 +163,11 @@ const WalletPage = () => {
       if (fileInput) fileInput.value = "";
     } catch (error) {
       console.error("Error submitting deposit request:", error);
-      toast.error("Failed to submit request.");
+      // We only show a generic toast if it's NOT our specific permission error,
+      // as the permission error is handled globally by the listener.
+      if (!(error instanceof FirestorePermissionError)) {
+          toast.error("Failed to submit request.");
+      }
     } finally {
       setIsSubmittingDeposit(false);
     }
