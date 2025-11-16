@@ -14,6 +14,7 @@
  * - /groups/{groupId}: Publicly readable, admin writable.
  * - /wallets/{userId}: Stores user wallet balance.
  * - /depositRequests/{requestId}: Stores user deposit requests.
+ * - /withdrawalRequests/{requestId}: Stores user withdrawal requests.
  * - /settings/{settingId}: Stores application settings like UPI ID.
  * - /subscriptions/{subscriptionId}: Stores available subscription plans.
  * - /userSubscriptions/{userId}: Stores a user's active subscription.
@@ -169,8 +170,25 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       // Users can read their own requests. Admins can read any request.
       allow get: if (isOwner(resource.data.userId)) || isAdmin();
-      // Only admins can list all requests. Users must query for their own.
-      allow list: if isAdmin();
+      // Users can list their own requests. Admins can list all requests.
+      allow list: if isAdmin() || (isSignedIn() && request.query.where.userId == request.auth.uid);
+      // Only admins can update requests (e.g., to approve them).
+      allow update: if isAdmin();
+      // Only admins can delete requests.
+      allow delete: if isAdmin();
+    }
+    
+    /**
+     * @description Withdrawal requests made by users.
+     * @path /withdrawalRequests/{requestId}
+     */
+    match /withdrawalRequests/{requestId} {
+      // Users can create their own withdrawal requests.
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // Users can read their own requests. Admins can read any request.
+      allow get: if (isOwner(resource.data.userId)) || isAdmin();
+      // Users can list their own requests. Admins can list all requests.
+      allow list: if isAdmin() || (isSignedIn() && request.query.where.userId == request.auth.uid);
       // Only admins can update requests (e.g., to approve them).
       allow update: if isAdmin();
       // Only admins can delete requests.
