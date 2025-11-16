@@ -3,12 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Gem, User } from 'lucide-react';
+import { Home, Wallet, Landmark, User, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
-  { href: '/subscriptions', label: 'Plans', icon: Gem },
+  { href: '/play', label: 'Play', icon: Swords },
+  { href: '/deposit', label: 'Deposit', icon: Wallet },
+  { href: '/withdraw', label: 'Withdraw', icon: Landmark },
   { href: '/profile', label: 'Profile', icon: User },
 ];
 

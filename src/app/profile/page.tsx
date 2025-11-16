@@ -1,6 +1,6 @@
 
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,19 @@ const ProfilePage = () => {
   const { user, isUserLoading } = useUser();
   const { auth, storage, firestore } = useFirebase();
   const [isUploading, setIsUploading] = useState(false);
+  const [avatarSrc, setAvatarSrc] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setAvatarSrc(user.photoURL || `https://avatar.vercel.sh/${user.email}.png`);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [isUserLoading, user, router]);
 
   const handleLogout = async () => {
     if (!auth) return;
@@ -50,8 +63,8 @@ const ProfilePage = () => {
         const userDocRef = doc(firestore, "users", user.uid);
         await updateDoc(userDocRef, { photoURL });
         
+        setAvatarSrc(photoURL);
         toast.success("Profile picture updated successfully!");
-        // Force a reload of the user object to see the change, or manage state more granularly
     } catch (error) {
         console.error("Error uploading profile picture:", error);
         toast.error("Failed to upload profile picture.");
@@ -61,17 +74,10 @@ const ProfilePage = () => {
   };
 
 
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
     return <div>Loading...</div>;
   }
-
-  if (!user) {
-    router.push('/login');
-    return null;
-  }
   
-  const avatarSrc = user.photoURL || `https://avatar.vercel.sh/${user.email}.png`;
-
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <Card className="max-w-md mx-auto">
