@@ -3,68 +3,150 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { Users, List, IndianRupee, Settings, Gem, LayoutDashboard, ArrowLeft } from 'lucide-react';
+import { Users, List, IndianRupee, Settings, Gem, ArrowLeft, GemIcon, User, ListChecks } from 'lucide-react';
 import Link from 'next/link';
+import { useCollection, useDoc, useFirebase } from '@/firebase';
+import { collection, doc, query, where } from 'firebase/firestore';
+import { useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const adminFeatures = [
-  {
-    title: 'Manage Numbers',
-    description: 'Update daily numbers for all groups.',
-    icon: List,
-    path: '/admin/numbers',
-  },
-  {
-    title: 'Manage Users',
-    description: 'View and manage all registered users.',
-    icon: Users,
-    path: '/admin/users',
-  },
-   {
-    title: 'Deposit Requests',
-    description: 'Approve or reject user deposits.',
-    icon: IndianRupee,
-    path: '/admin/deposit-requests',
-  },
-  {
-    title: 'Payment Settings',
-    description: 'Set your UPI ID for deposits.',
-    icon: Settings,
-    path: '/admin/payment-settings',
-  },
-  {
-    title: 'Manage Subscriptions',
-    description: 'Create and manage subscription plans.',
-    icon: Gem,
-    path: '/admin/subscriptions',
-  },
-];
+const StatCard = ({ title, description, icon: Icon, path, data, isLoading, dataFormatter }: {
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    path: string;
+    data: any;
+    isLoading: boolean;
+    dataFormatter: (data: any) => React.ReactNode;
+}) => {
+    const router = useRouter();
+    return (
+        <Card
+            className="cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-300 active:scale-95 group"
+            onClick={() => router.push(path)}
+        >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                <Icon className="w-5 h-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <Skeleton className="h-6 w-1/3" />
+                ) : (
+                    <div className="text-2xl font-bold">{dataFormatter(data)}</div>
+                )}
+                <p className="text-xs text-muted-foreground">{description}</p>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
+    const { firestore } = useFirebase();
+
+    // Data for Users Card
+    const usersQuery = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+    const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
+
+    // Data for Deposit Requests Card
+    const depositRequestsQuery = useMemo(() => firestore ? query(collection(firestore, 'depositRequests'), where('status', '==', 'pending')) : null, [firestore]);
+    const { data: pendingDeposits, isLoading: isLoadingDeposits } = useCollection(depositRequestsQuery);
+    
+    // Data for Lucky Numbers Card
+    const groupsQuery = useMemo(() => firestore ? collection(firestore, 'groups') : null, [firestore]);
+    const { data: groups, isLoading: isLoadingGroups } = useCollection(groupsQuery);
+    const updatedToday = useMemo(() => {
+        if (!groups) return 0;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return groups.filter(g => g.updatedAt && g.updatedAt.toDate() >= today).length;
+    }, [groups]);
+
+    // Data for Payment Settings Card
+    const paymentSettingsDoc = useMemo(() => firestore ? doc(firestore, 'settings', 'payment') : null, [firestore]);
+    const { data: paymentSettings, isLoading: isLoadingSettings } = useDoc(paymentSettingsDoc);
+    
+    // Data for Subscriptions Card
+    const subscriptionsQuery = useMemo(() => firestore ? collection(firestore, 'subscriptions') : null, [firestore]);
+    const { data: subscriptions, isLoading: isLoadingSubscriptions } = useCollection(subscriptionsQuery);
+
+    const adminFeatures = [
+        {
+            title: 'Manage Users',
+            description: 'Total registered users',
+            icon: Users,
+            path: '/admin/users',
+            data: users,
+            isLoading: isLoadingUsers,
+            dataFormatter: (data: any) => data?.length ?? 0,
+        },
+        {
+            title: 'Deposit Requests',
+            description: 'Pending user deposits',
+            icon: IndianRupee,
+            path: '/admin/deposit-requests',
+            data: pendingDeposits,
+            isLoading: isLoadingDeposits,
+            dataFormatter: (data: any) => data?.length ?? 0,
+        },
+        {
+            title: 'Manage Numbers',
+            description: 'Groups updated today',
+            icon: List,
+            path: '/admin/numbers',
+            data: updatedToday,
+            isLoading: isLoadingGroups,
+            dataFormatter: (data: any) => `${data} / ${groups?.length || 4}`,
+        },
+        {
+            title: 'Payment Settings',
+            description: 'Your configured UPI ID',
+            icon: Settings,
+            path: '/admin/payment-settings',
+            data: paymentSettings,
+            isLoading: isLoadingSettings,
+            dataFormatter: (data: any) => data?.upiId ? <span className='text-base truncate'>{data.upiId}</span> : <span className="text-base text-destructive">Not Set</span>,
+        },
+        {
+            title: 'Manage Subscriptions',
+            description: 'Total subscription plans',
+            icon: Gem,
+            path: '/admin/subscriptions',
+            data: subscriptions,
+            isLoading: isLoadingSubscriptions,
+            dataFormatter: (data: any) => data?.length ?? 0,
+        },
+    ];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Welcome! From here you can manage all aspects of your application.</p>
+        <p className="text-muted-foreground">Welcome! Here's a quick overview of your application.</p>
       </header>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {adminFeatures.map((feature) => (
-          <Card
+          <StatCard
             key={feature.title}
-            className="cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-300 active:scale-95 group"
-            onClick={() => router.push(feature.path)}
+            {...feature}
+          />
+        ))}
+         <Card
+            className="cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-300 active:scale-95 group sm:col-span-2 lg:col-span-1"
+            onClick={() => {
+                // Future page for withdrawal requests
+            }}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{feature.title}</CardTitle>
-              <feature.icon className="w-5 h-5 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Withdrawal Requests</CardTitle>
+                <ListChecks className="w-5 h-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-xs text-muted-foreground">Pending withdrawal requests</p>
             </CardContent>
-          </Card>
-        ))}
+        </Card>
       </div>
 
        <Card className="mt-8">
