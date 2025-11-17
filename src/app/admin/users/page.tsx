@@ -7,6 +7,7 @@ import { useCollection, useFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ManageUsersPage() {
   const { firestore } = useFirebase();
@@ -14,19 +15,31 @@ export default function ManageUsersPage() {
   const { data: users, isLoading } = useCollection(usersQuery);
 
   return (
-    <div>
-      <Card className="bg-muted/30">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <Card>
         <CardHeader>
           <CardTitle>Manage Users</CardTitle>
-          <CardDescription>View and manage all registered users.</CardDescription>
+          <CardDescription>View and manage all registered users in your application.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p>Loading users...</p>
+            <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg">
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-[150px]" />
+                                <Skeleton className="h-3 w-[100px]" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
           ) : (
             <div className="space-y-4">
               {users?.map(user => (
-                <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div key={user.id} className="flex items-center justify-between p-3 rounded-lg border">
                   <div className="flex items-center gap-4">
                     <Avatar>
                         <AvatarImage src={user.photoURL || `https://avatar.vercel.sh/${user.email}.png`} alt={user.email || 'User'} />

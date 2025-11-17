@@ -85,59 +85,61 @@ const DepositRequestsPage = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Deposit Requests</CardTitle>
-        <CardDescription>Review and approve pending user deposit requests.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {isLoading && <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin" /></div>}
-        
-        {!isLoading && requests.map((request) => (
-          <div key={request.id} className="flex flex-col sm:flex-row items-center justify-between p-3 border rounded-lg gap-4">
-            <div className="flex-1">
-              <p className="text-sm font-semibold">User ID:</p>
-              <p className="text-xs text-muted-foreground break-all">{request.userId}</p>
-              <p className="text-sm font-semibold mt-2">Amount:</p>
-              <p className="font-bold text-lg">₹{request.amount}</p>
-            </div>
+    <div className="p-4 sm:p-6 lg:p-8">
+        <Card>
+        <CardHeader>
+            <CardTitle>Deposit Requests</CardTitle>
+            <CardDescription>Review and approve pending user deposit requests.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            {isLoading && <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin" /></div>}
             
-            <Dialog>
-                <DialogTrigger asChild>
-                    <div className="w-24 h-24 relative cursor-pointer rounded-md overflow-hidden border">
-                      <Image
-                        src={request.screenshotUrl}
-                        alt="Screenshot"
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
-                    </div>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg w-full">
-                    <DialogHeader>
-                        <DialogTitle>Deposit Screenshot</DialogTitle>
-                    </DialogHeader>
-                    <div className="relative aspect-video">
-                         <Image
+            {!isLoading && requests.map((request) => (
+            <div key={request.id} className="flex flex-col sm:flex-row items-center justify-between p-3 border rounded-lg gap-4">
+                <div className="flex-1">
+                <p className="text-sm font-semibold">User ID:</p>
+                <p className="text-xs text-muted-foreground break-all">{request.userId}</p>
+                <p className="text-sm font-semibold mt-2">Amount:</p>
+                <p className="font-bold text-lg">₹{request.amount}</p>
+                </div>
+                
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <div className="w-24 h-24 relative cursor-pointer rounded-md overflow-hidden border">
+                        <Image
                             src={request.screenshotUrl}
-                            alt="Screenshot full view"
+                            alt="Screenshot"
                             fill
-                            className="object-contain"
-                          />
-                    </div>
-                </DialogContent>
-            </Dialog>
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                        </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg w-full">
+                        <DialogHeader>
+                            <DialogTitle>Deposit Screenshot</DialogTitle>
+                        </DialogHeader>
+                        <div className="relative aspect-video">
+                            <Image
+                                src={request.screenshotUrl}
+                                alt="Screenshot full view"
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
-            <Button onClick={() => handleApprove(request)} disabled={approvingId === request.id}>
-              {approvingId === request.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {approvingId === request.id ? 'Approving...' : 'Approve'}
-            </Button>
-          </div>
-        ))}
-        {!isLoading && requests.length === 0 && <p className="text-center text-muted-foreground py-8">No pending deposit requests.</p>}
-      </CardContent>
-    </Card>
+                <Button onClick={() => handleApprove(request)} disabled={approvingId === request.id}>
+                {approvingId === request.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {approvingId === request.id ? 'Approving...' : 'Approve'}
+                </Button>
+            </div>
+            ))}
+            {!isLoading && requests.length === 0 && <p className="text-center text-muted-foreground py-8">No pending deposit requests.</p>}
+        </CardContent>
+        </Card>
+    </div>
   );
 };
 

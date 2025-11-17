@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -76,14 +77,13 @@ export default function ManageNumbersPage() {
   };
 
   return (
-    <div>
-        <Card className="bg-muted/30">
+    <div className="p-4 sm:p-6 lg:p-8">
+        <Card>
             <CardHeader>
-                <CardTitle>Manage/Create Groups & Numbers</CardTitle>
+                <CardTitle>Manage Numbers</CardTitle>
+                <CardDescription>Update or create the daily lucky numbers for each group. This will make them appear on the user dashboard.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <p className="text-muted-foreground">Update or create the daily lucky numbers for each group. This will make them appear on the user dashboard.</p>
-                
                 <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="group-select">Select Group</Label>
