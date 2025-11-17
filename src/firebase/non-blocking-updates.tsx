@@ -60,5 +60,9 @@ export function addDocumentNonBlocking<T>(
   reference: CollectionReference<T>,
   data: WithFieldValue<T>
 ): Promise<DocumentReference<T>> {
+  // This function now directly returns the promise from addDoc.
+  // The calling function is responsible for handling .then() and .catch()
   return addDoc(reference, data);
 }
+
+    
