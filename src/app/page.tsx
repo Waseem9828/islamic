@@ -63,15 +63,15 @@ export default function MatchmakingHomePage() {
       'In Progress': { class: 'text-orange-600 border-orange-500/50 bg-orange-500/10', icon: <span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span></span> },
       'Cancelled': { class: 'text-red-600 border-red-500/50 bg-red-500/10', icon: <XCircle className="mr-1 h-3 w-3" /> },
     }[status] || { class: '' };
-    return <Badge variant="outline" className={`font-semibold text-xs px-2 py-1 ${config.class}`}>{config.icon}{status}</Badge>;
+    return <Badge variant="outline" className={`font-semibold text-xs px-2 py-0.5 ${config.class}`}>{config.icon}{status}</Badge>;
   }
 
   const MatchCard = ({ match, button, borderColor, cardClassName }: any) => (
     <Card className={`overflow-hidden ${borderColor} ${cardClassName}`}>
-        <div className="p-3 space-y-1">
+        <div className="p-2 space-y-1">
             <div className="flex justify-between items-start">
                 <div>
-                    <CardTitle className="text-md font-bold">{match.room}</CardTitle>
+                    <CardTitle className="text-base font-bold">{match.room}</CardTitle>
                     {match.createdBy && <CardDescription className="text-xs">By: {match.createdBy}</CardDescription>}
                 </div>
                 <Badge variant="secondary" className="text-sm">₹{match.entry}</Badge>
@@ -80,7 +80,9 @@ export default function MatchmakingHomePage() {
                 <span className="flex items-center"><Users className="mr-1 h-3 w-3" />{match.players}</span>
                 <span className="flex items-center"><Clock className="mr-1 h-3 w-3" />{match.createdAt || match.waiting || match.started}</span>
             </div>
-             <StatusBadge status={match.status} />
+            <div className="flex justify-between items-center">
+              <StatusBadge status={match.status} />
+            </div>
             <div className="pt-1">{button}</div>
         </div>
     </Card>
@@ -90,38 +92,38 @@ export default function MatchmakingHomePage() {
     <div className="container mx-auto max-w-4xl py-4">
         <header className="text-center mb-6"><h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center"><Gamepad2 className="mr-2 h-8 w-8" /> Ludo Match Making</h1><p className="text-muted-foreground mt-2">Find, join, or create Ludo matches.</p></header>
 
-        <Collapsible className="mb-6">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input placeholder="Search by Room Code or Creator..." className="pl-10 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </div>
+        <div className="flex items-center gap-2 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input placeholder="Search by Room Code or Creator..." className="pl-10 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
+          <Collapsible>
             <CollapsibleTrigger asChild>
               <Button variant="outline"><SlidersHorizontal className="mr-2 h-4 w-4"/> Filters</Button>
             </CollapsibleTrigger>
-          </div>
-          <CollapsibleContent className="pt-4 space-y-4">
-              <div className="space-y-2">
-                  <Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label>
-                  <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={1000} step={10} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <Label>Player Count</Label>
-                      <Select value={filters.playerCount} onValueChange={(val) => handleFilterChange('playerCount', val)}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="all">All</SelectItem>
-                              <SelectItem value="2">2</SelectItem>
-                              <SelectItem value="3">3</SelectItem>
-                              <SelectItem value="4">4</SelectItem>
-                          </SelectContent>
-                      </Select>
-                  </div>
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 1000], playerCount: 'all', status: 'all' })}>Reset</Button>
-          </CollapsibleContent>
-        </Collapsible>
+            <CollapsibleContent className="absolute z-10 top-full right-0 mt-2 w-full max-w-xs bg-card border shadow-lg rounded-lg p-4 space-y-4">
+                <div className="space-y-2">
+                    <Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label>
+                    <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={1000} step={10} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Player Count</Label>
+                        <Select value={filters.playerCount} onValueChange={(val) => handleFilterChange('playerCount', val)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="4">4</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 1000], playerCount: 'all', status: 'all' })}>Reset</Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
 
 
         <Accordion type="multiple" defaultValue={['my-active-matches', 'open-matches', 'ongoing-matches']} className="w-full space-y-4">
