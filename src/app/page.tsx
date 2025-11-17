@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -66,22 +67,22 @@ export default function MatchmakingHomePage() {
   }
 
   const MatchCard = ({ match, button, borderColor, cardClassName }: any) => (
-    <Card className={`flex flex-col justify-between overflow-hidden ${borderColor} ${cardClassName}`}>
-        <CardHeader className="p-3">
+    <Card className={`overflow-hidden ${borderColor} ${cardClassName}`}>
+        <div className="p-3 space-y-2">
             <div className="flex justify-between items-start">
-                <CardTitle className="text-md font-bold">{match.room}</CardTitle>
+                <div>
+                    <CardTitle className="text-md font-bold">{match.room}</CardTitle>
+                    {match.createdBy && <CardDescription className="text-xs">By: {match.createdBy}</CardDescription>}
+                </div>
                 <Badge variant="secondary" className="text-sm">₹{match.entry}</Badge>
             </div>
-            {match.createdBy && <CardDescription className="text-xs">By: {match.createdBy}</CardDescription>}
-        </CardHeader>
-        <CardContent className="p-3 flex-grow flex flex-col justify-end space-y-2">
             <div className="flex justify-between items-center text-xs text-muted-foreground">
                 <span className="flex items-center"><Users className="mr-1 h-3 w-3" />{match.players}</span>
                 <span className="flex items-center"><Clock className="mr-1 h-3 w-3" />{match.createdAt || match.waiting || match.started}</span>
             </div>
-            <StatusBadge status={match.status} />
+             <StatusBadge status={match.status} />
             {button}
-        </CardContent>
+        </div>
     </Card>
   );
 
