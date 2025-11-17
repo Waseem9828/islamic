@@ -3,7 +3,7 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { Users, List, IndianRupee, Settings, Gem, ArrowLeft, GemIcon, User, ListChecks } from 'lucide-react';
+import { Users, List, IndianRupee, Settings, ArrowLeft, ListChecks } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection, useDoc, useFirebase } from '@/firebase';
 import { collection, doc, query, where } from 'firebase/firestore';
@@ -56,9 +56,6 @@ export default function AdminDashboardPage() {
     const paymentSettingsDoc = useMemo(() => firestore ? doc(firestore, 'settings', 'payment') : null, [firestore]);
     const { data: paymentSettings, isLoading: isLoadingSettings } = useDoc(paymentSettingsDoc);
     
-    // Data for Subscriptions Card
-    const subscriptionsQuery = useMemo(() => firestore ? collection(firestore, 'subscriptions') : null, [firestore]);
-    const { data: subscriptions, isLoading: isLoadingSubscriptions } = useCollection(subscriptionsQuery);
 
     const adminFeatures = [
         {
@@ -87,15 +84,6 @@ export default function AdminDashboardPage() {
             data: paymentSettings,
             isLoading: isLoadingSettings,
             dataFormatter: (data: any) => data?.upiId ? <span className='text-base truncate'>{data.upiId}</span> : <span className="text-base text-destructive">Not Set</span>,
-        },
-        {
-            title: 'Manage Subscriptions',
-            description: 'Total subscription plans',
-            icon: Gem,
-            path: '/admin/subscriptions',
-            data: subscriptions,
-            isLoading: isLoadingSubscriptions,
-            dataFormatter: (data: any) => data?.length ?? 0,
         },
     ];
 

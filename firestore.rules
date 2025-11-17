@@ -15,8 +15,6 @@
  * - /depositRequests/{requestId}: Stores user deposit requests.
  * - /withdrawalRequests/{requestId}: Stores user withdrawal requests.
  * - /settings/{settingId}: Stores application settings like UPI ID.
- * - /subscriptions/{subscriptionId}: Stores available subscription plans.
- * - /userSubscriptions/{userId}: Stores a user's active subscription.
  *
  * Key Security Decisions:
  * - User listing is disallowed to protect privacy, except for admins.
@@ -192,26 +190,6 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
-    }
-    
-    /**
-     * @description Available subscription plans.
-     * @path /subscriptions/{subscriptionId}
-     */
-    match /subscriptions/{subscriptionId} {
-        // Any signed-in user can view available subscriptions.
-        allow read: if isSignedIn();
-        // Only admins can add or modify subscription plans.
-        allow write: if isAdmin();
-    }
-
-    /**
-     * @description Stores the subscription status for each user.
-     * @path /userSubscriptions/{userId}
-     */
-    match /userSubscriptions/{userId} {
-        // A user can read and manage their own subscription. Admins can manage any.
-        allow read, write: if isOwner(userId) || isAdmin();
     }
   }
 }

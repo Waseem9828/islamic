@@ -34,8 +34,6 @@ const Header = () => {
       </div>
 
       <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-        <Link href="/subscriptions" className="text-muted-foreground hover:text-primary transition-colors">Subscriptions</Link>
-        <Link href="/deposit" className="text-muted-foreground hover:text-primary transition-colors">Deposit</Link>
         <Link href="/wallet" className="text-muted-foreground hover:text-primary transition-colors">Wallet</Link>
       </nav>
 

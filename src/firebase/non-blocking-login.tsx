@@ -37,7 +37,6 @@ export function initiateEmailSignUp(
           email: user.email,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          subscriptions: [],
         };
 
         // Use a standard write to create the user document.
