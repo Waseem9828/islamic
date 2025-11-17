@@ -1,7 +1,20 @@
 'use client';
 import { getAuth, type User } from 'firebase/auth';
 
-type SecurityRuleContext = {
+export const errorEmitter = {
+  events: {} as Record<string, Function[]>,
+  emit(event: string, data: any) {
+    if (!this.events[event]) return;
+    this.events[event].forEach(callback => callback(data));
+  },
+  on(event: string, callback: Function) {
+    if (!this.events[event]) this.events[event] = [];
+    this.events[event].push(callback);
+  },
+};
+
+
+export type SecurityRuleContext = {
   path: string;
   operation: 'get' | 'list' | 'create' | 'update' | 'delete' | 'write';
   requestResourceData?: any;
