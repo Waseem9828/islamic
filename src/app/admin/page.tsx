@@ -52,16 +52,6 @@ export default function AdminDashboardPage() {
     const depositRequestsQuery = useMemo(() => firestore ? query(collection(firestore, 'depositRequests'), where('status', '==', 'pending')) : null, [firestore]);
     const { data: pendingDeposits, isLoading: isLoadingDeposits } = useCollection(depositRequestsQuery);
     
-    // Data for Lucky Numbers Card
-    const groupsQuery = useMemo(() => firestore ? collection(firestore, 'groups') : null, [firestore]);
-    const { data: groups, isLoading: isLoadingGroups } = useCollection(groupsQuery);
-    const updatedToday = useMemo(() => {
-        if (!groups) return 0;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return groups.filter(g => g.updatedAt && g.updatedAt.toDate() >= today).length;
-    }, [groups]);
-
     // Data for Payment Settings Card
     const paymentSettingsDoc = useMemo(() => firestore ? doc(firestore, 'settings', 'payment') : null, [firestore]);
     const { data: paymentSettings, isLoading: isLoadingSettings } = useDoc(paymentSettingsDoc);
@@ -88,15 +78,6 @@ export default function AdminDashboardPage() {
             data: pendingDeposits,
             isLoading: isLoadingDeposits,
             dataFormatter: (data: any) => data?.length ?? 0,
-        },
-        {
-            title: 'Manage Numbers',
-            description: 'Groups updated today',
-            icon: List,
-            path: '/admin/numbers',
-            data: updatedToday,
-            isLoading: isLoadingGroups,
-            dataFormatter: (data: any) => `${data} / ${groups?.length || 4}`,
         },
         {
             title: 'Payment Settings',

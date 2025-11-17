@@ -11,7 +11,6 @@ import { useSidebar } from '@/components/ui/sidebar';
 
 const adminFeatures = [
     { title: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
-    { title: 'Numbers', icon: List, path: '/admin/numbers' },
     { title: 'Users', icon: Users, path: '/admin/users' },
     { title: 'Deposits', icon: IndianRupee, path: '/admin/deposit-requests' },
     { title: 'Payments', icon: Settings, path: '/admin/payment-settings' },

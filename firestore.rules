@@ -11,7 +11,6 @@
  * - /roles_admin/{adminId}: Presence of a document grants admin privileges.
  * - /users/{userId}/drawResults/{drawResultId}: Stores draw results, accessible only to the owning user.
  * - /prayerTimes/{prayerTimeId}: Stores prayer times, publicly readable.
- * - /groups/{groupId}: Publicly readable, admin writable.
  * - /wallets/{userId}: Stores user wallet balance.
  * - /depositRequests/{requestId}: Stores user deposit requests.
  * - /withdrawalRequests/{requestId}: Stores user withdrawal requests.
@@ -127,18 +126,6 @@ service cloud.firestore {
       allow create: if false;
       allow update: if false;
       allow delete: if false;
-    }
-
-    /**
-     * @description Allows public read access to groups data, but write access is restricted to admins.
-     * @path /groups/{groupId}
-     */
-    match /groups/{groupId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
     }
 
     /**
