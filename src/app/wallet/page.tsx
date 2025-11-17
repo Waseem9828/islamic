@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const MIN_DEPOSIT_AMOUNT = 100;
 const MIN_WALLET_BALANCE_FOR_WITHDRAWAL = 300;
@@ -130,7 +131,7 @@ const WalletPage = () => {
       const storageRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}-${screenshot.name}`);
       await uploadBytes(storageRef, screenshot);
       const screenshotUrl = await getDownloadURL(storageRef);
-      
+
       const depositData = {
         userId: user.uid,
         amount: parseFloat(depositAmount),
@@ -138,8 +139,10 @@ const WalletPage = () => {
         status: "pending",
         createdAt: serverTimestamp(),
       };
+      
+      const depositCollection = collection(db, "depositRequests");
+      await addDoc(depositCollection, depositData);
 
-      await addDoc(collection(db, "depositRequests"), depositData);
 
       toast.success("Deposit request submitted!");
       setDepositAmount("");
@@ -148,7 +151,9 @@ const WalletPage = () => {
       if (fileInput) fileInput.value = "";
     } catch (error) {
       console.error("Error submitting deposit request:", error);
-      toast.error("Failed to submit request. See console for details.");
+      toast.error("Failed to submit request.", {
+        description: "Please check your connection and try again. If the problem persists, contact support."
+      });
     } finally {
       setIsSubmittingDeposit(false);
     }

@@ -30,7 +30,7 @@ service firebase.storage {
     // - Only the owner and admins can read.
     // - Only the owner can upload.
     // - We can add checks for file size and type for added security.
-    match /deposit-screenshots/{userId}/{fileName} {
+    match /deposit-screenshots/{userId}/{allPaths=**} {
       allow read: if isOwner(userId) || isAdmin();
       allow write: if isOwner(userId) 
                     && request.resource.size < 5 * 1024 * 1024 // Max 5MB
