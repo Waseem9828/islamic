@@ -7,8 +7,7 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { getFirestore, doc, serverTimestamp } from 'firebase/firestore';
-import { setDocumentNonBlocking } from './non-blocking-updates';
+import { getFirestore, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getSdks } from './core';
 
 type AuthCallback = (error?: FirebaseError) => void;
@@ -26,27 +25,31 @@ export function initiateEmailSignUp(
   callback: AuthCallback
 ): void {
   createUserWithEmailAndPassword(authInstance, email, password)
-    .then((userCredential) => {
-      // After user is created, create their document in Firestore.
-      const user = userCredential.user;
-      const { firestore } = getSdks(authInstance.app);
-      const userDocRef = doc(firestore, 'users', user.uid);
+    .then(async (userCredential) => {
+      try {
+        // After user is created, create their document in Firestore.
+        const user = userCredential.user;
+        const { firestore } = getSdks(authInstance.app);
+        const userDocRef = doc(firestore, 'users', user.uid);
 
-      const newUser = {
-        id: user.uid,
-        email: user.email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        subscriptions: [],
-      };
+        const newUser = {
+          id: user.uid,
+          email: user.email,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          subscriptions: [],
+        };
 
-      // Use a non-blocking write to create the user document.
-      setDocumentNonBlocking(userDocRef, newUser, {});
+        // Use a standard write to create the user document.
+        await setDoc(userDocRef, newUser);
 
-      callback(); // Success
+        callback(); // Success
+      } catch (error) {
+         callback(error as FirebaseError); // Firestore error
+      }
     })
     .catch((error: FirebaseError) => {
-      callback(error); // Failure
+      callback(error); // Auth error
     });
 }
 

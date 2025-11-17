@@ -50,26 +50,23 @@ const ProfilePage = () => {
     if (!file) return;
 
     setIsUploading(true);
-    const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
-
     try {
-        await uploadBytes(storageRef, file);
-        const photoURL = await getDownloadURL(storageRef);
+      const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const photoURL = await getDownloadURL(storageRef);
 
-        // Update auth profile
-        await updateProfile(auth.currentUser, { photoURL });
-        
-        // Update firestore document
-        const userDocRef = doc(firestore, "users", user.uid);
-        await updateDoc(userDocRef, { photoURL });
-        
-        setAvatarSrc(photoURL);
-        toast.success("Profile picture updated successfully!");
+      await updateProfile(auth.currentUser, { photoURL });
+      
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, { photoURL });
+      
+      setAvatarSrc(photoURL);
+      toast.success("Profile picture updated successfully!");
     } catch (error) {
-        console.error("Error uploading profile picture:", error);
-        toast.error("Failed to upload profile picture.");
+      console.error("Error uploading profile picture:", error);
+      toast.error("Failed to upload profile picture. See console for details.");
     } finally {
-        setIsUploading(false);
+      setIsUploading(false);
     }
   };
 

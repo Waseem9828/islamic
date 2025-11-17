@@ -170,8 +170,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       // Users can read their own requests. Admins can read any request.
       allow get: if (isOwner(resource.data.userId)) || isAdmin();
-      // Users can list their own requests. Admins can list all requests.
-      allow list: if isAdmin() || (isSignedIn() && request.query.where.userId == request.auth.uid);
+      // A signed-in user can query the collection, the client-side query will filter by userId.
+      allow list: if isSignedIn();
       // Only admins can update requests (e.g., to approve them).
       allow update: if isAdmin();
       // Only admins can delete requests.
@@ -187,8 +187,8 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       // Users can read their own requests. Admins can read any request.
       allow get: if (isOwner(resource.data.userId)) || isAdmin();
-      // Users can list their own requests. Admins can list all requests.
-      allow list: if isAdmin() || (isSignedIn() && request.query.where.userId == request.auth.uid);
+      // A signed-in user can query the collection, the client-side query will filter by userId.
+      allow list: if isSignedIn();
       // Only admins can update requests (e.g., to approve them).
       allow update: if isAdmin();
       // Only admins can delete requests.
