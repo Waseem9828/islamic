@@ -68,7 +68,7 @@ export default function MatchmakingHomePage() {
 
   const MatchCard = ({ match, button, borderColor, cardClassName }: any) => (
     <Card className={`overflow-hidden ${borderColor} ${cardClassName}`}>
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-1">
             <div className="flex justify-between items-start">
                 <div>
                     <CardTitle className="text-md font-bold">{match.room}</CardTitle>
@@ -81,7 +81,7 @@ export default function MatchmakingHomePage() {
                 <span className="flex items-center"><Clock className="mr-1 h-3 w-3" />{match.createdAt || match.waiting || match.started}</span>
             </div>
              <StatusBadge status={match.status} />
-            {button}
+            <div className="pt-1">{button}</div>
         </div>
     </Card>
   );
@@ -90,7 +90,39 @@ export default function MatchmakingHomePage() {
     <div className="container mx-auto max-w-4xl py-4">
         <header className="text-center mb-6"><h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center"><Gamepad2 className="mr-2 h-8 w-8" /> Ludo Match Making</h1><p className="text-muted-foreground mt-2">Find, join, or create Ludo matches.</p></header>
 
-        <div className="mb-6 space-y-4"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" /><Input placeholder="Search by Room Code or Creator..." className="pl-10 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div><Collapsible><CollapsibleTrigger asChild><Button variant="outline" className="w-full"><SlidersHorizontal className="mr-2 h-4 w-4"/> Filters</Button></CollapsibleTrigger><CollapsibleContent className="pt-4 space-y-4"><div className="space-y-2"><Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label><Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={1000} step={10} /></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="space-y-2"><Label>Player Count</Label><Select value={filters.playerCount} onValueChange={(val) => handleFilterChange('playerCount', val)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="2">2</SelectItem><SelectItem value="3">3</SelectItem><SelectItem value="4">4</SelectItem></SelectContent></Select></div></div><Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 1000], playerCount: 'all', status: 'all' })}>Reset</Button></CollapsibleContent></Collapsible></div>
+        <Collapsible className="mb-6">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input placeholder="Search by Room Code or Creator..." className="pl-10 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline"><SlidersHorizontal className="mr-2 h-4 w-4"/> Filters</Button>
+            </CollapsibleTrigger>
+          </div>
+          <CollapsibleContent className="pt-4 space-y-4">
+              <div className="space-y-2">
+                  <Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label>
+                  <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={1000} step={10} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <Label>Player Count</Label>
+                      <Select value={filters.playerCount} onValueChange={(val) => handleFilterChange('playerCount', val)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="all">All</SelectItem>
+                              <SelectItem value="2">2</SelectItem>
+                              <SelectItem value="3">3</SelectItem>
+                              <SelectItem value="4">4</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 1000], playerCount: 'all', status: 'all' })}>Reset</Button>
+          </CollapsibleContent>
+        </Collapsible>
+
 
         <Accordion type="multiple" defaultValue={['my-active-matches', 'open-matches', 'ongoing-matches']} className="w-full space-y-4">
             <AccordionItem value="my-active-matches" className="border-none"><AccordionTrigger className="text-lg font-semibold text-blue-600 hover:no-underline rounded-lg bg-blue-500/10 px-4"><div className='flex items-center'>My Active<Badge variant="secondary" className="ml-2">{myActiveMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-2"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">{myActiveMatches.map(m => <MatchCard key={m.id} match={m} borderColor="border-blue-500/30 border-2" button={<Button size="sm" className="w-full text-xs h-8" onClick={() => handleViewLobby(m.room)}>View Lobby</Button>} />)}</div></AccordionContent></AccordionItem>
