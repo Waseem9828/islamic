@@ -181,12 +181,12 @@ service cloud.firestore {
     }
 
     /**
-     * @description Application-wide settings. Read is allowed for any signed-in user, write is restricted to admins.
+     * @description Application-wide settings. Read is allowed for any signed-in user or admin, write is restricted to admins.
      * @path /settings/{settingId}
      */
     match /settings/{settingId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get: if isSignedIn() || isAdmin();
+      allow list: if isSignedIn() || isAdmin();
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
