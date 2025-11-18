@@ -1,41 +1,8 @@
-'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useFirebase } from '@/firebase';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
-import { toast } from 'sonner';
-import { FirebaseError } from 'firebase/app';
-import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Suspense } from 'react';
+import { LoginForm } from './login-form';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const { auth } = useFirebase();
-
-  const handleLogin = () => {
-    if (!auth) {
-      toast.error('Auth service is not available. Please try again later.');
-      return;
-    }
-    setIsLoading(true);
-    initiateEmailSignIn(auth, email, password, (error?: FirebaseError) => {
-      setIsLoading(false);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success('Logged in successfully');
-        router.push('/');
-      }
-    });
-  };
-
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
       <div className="hidden bg-muted lg:block">
@@ -45,51 +12,9 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold">Login</h1>
-            <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
-            </p>
-          </div>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-              </div>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <Button type="submit" className="w-full" onClick={handleLogin} disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
-            </Button>
-            <Button variant="outline" className="w-full" disabled={isLoading}>
-              Login with Google
-            </Button>
-          </div>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
-        </div>
+         <Suspense fallback={<div>Loading...</div>}>
+           <LoginForm />
+         </Suspense>
       </div>
     </div>
   );

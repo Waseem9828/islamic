@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 export const firebaseConfig = {
   "projectId": "studio-4431476254-c1156",
@@ -18,5 +19,6 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
+const functions = getFunctions(app);
 
-export { app, firestore, auth, storage };
+export { app, firestore, auth, storage, functions };

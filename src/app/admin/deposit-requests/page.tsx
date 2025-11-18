@@ -1,146 +1,112 @@
 
-"use client";
-import { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc, setDoc, getDoc, query, where } from "firebase/firestore";
-import { useFirebase } from "@/firebase/provider";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import Image from "next/image";
-import { Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { increment, serverTimestamp } from "firebase/firestore";
+'use client';
 
-interface DepositRequest {
-  id: string;
-  userId: string;
-  amount: number;
-  screenshotUrl: string;
-  status: string;
-}
+import { useState, useMemo } from 'react';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { firestore, functions } from '@/firebase/config';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { Loader2, CheckCircle, XCircle, Copy } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
-const DepositRequestsPage = () => {
-  const { firestore: db } = useFirebase();
-  const [requests, setRequests] = useState<DepositRequest[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-  
-  const fetchRequests = async () => {
-    if (!db) return;
-    setIsLoading(true);
+const processDepositFunction = httpsCallable(functions, 'processDeposit');
+
+export default function ManageDepositsPage() {
+  const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
+
+  const requestsQuery = useMemo(() => 
+    query(
+      collection(firestore, 'depositRequests'), 
+      where('status', '==', 'pending'), 
+      orderBy('requestedAt', 'desc')
+    ), 
+  []);
+
+  const [requests, loading, error] = useCollection(requestsQuery);
+
+  const handleProcessRequest = async (requestId: string, approve: boolean) => {
+    setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
+
     try {
-        const q = query(collection(db, "depositRequests"), where("status", "==", "pending"));
-        const querySnapshot = await getDocs(q);
-        const requestsData = querySnapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as DepositRequest)
-        );
-        setRequests(requestsData);
-    } catch (error) {
-        console.error("Error fetching deposit requests:", error);
-        toast.error("Failed to fetch deposit requests.");
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRequests();
-  }, [db]);
-
-  const handleApprove = async (request: DepositRequest) => {
-    if (!db) return;
-    setApprovingId(request.id);
-    try {
-      const requestRef = doc(db, "depositRequests", request.id);
-      const walletRef = doc(db, "wallets", request.userId);
-
-      const walletSnap = await getDoc(walletRef);
-
-      if (walletSnap.exists()) {
-        updateDocumentNonBlocking(walletRef, {
-            balance: increment(request.amount)
-        });
-      } else {
-        setDocumentNonBlocking(walletRef, { 
-            userId: request.userId,
-            balance: request.amount 
-        }, {});
-      }
-      
-      updateDocumentNonBlocking(requestRef, { 
-          status: "approved",
-          approvedAt: serverTimestamp()
+      const result = await processDepositFunction({ requestId, approve });
+      toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
+        description: result.data.message as string,
       });
-
-      toast.success("Deposit approved and wallet updated.");
-      setRequests(prev => prev.filter(r => r.id !== request.id));
-
-    } catch (error) {
-      console.error("Error approving deposit:", error);
-      toast.error("Failed to approve deposit. Please try again.");
+    } catch (err: any) {
+      console.error('Error processing request:', err);
+      toast.error('Operation Failed', { description: err.message || 'An unknown error occurred.' });
     } finally {
-        setApprovingId(null);
+      setIsSubmitting(prev => ({ ...prev, [requestId]: false }));
     }
   };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.info('Copied to clipboard');
+  }
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-500">Error loading requests: {error.message}</div>;
+  }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-        <Card>
+    <div className="container mx-auto max-w-4xl py-8">
+      <Card>
         <CardHeader>
-            <CardTitle>Deposit Requests</CardTitle>
-            <CardDescription>Review and approve pending user deposit requests.</CardDescription>
+          <CardTitle>Deposit Requests</CardTitle>
+          <CardDescription>Review and process pending deposit requests. Approving a request will add the funds and bonus to the user's wallet.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            {isLoading && <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin" /></div>}
-            
-            {!isLoading && requests.map((request) => (
-            <div key={request.id} className="flex flex-col sm:flex-row items-center justify-between p-3 border rounded-lg gap-4">
-                <div className="flex-1">
-                <p className="text-sm font-semibold">User ID:</p>
-                <p className="text-xs text-muted-foreground break-all">{request.userId}</p>
-                <p className="text-sm font-semibold mt-2">Amount:</p>
-                <p className="font-bold text-lg">₹{request.amount}</p>
+          {requests && requests.docs.length === 0 && (
+            <p className="text-center text-muted-foreground py-6">No pending deposit requests.</p>
+          )}
+          {requests && requests.docs.map(doc => {
+            const request = doc.data();
+            const requestId = doc.id;
+            return (
+              <Card key={requestId} className="p-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <div>
+                        <p className="font-bold text-lg">₹{request.amount}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-2">
+                            Transaction ID: <span className="font-mono">{request.transactionId}</span>
+                            <button onClick={() => copyToClipboard(request.transactionId)}><Copy className="h-3 w-3"/></button>
+                        </p>
+                        <p className="text-xs text-muted-foreground">User ID: {request.userId}</p>
+                        <p className="text-xs text-muted-foreground">Requested {formatDistanceToNow(request.requestedAt.toDate())} ago</p>
+                    </div>
+                    <div className="flex gap-2 mt-4 sm:mt-0">
+                        <Button 
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleProcessRequest(requestId, false)}
+                            disabled={isSubmitting[requestId]}
+                        >
+                            {isSubmitting[requestId] ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
+                            Reject
+                        </Button>
+                        <Button 
+                            size="sm"
+                            onClick={() => handleProcessRequest(requestId, true)}
+                            disabled={isSubmitting[requestId]}    
+                        >
+                            {isSubmitting[requestId] ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                            Approve
+                        </Button>
+                    </div>
                 </div>
-                
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <div className="w-24 h-24 relative cursor-pointer rounded-md overflow-hidden border">
-                        <Image
-                            src={request.screenshotUrl}
-                            alt="Screenshot"
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                        </div>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg w-full">
-                        <DialogHeader>
-                            <DialogTitle>Deposit Screenshot</DialogTitle>
-                        </DialogHeader>
-                        <div className="relative aspect-video">
-                            <Image
-                                src={request.screenshotUrl}
-                                alt="Screenshot full view"
-                                fill
-                                className="object-contain"
-                            />
-                        </div>
-                    </DialogContent>
-                </Dialog>
-
-                <Button onClick={() => handleApprove(request)} disabled={approvingId === request.id}>
-                {approvingId === request.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {approvingId === request.id ? 'Approving...' : 'Approve'}
-                </Button>
-            </div>
-            ))}
-            {!isLoading && requests.length === 0 && <p className="text-center text-muted-foreground py-8">No pending deposit requests.</p>}
+              </Card>
+            );
+          })}
         </CardContent>
-        </Card>
+      </Card>
     </div>
   );
-};
-
-export default DepositRequestsPage;
+}

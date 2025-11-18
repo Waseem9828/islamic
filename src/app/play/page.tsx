@@ -12,8 +12,7 @@ import { toast } from 'sonner';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, ChevronRight, CheckCircle, Copy, Share2, List, Info, Wallet } from 'lucide-react';
 import { useUser } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
-import { firestore } from '@/firebase/config';
-import { functions } from '@/firebase/config'; // Import functions
+import { firestore, functions } from '@/firebase/config';
 import { httpsCallable } from 'firebase/functions';
 
 const entryFees = [50, 100, 500, 1000, 2000];

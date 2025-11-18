@@ -3,12 +3,67 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { Users, List, IndianRupee, Settings, ArrowLeft, ListChecks } from 'lucide-react';
+import { Users, List, IndianRupee, Settings, ArrowLeft, ListChecks, Trophy } from 'lucide-react';
 import Link from 'next/link';
-import { useCollection, useDoc, useFirebase } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { useFirebase } from '@/firebase/provider';
+import { collection, doc, query, where, onSnapshot } from 'firebase/firestore';
+import { useEffect, useState, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// Custom hook for a single document snapshot
+const useDocument = (path: string | null) => {
+    const [data, setData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const { firestore } = useFirebase();
+
+    useEffect(() => {
+        if (!firestore || !path) {
+            setIsLoading(false);
+            return;
+        }
+        const docRef = doc(firestore, path);
+        const unsubscribe = onSnapshot(docRef, (doc) => {
+            setData(doc.exists() ? doc.data() : null);
+            setIsLoading(false);
+        }, () => setIsLoading(false));
+        return () => unsubscribe();
+    }, [firestore, path]);
+
+    return { data, isLoading };
+};
+
+// Custom hook for collection snapshots
+const useCollectionData = (collectionName: string | null, queryString: any[] = []) => {
+    const [data, setData] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const { firestore } = useFirebase();
+
+    const queryMemo = useMemo(() => {
+        if (!firestore || !collectionName) return null;
+        let q = query(collection(firestore, collectionName));
+        queryString.forEach(condition => {
+            q = query(q, where(condition[0], condition[1], condition[2]));
+        });
+        return q;
+    }, [firestore, collectionName, queryString]);
+
+    useEffect(() => {
+        if (!queryMemo) {
+            setIsLoading(false);
+            return;
+        }
+        const unsubscribe = onSnapshot(queryMemo, (snapshot) => {
+            const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setData(items);
+            setIsLoading(false);
+        }, () => setIsLoading(false));
+
+        return () => unsubscribe();
+    }, [queryMemo]);
+
+    return { data, isLoading };
+};
+
 
 const StatCard = ({ title, description, icon: Icon, path, data, isLoading, dataFormatter }: {
     title: string;
@@ -42,20 +97,11 @@ const StatCard = ({ title, description, icon: Icon, path, data, isLoading, dataF
 }
 
 export default function AdminDashboardPage() {
-    const { firestore } = useFirebase();
-
-    // Data for Users Card
-    const usersQuery = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-    const { data: users, isLoading: isLoadingUsers } = useCollection(usersQuery);
-
-    // Data for Deposit Requests Card
-    const depositRequestsQuery = useMemo(() => firestore ? query(collection(firestore, 'depositRequests'), where('status', '==', 'pending')) : null, [firestore]);
-    const { data: pendingDeposits, isLoading: isLoadingDeposits } = useCollection(depositRequestsQuery);
-    
-    // Data for Payment Settings Card
-    const paymentSettingsDoc = useMemo(() => firestore ? doc(firestore, 'settings', 'payment') : null, [firestore]);
-    const { data: paymentSettings, isLoading: isLoadingSettings } = useDoc(paymentSettingsDoc);
-    
+    const { data: users, isLoading: isLoadingUsers } = useCollectionData('users');
+    const { data: pendingDeposits, isLoading: isLoadingDeposits } = useCollectionData('depositRequests', [['status', '==', 'pending']]);
+    const { data: pendingWithdrawals, isLoading: isLoadingWithdrawals } = useCollectionData('withdrawalRequests', [['status', '==', 'pending']]);
+    const { data: activeMatches, isLoading: isLoadingMatches } = useCollectionData('matches', [['status', 'in', ['waiting', 'inprogress']]]);
+    const { data: paymentSettings, isLoading: isLoadingSettings } = useDocument('settings/payment');
 
     const adminFeatures = [
         {
@@ -65,7 +111,16 @@ export default function AdminDashboardPage() {
             path: '/admin/users',
             data: users,
             isLoading: isLoadingUsers,
-            dataFormatter: (data: any) => data?.length ?? 0,
+            dataFormatter: (data: any[]) => data.length ?? 0,
+        },
+        {
+            title: 'Manage Matches',
+            description: 'Active and waiting matches',
+            icon: Trophy,
+            path: '/admin/matches',
+            data: activeMatches,
+            isLoading: isLoadingMatches,
+            dataFormatter: (data: any[]) => data.length ?? 0,
         },
         {
             title: 'Deposit Requests',
@@ -74,7 +129,16 @@ export default function AdminDashboardPage() {
             path: '/admin/deposit-requests',
             data: pendingDeposits,
             isLoading: isLoadingDeposits,
-            dataFormatter: (data: any) => data?.length ?? 0,
+            dataFormatter: (data: any[]) => data.length ?? 0,
+        },
+        {
+            title: 'Withdrawal Requests',
+            description: 'Pending user withdrawals',
+            icon: ListChecks,
+            path: '/admin/withdrawals',
+            data: pendingWithdrawals,
+            isLoading: isLoadingWithdrawals,
+            dataFormatter: (data: any[]) => data.length ?? 0,
         },
         {
             title: 'Payment Settings',
@@ -101,21 +165,6 @@ export default function AdminDashboardPage() {
             {...feature}
           />
         ))}
-         <Card
-            className="cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-300 active:scale-95 group sm:col-span-2 lg:col-span-1"
-            onClick={() => {
-                // Future page for withdrawal requests
-            }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Withdrawal Requests</CardTitle>
-                <ListChecks className="w-5 h-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">Pending withdrawal requests</p>
-            </CardContent>
-        </Card>
       </div>
 
        <Card className="mt-8">
