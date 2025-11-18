@@ -33,7 +33,7 @@ export default function ManageDepositsPage() {
     try {
       const result = await processDepositFunction({ requestId, approve });
       toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
-        description: result.data.message as string,
+        description: (result.data as any).message as string,
       });
     } catch (err: any) {
       console.error('Error processing request:', err);
