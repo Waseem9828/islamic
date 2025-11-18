@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,10 +23,15 @@ export default function MatchmakingHomePage() {
   const { firestore } = useFirebase();
   const { user } = useUser();
 
+  const [isClient, setIsClient] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isJoinConfirmOpen, setIsJoinConfirmOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
   const [filters, setFilters] = useState({ feeRange: [10, 1000], playerCount: 'all', status: 'all' });
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const walletDocRef = useMemo(() => firestore && user ? doc(firestore, 'wallets', user.uid) : null, [firestore, user]);
   const { data: wallet, isLoading: isWalletLoading } = useDoc(walletDocRef);
@@ -135,6 +140,10 @@ export default function MatchmakingHomePage() {
     );
   };
 
+  if (!isClient) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto max-w-4xl py-4">
         <header className="text-center mb-6"><h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center"><Gamepad2 className="mr-2 h-8 w-8" /> Ludo Match Making</h1><p className="text-muted-foreground mt-2">Find, join, or create Ludo matches.</p></header>
@@ -180,9 +189,7 @@ export default function MatchmakingHomePage() {
         </Accordion>
 
         <div className="mt-8"><Button size="lg" className="w-full text-lg py-6" onClick={handleCreateMatch}>Create New Match <ChevronRight className="ml-2 h-5 w-5" /></Button></div>
-        <AlertDialog open={isJoinConfirmOpen} onOpenChange={setIsJoinConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Join Match Confirmation</AlertDialogTitle><AlertDialogDescription>You are about to join <span className="font-bold">{selectedMatch?.room}</span>.</AlertDialogDescription></AlertDialogHeader><div className="space-y-4 py-4"><div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground">Entry Fee</span><span className="font-bold text-lg">₹{selectedMatch?.entry}</span></div><div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Wallet</span><span className="font-semibold">₹{walletBalance}</span></div><div className="flex items-center justify-between p-3 bg-destructive/10 text-destructive-foreground border-l-4 border-destructive rounded-lg"><span className="text-sm font-semibold flex items-center"><AlertTriangle className="mr-2 h-4 w-4"/> After Join</span><span className="font-bold">₹{walletBalance - (selectedMatch?.entry || 0)}</span></div></div><div className="text-xs text-muted-foreground bg-gray-100 p-3 rounded-lg space-y-1"><h4 className="font-semibold text-gray-800 flex items-center"><Info className="mr-2 h-4 w-4"/>Terms:</h4><ul className="list-disc list-inside"><li>Entry fee will be deducted immediately.</li><li>A full refund is issued if the match is canceled.</li><li>Adhere to fair play rules.</li></ul></div><AlertDialogFooter><AlertDialogCancel>Back</AlertDialogCancel><AlertDialogAction onClick={handleConfirmJoin} className="bg-green-600 hover:bg-green-700">Confirm & Join</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+        <AlertDialog open={isJoinConfirmOpen} onOpenChange={setIsJoinConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Join Match Confirmation</AlertDialogTitle><AlertDialogDescription>You are about to join <span className="font-bold">{selectedMatch?.room}</span>.</AlertDialogDescription></AlertDialogHeader><div className="space-y-4 py-4"><div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground">Entry Fee</span><span className="font-bold text-lg">₹{selectedMatch?.entry}</span></div><div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Wallet</span><span className="font-semibold">₹{walletBalance}</span></div><div className="flex items-center justify-between p-3 bg-destructive/10 text-destructive-foreground border-l-4 border-destructive rounded-lg"><span className="text-sm font-semibold flex items-center"><AlertTriangle className="mr-2 h-4 w-4"/> After Join</span><span className="font-bold">₹{walletBalance - (selectedMatch?.entry || 0)}</span></div></div><div className="text-xs text-muted-foreground bg-gray-100 p-3 rounded-lg space-y-1"><h4 className="font-semibold text-gray-800 flex items-center"><Info className="mr-2 h-4 w-4"/>Terms:</h4><ul className="list-disc list-inside"><li>Entry fee will be deducted immediately.</li><li>A full refund is issued if the match is canceled.</li><li>Adhere to fair play rules.</li></ul></div><AlertDialogFooter><AlertDialogCancel>Back</AlertDialogCancel><AlertDialogAction onClick={handleConfirmJoin} className="bg-green-600 hover:bg-green-700">Confirm & Join</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
     </div>
   );
 }
-
-    
