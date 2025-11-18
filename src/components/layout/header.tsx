@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,6 +23,21 @@ const Header = () => {
     return null;
   }
 
+  if (!isClient) {
+    return (
+        <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+                 <Skeleton className="h-8 w-8 md:hidden" />
+                 <Skeleton className="h-6 w-36" />
+            </div>
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-9 w-20" />
+            </div>
+        </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
       <div className="flex items-center gap-2">
@@ -42,12 +58,10 @@ const Header = () => {
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
-        {isClient && (
-          isUserLoading ? (
-            <Skeleton className="h-9 w-20" />
-          ) : (
-            !user && <Button asChild size="sm"><Link href="/login">Login</Link></Button>
-          )
+        {isUserLoading ? (
+          <Skeleton className="h-9 w-20" />
+        ) : (
+          !user && <Button asChild size="sm"><Link href="/login">Login</Link></Button>
         )}
       </div>
     </header>
