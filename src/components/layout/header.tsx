@@ -25,7 +25,7 @@ const Header = () => {
 
   if (!isClient) {
     return (
-        <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
+        <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-muted/95 backdrop-blur-sm">
             <div className="flex items-center gap-2">
                  <Skeleton className="h-8 w-8 md:hidden" />
                  <Skeleton className="h-6 w-36" />
@@ -39,7 +39,7 @@ const Header = () => {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-muted/95 backdrop-blur-sm">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="md:hidden">
           <Menu />
