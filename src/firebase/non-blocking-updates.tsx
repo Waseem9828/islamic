@@ -5,7 +5,6 @@ import {
   doc,
   setDoc,
   updateDoc,
-  addDoc,
   Firestore,
   DocumentReference,
   CollectionReference,
@@ -51,18 +50,3 @@ export function updateDocumentNonBlocking(
     errorEmitter.emit('permission-error', permissionError);
   });
 }
-
-
-/**
- * A non-blocking wrapper for Firestore's addDoc function that handles permission errors.
- */
-export function addDocumentNonBlocking<T>(
-  reference: CollectionReference<T>,
-  data: WithFieldValue<T>
-): Promise<DocumentReference<T>> {
-  // This function now directly returns the promise from addDoc.
-  // The calling function is responsible for handling .then() and .catch()
-  return addDoc(reference, data);
-}
-
-    

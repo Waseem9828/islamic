@@ -1,7 +1,7 @@
 
 "use client";
 import { useState, useEffect } from "react";
-import { doc, getDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, orderBy, onSnapshot, serverTimestamp, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { addDoc } from "firebase/firestore";
 
 const MIN_DEPOSIT_AMOUNT = 100;
 const MIN_WALLET_BALANCE_FOR_WITHDRAWAL = 300;
@@ -142,8 +140,7 @@ const WalletPage = () => {
       };
       
       const depositCollection = collection(db, "depositRequests");
-      await addDocumentNonBlocking(depositCollection, depositData);
-
+      await addDoc(depositCollection, depositData);
 
       toast.success("Deposit request submitted!");
       setDepositAmount("");
@@ -294,5 +291,3 @@ const WalletPage = () => {
 };
 
 export default WalletPage;
-
-    
