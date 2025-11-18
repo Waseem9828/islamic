@@ -1,230 +1,68 @@
-
-/**
- * @fileoverview Firestore Security Rules for the Islamic Random Selector app.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and draw results.
- * Admin roles are managed via document existence in a dedicated collection.
- * Prayer times are treated as public, read-only data.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only to the owning user.
- * - /roles_admin/{adminId}: Presence of a document grants admin privileges.
- * - /users/{userId}/drawResults/{drawResultId}: Stores draw results, accessible only to the owning user.
- * - /prayerTimes/{prayerTimeId}: Stores prayer times, publicly readable.
- * - /wallets/{userId}: Stores user wallet balance.
- * - /depositRequests/{requestId}: Stores user deposit requests.
- * - /withdrawalRequests/{requestId}: Stores user withdrawal requests.
- * - /settings/{settingId}: Stores application settings like UPI ID.
- * - /matches/{matchId}: Stores Ludo match data.
- *
- * Key Security Decisions:
- * - User listing is disallowed to protect privacy, except for admins.
- * - Admin status is determined by document existence, simplifying rule logic.
- * - Prayer times are publicly readable to avoid unnecessary authorization checks.
- *
- * Denormalization for Authorization:
- * - Draw results are stored as a subcollection of users to avoid `get()` calls for ownership checks.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if the current user is an admin.
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+    
+    // Helper function to check if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    // Wallets: Users can read their own wallet. Only admins can update balances.
+    match /wallets/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isSignedIn() && isAdmin();
+      allow create, delete: if false; 
     }
 
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    // Deposit Requests:
+    match /depositRequests/{docId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() 
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.amount > 0
+                      && request.resource.data.screenshotUrl is string
+                      && request.resource.data.status == "pending"
+                      && request.resource.data.keys().hasOnly(['userId', 'amount', 'screenshotUrl', 'status', 'createdAt']);
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if false;
     }
 
-    /**
-     * @description Enforces access control for user profiles. Only the user can read or write their own profile. Admins can read any profile.
-     * @path /users/{userId}
-     */
-    match /users/{userId} {
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-      
-      function incomingData() {
-        return request.resource.data;
-      }
-
-      function existingData() {
-        return resource.data;
-      }
-      
-      function hasValidCreateData(userId) {
-        let incoming = incomingData();
-        return incoming.id == userId &&
-               incoming.email == request.auth.token.email &&
-               !('isAdmin' in incoming);
-      }
-
-      function canUpdateProfile(userId) {
-        let incoming = incomingData();
-        let existing = existingData();
-        // Users can update their profile, but cannot change immutable or admin-only fields.
-        return isOwner(userId) &&
-               incoming.id == existing.id &&
-               incoming.email == existing.email &&
-               incoming.createdAt == existing.createdAt &&
-               (!('isAdmin' in incoming) || incoming.isAdmin == existing.isAdmin);
-      }
-      
-      function canAdminUpdateProfile() {
-          return isAdmin();
-      }
-
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin(); // Only admins can list users.
-      allow create: if isOwner(userId) && hasValidCreateData(userId);
-      allow update: if canUpdateProfile(userId) || canAdminUpdateProfile();
-      allow delete: if isOwner(userId) || isAdmin();
-    }
-
-    /**
-     * @description Manages admin roles. Presence of a document grants admin privileges.
-     * @path /roles_admin/{adminId}
-     */
-    match /roles_admin/{adminId} {
-      allow get: if isSignedIn();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description Enforces access control for draw results. Only the owning user can read or write their draw results.
-     * @path /users/{userId}/drawResults/{drawResultId}
-     */
-    match /users/{userId}/drawResults/{drawResultId} {
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Allows public read access to prayer times data. Write access is not permitted in this prototype.
-     * @path /prayerTimes/{prayerTimeId}
-     */
-    match /prayerTimes/{prayerTimeId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
+    // Withdrawal Requests: 
+    match /withdrawalRequests/{docId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && isAdmin();
       allow delete: if false;
     }
     
-    /**
-     * @description Ludo match documents.
-     * @path /matches/{matchId}
-     */
-    match /matches/{matchId} {
-      function isPlayer() {
-        return request.auth.uid in resource.data.players;
-      }
-
-      // Allow reads if user is in the players list or an admin
-      allow get: if isSignedIn() && (isPlayer() || isAdmin());
-
-      // Allow listing of matches for any signed-in user (for lobby screen)
-      allow list: if isSignedIn();
-      
-      // Allow creation if user is signed in and is the creator
-      allow create: if isSignedIn() && request.resource.data.createdBy == request.auth.uid;
-      
-      // Allow updates if the user is a player in the match (for join/leave/ready)
-      allow update: if isSignedIn() && (request.auth.uid in resource.data.players || request.auth.uid in request.resource.data.players);
-      
-      // Only creator or admin can delete
-      allow delete: if isSignedIn() && (isOwner(resource.data.createdBy) || isAdmin());
-    }
-
-    /**
-     * @description Wallet documents for users.
-     * @path /wallets/{userId}
-     */
-    match /wallets/{userId} {
-      // Users can read their own wallet. Admins can read any wallet.
-      allow get: if isOwner(userId) || isAdmin();
-      // Admins can list all wallets, for administrative purposes.
-      allow list: if isAdmin();
-      // A user can create their own wallet document. Admins can create wallets for users.
-      // The update logic handles the case where an admin is funding a wallet.
-      allow create: if isOwner(userId) || isAdmin();
-      // Users can update their own wallet (e.g. spending balance).
-      // Admins can update any wallet (e.g. approving a deposit).
-      // A rule to only allow balance to decrease for users is complex, so we trust the client logic and server functions.
-      allow update: if isOwner(userId) || isAdmin();
-      // Only admins can delete wallets.
-      allow delete: if isAdmin();
-    }
-
-    /**
-     * @description Deposit requests made by users.
-     * @path /depositRequests/{requestId}
-     */
-    match /depositRequests/{requestId} {
-      function hasValidDepositData() {
-        let data = request.resource.data;
-        return data.userId == request.auth.uid &&
-               data.amount is number &&
-               data.amount > 0 &&
-               data.screenshotUrl is string &&
-               data.screenshotUrl.size() > 0 &&
-               data.status == 'pending' &&
-               data.keys().hasOnly(['userId', 'amount', 'screenshotUrl', 'status', 'createdAt']);
-      }
-      
-      allow create: if isSignedIn() && hasValidDepositData();
-      allow get: if (isOwner(resource.data.userId)) || isAdmin();
-      allow list: if isSignedIn();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+    // Users: Basic profile access.
+    match /users/{userId} {
+        allow get, update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow create: if isSignedIn() && request.auth.uid == userId;
     }
     
-    /**
-     * @description Withdrawal requests made by users.
-     * @path /withdrawalRequests/{requestId}
-     */
-    match /withdrawalRequests/{requestId} {
-      // Users can create their own withdrawal requests.
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Users can read their own requests. Admins can read any request.
-      allow get: if (isOwner(resource.data.userId)) || isAdmin();
-      // A signed-in user can query the collection, the client-side query will filter by userId.
+    // Matches
+    match /matches/{matchId} {
+      allow read: if isSignedIn() && (resource.data.players.hasAny([request.auth.uid]) || resource.data.privacy == 'public');
       allow list: if isSignedIn();
-      // Only admins can update requests (e.g., to approve them).
-      allow update: if isAdmin();
-      // Only admins can delete requests.
-      allow delete: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.players.hasAny([request.auth.uid]);
     }
 
-    /**
-     * @description Application-wide settings. Read is allowed for any signed-in user or admin, write is restricted to admins.
-     * @path /settings/{settingId}
-     */
+    // Settings: Only admins can read or write payment settings.
     match /settings/{settingId} {
-      allow get: if isSignedIn() || isAdmin();
-      allow list: if isSignedIn() || isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow get: if isSignedIn() && isAdmin();
+      allow write: if isSignedIn() && isAdmin();
+    }
+
+    // Admin Roles: Allows checking for admin status.
+    match /roles_admin/{userId} {
+      allow get: if isSignedIn();
     }
   }
 }
-
-    

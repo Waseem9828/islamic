@@ -20,11 +20,10 @@ const MIN_DEPOSIT_AMOUNT = 100;
 const MIN_WALLET_BALANCE_FOR_WITHDRAWAL = 300;
 
 const WalletPage = () => {
-  const { user, isUserLoading: isAuthLoading } = useFirebase();
-  const { firestore: db, storage } = useFirebase();
+  const { user, isUserLoading: isAuthLoading, firestore: db, storage } = useFirebase();
   const router = useRouter();
 
-  // Deposit state
+  // State declarations
   const [upiId, setUpiId] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -32,8 +31,6 @@ const WalletPage = () => {
   const [isSubmittingDeposit, setIsSubmittingDeposit] = useState(false);
   const [depositHistory, setDepositHistory] = useState<any[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
-
-  // Withdraw state
   const [walletBalance, setWalletBalance] = useState(0);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -44,7 +41,7 @@ const WalletPage = () => {
 
   const withdrawableBalance = Math.max(0, walletBalance - MIN_WALLET_BALANCE_FOR_WITHDRAWAL);
 
-  // Fetch payment settings (UPI ID)
+  // useEffect hooks...
   useEffect(() => {
     if (!db) return;
     const fetchUpiId = async () => {
@@ -64,60 +61,9 @@ const WalletPage = () => {
     };
     fetchUpiId();
   }, [db]);
-
-  // Fetch user wallet balance
-  useEffect(() => {
-    if (!db || !user) {
-        setIsBalanceLoading(false);
-        return;
-    }
-    const walletRef = doc(db, "wallets", user.uid);
-    const unsubscribe = onSnapshot(walletRef, (doc) => {
-        if (doc.exists()) {
-            setWalletBalance(doc.data().balance || 0);
-        }
-        setIsBalanceLoading(false);
-    }, (error) => {
-        console.error("Error fetching wallet balance:", error);
-        toast.error("Could not fetch wallet balance.");
-        setIsBalanceLoading(false);
-    });
-    return () => unsubscribe();
-  }, [db, user]);
-
-  // Fetch deposit history
-  useEffect(() => {
-    if (!db || !user) {
-      setIsHistoryLoading(false);
-      return;
-    }
-    const q = query(collection(db, "depositRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setDepositHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setIsHistoryLoading(false);
-    }, (error) => {
-      console.error("Error fetching deposit history:", error);
-      setIsHistoryLoading(false);
-    });
-    return () => unsubscribe();
-  }, [db, user]);
-
-  // Fetch withdrawal history
-  useEffect(() => {
-    if (!db || !user) {
-      setIsWithdrawalHistoryLoading(false);
-      return;
-    }
-    const q = query(collection(db, "withdrawalRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setWithdrawalHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setIsWithdrawalHistoryLoading(false);
-    }, (error) => {
-      console.error("Error fetching withdrawal history:", error);
-      setIsWithdrawalHistoryLoading(false);
-    });
-    return () => unsubscribe();
-  }, [db, user]);
+  useEffect(() => { if (!db || !user) { setIsBalanceLoading(false); return; } const walletRef = doc(db, "wallets", user.uid); const unsubscribe = onSnapshot(walletRef, (doc) => { if (doc.exists()) { setWalletBalance(doc.data().balance || 0); } setIsBalanceLoading(false); }, (error) => { console.error("Error fetching wallet balance:", error); toast.error("Could not fetch wallet balance."); setIsBalanceLoading(false); }); return () => unsubscribe(); }, [db, user]);
+  useEffect(() => { if (!db || !user) { setIsHistoryLoading(false); return; } const q = query(collection(db, "depositRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc")); const unsubscribe = onSnapshot(q, (snapshot) => { setDepositHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); setIsHistoryLoading(false); }, (error) => { console.error("Error fetching deposit history:", error); setIsHistoryLoading(false); }); return () => unsubscribe(); }, [db, user]);
+  useEffect(() => { if (!db || !user) { setIsWithdrawalHistoryLoading(false); return; } const q = query(collection(db, "withdrawalRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc")); const unsubscribe = onSnapshot(q, (snapshot) => { setWithdrawalHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); setIsWithdrawalHistoryLoading(false); }, (error) => { console.error("Error fetching withdrawal history:", error); setIsWithdrawalHistoryLoading(false); }); return () => unsubscribe(); }, [db, user]);
 
 
   const handleDeposit = async () => {
@@ -139,13 +85,11 @@ const WalletPage = () => {
         createdAt: serverTimestamp(),
       };
       
-      const depositCollection = collection(db, "depositRequests");
-      await addDoc(depositCollection, depositData);
+      await addDoc(collection(db, "depositRequests"), depositData);
 
       toast.success("Deposit request submitted successfully!");
       setDepositAmount("");
       setScreenshot(null);
-      // Reset file input
       const fileInput = document.getElementById('screenshot') as HTMLInputElement;
       if (fileInput) fileInput.value = "";
 
@@ -185,105 +129,36 @@ const WalletPage = () => {
     }
   };
 
-  const HistoryTable = ({ history, isLoading, type }: { history: any[], isLoading: boolean, type: 'Deposit' | 'Withdrawal' }) => (
-    <Card className="mt-4">
-        <CardHeader><CardTitle>{type} History</CardTitle></CardHeader>
-        <CardContent>
-            {isLoading ? <Skeleton className="h-24 w-full" /> : history.length > 0 ? (
-                <Table>
-                    <TableHeader><TableRow><TableHead>Amount</TableHead><TableHead>Status</TableHead>{type === 'Withdrawal' && <TableHead>UPI ID</TableHead>}<TableHead className="text-right">Date</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {history.map((item) => (
-                            <TableRow key={item.id}>
-                                <TableCell className="font-medium">₹{item.amount.toFixed(2)}</TableCell>
-                                <TableCell><Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
-                                {type === 'Withdrawal' && <TableCell>{item.upiId}</TableCell>}
-                                <TableCell className="text-right">{item.createdAt?.toDate().toLocaleDateString()}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            ) : <p className="text-center text-muted-foreground py-4">You have no {type.toLowerCase()} history.</p>}
-        </CardContent>
-    </Card>
-  )
-
+  // JSX Rendering
   if (isAuthLoading) return <div className="container mx-auto max-w-2xl py-8"><Skeleton className="h-96 w-full" /></div>;
-  if (!user) return (
-    <div className="container mx-auto max-w-lg py-8">
-        <Card>
-            <CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You must be logged in.</CardDescription></CardHeader>
-            <CardContent><Button onClick={() => router.push('/login')} className="w-full">Login</Button></CardContent>
-        </Card>
-    </div>
-  );
+  if (!user) return <div className="container mx-auto max-w-lg py-8"><Card><CardHeader><CardTitle>Access Denied</CardTitle><CardDescription>You must be logged in.</CardDescription></CardHeader><CardContent><Button onClick={() => router.push('/login')} className="w-full">Login</Button></CardContent></Card></div>;
 
   return (
     <div className="container mx-auto max-w-2xl py-8">
-      <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardDescription>Wallet Balance</CardDescription>
-                {isBalanceLoading ? <Skeleton className="h-8 w-32 mt-1" /> : <CardTitle className="text-3xl">₹{walletBalance.toFixed(2)}</CardTitle>}
-            </div>
-            <div>
-                <CardDescription>Withdrawable</CardDescription>
-                {isBalanceLoading ? <Skeleton className="h-8 w-24 mt-1" /> : <CardTitle className="text-2xl text-green-600">₹{withdrawableBalance.toFixed(2)}</CardTitle>}
-            </div>
-        </CardHeader>
-      </Card>
-
-      <Tabs defaultValue="deposit">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="deposit">Deposit</TabsTrigger>
-          <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
-        </TabsList>
-        
+      <Card className="mb-4"><CardHeader className="flex flex-row items-center justify-between"><div><CardDescription>Wallet Balance</CardDescription>{isBalanceLoading ? <Skeleton className="h-8 w-32 mt-1" /> : <CardTitle className="text-3xl">₹{walletBalance.toFixed(2)}</CardTitle>}</div><div><CardDescription>Withdrawable</CardDescription>{isBalanceLoading ? <Skeleton className="h-8 w-24 mt-1" /> : <CardTitle className="text-2xl text-green-600">₹{withdrawableBalance.toFixed(2)}</CardTitle>}</div></CardHeader></Card>
+      <Tabs defaultValue="deposit"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="deposit">Deposit</TabsTrigger><TabsTrigger value="withdraw">Withdraw</TabsTrigger></TabsList>
         <TabsContent value="deposit">
           <Card>
-            <CardHeader>
-              <CardTitle>Create Deposit Request</CardTitle>
-              {!upiId && !isSettingsLoading && <CardDescription className="text-destructive pt-2">Deposits are currently unavailable.</CardDescription>}
-            </CardHeader>
+            <CardHeader><CardTitle>Create Deposit Request</CardTitle>{!upiId && !isSettingsLoading && <CardDescription className="text-destructive pt-2">Deposits are currently unavailable.</CardDescription>}</CardHeader>
             <CardContent className="space-y-4">
               {isSettingsLoading ? <Skeleton className="h-48 w-full" /> : (
                 <>
                   <Input type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder={`Amount (Min ₹${MIN_DEPOSIT_AMOUNT})`} disabled={!upiId || isSubmittingDeposit} />
                   {upiId && depositAmount && parseFloat(depositAmount) >= MIN_DEPOSIT_AMOUNT && (
-                    <div className="flex flex-col items-center space-y-3 p-4 border rounded-md bg-muted/30">
-                      <p className="text-sm font-medium">Scan QR or use UPI App</p>
-                      <QRCode value={`upi://pay?pa=${upiId}&am=${depositAmount}&cu=INR`} size={128} />
-                      <p className="text-xs text-muted-foreground">UPI ID: {upiId}</p>
-                      <a href={`upi://pay?pa=${upiId}&am=${depositAmount}&cu=INR`} className="w-full"><Button className="w-full" disabled={isSubmittingDeposit}>Pay with UPI App</Button></a>
-                    </div>
+                    <div className="flex flex-col items-center space-y-3 p-4 border rounded-md bg-muted/30"><p className="text-sm font-medium">Scan QR or use UPI App</p><QRCode value={`upi://pay?pa=${upiId}&am=${depositAmount}&cu=INR`} size={128} /><p className="text-xs text-muted-foreground">UPI ID: {upiId}</p><a href={`upi://pay?pa=${upiId}&am=${depositAmount}&cu=INR`} className="w-full"><Button className="w-full" disabled={isSubmittingDeposit}>Pay with UPI App</Button></a></div>
                   )}
-                  <div>
-                    <label htmlFor="screenshot" className="text-sm font-medium">Payment Screenshot</label>
-                    <Input id="screenshot" type="file" accept="image/*" onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)} className="mt-1" disabled={!upiId || isSubmittingDeposit} />
-                  </div>
-                  <Button onClick={handleDeposit} disabled={!depositAmount || !screenshot || !upiId || isSubmittingDeposit} className="w-full">
-                    {isSubmittingDeposit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit Deposit
-                  </Button>
+                  <div><label htmlFor="screenshot" className="text-sm font-medium">Payment Screenshot</label><Input id="screenshot" type="file" accept="image/*" onChange={(e) => setScreenshot(e.target.files ? e.target.files[0] : null)} className="mt-1" disabled={!upiId || isSubmittingDeposit} /></div>
+                  <Button onClick={handleDeposit} disabled={!depositAmount || !screenshot || !upiId || isSubmittingDeposit} className="w-full">{isSubmittingDeposit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit Deposit</Button>
                 </>
               )}
             </CardContent>
           </Card>
           <HistoryTable history={depositHistory} isLoading={isHistoryLoading} type="Deposit" />
         </TabsContent>
-
         <TabsContent value="withdraw">
           <Card>
-            <CardHeader>
-              <CardTitle>Request Withdrawal</CardTitle>
-              <CardDescription>Request a withdrawal to your bank account. Minimum balance of ₹{MIN_WALLET_BALANCE_FOR_WITHDRAWAL} required.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder={`Amount to withdraw (Max ₹${withdrawableBalance.toFixed(2)})`} disabled={isSubmittingWithdrawal || withdrawableBalance <= 0} />
-                <Input value={withdrawUpiId} onChange={(e) => setWithdrawUpiId(e.target.value)} placeholder="Your UPI ID (e.g. you@bank)" disabled={isSubmittingWithdrawal || withdrawableBalance <= 0} />
-                <Button onClick={handleWithdrawal} disabled={!withdrawAmount || !withdrawUpiId || isSubmittingWithdrawal || withdrawableBalance <= 0} className="w-full">
-                    {isSubmittingWithdrawal && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit Withdrawal Request
-                </Button>
-            </CardContent>
+            <CardHeader><CardTitle>Request Withdrawal</CardTitle><CardDescription>Request a withdrawal to your bank account. Minimum balance of ₹{MIN_WALLET_BALANCE_FOR_WITHDRAWAL} required.</CardDescription></CardHeader>
+            <CardContent className="space-y-4"><Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} placeholder={`Amount to withdraw (Max ₹${withdrawableBalance.toFixed(2)})`} disabled={isSubmittingWithdrawal || withdrawableBalance <= 0} /><Input value={withdrawUpiId} onChange={(e) => setWithdrawUpiId(e.target.value)} placeholder="Your UPI ID (e.g. you@bank)" disabled={isSubmittingWithdrawal || withdrawableBalance <= 0} /><Button onClick={handleWithdrawal} disabled={!withdrawAmount || !withdrawUpiId || isSubmittingWithdrawal || withdrawableBalance <= 0} className="w-full">{isSubmittingWithdrawal && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit Withdrawal Request</Button></CardContent>
           </Card>
           <HistoryTable history={withdrawalHistory} isLoading={isWithdrawalHistoryLoading} type="Withdrawal" />
         </TabsContent>
@@ -292,6 +167,8 @@ const WalletPage = () => {
   );
 };
 
-export default WalletPage;
+const HistoryTable = ({ history, isLoading, type }: { history: any[], isLoading: boolean, type: 'Deposit' | 'Withdrawal' }) => (
+    <Card className="mt-4"><CardHeader><CardTitle>{type} History</CardTitle></CardHeader><CardContent>{isLoading ? <Skeleton className="h-24 w-full" /> : history.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Amount</TableHead><TableHead>Status</TableHead>{type === 'Withdrawal' && <TableHead>UPI ID</TableHead>}<TableHead className="text-right">Date</TableHead></TableRow></TableHeader><TableBody>{history.map((item) => (<TableRow key={item.id}><TableCell className="font-medium">₹{item.amount.toFixed(2)}</TableCell><TableCell><Badge variant={item.status === 'approved' ? 'default' : item.status === 'rejected' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>{type === 'Withdrawal' && <TableCell>{item.upiId}</TableCell>}<TableCell className="text-right">{item.createdAt?.toDate().toLocaleDateString()}</TableCell></TableRow>))}</TableBody></Table>) : <p className="text-center text-muted-foreground py-4">You have no {type.toLowerCase()} history.</p>}</CardContent></Card>
+)
 
-    
+export default WalletPage;
