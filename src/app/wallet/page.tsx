@@ -128,13 +128,13 @@ const WalletPage = () => {
     setIsSubmittingDeposit(true);
     try {
       const storageRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}-${screenshot.name}`);
-      await uploadBytes(storageRef, screenshot);
-      const screenshotUrl = await getDownloadURL(storageRef);
+      const uploadTask = await uploadBytes(storageRef, screenshot);
+      const screenshotUrl = await getDownloadURL(uploadTask.ref);
 
       const depositData = {
         userId: user.uid,
         amount: parseFloat(depositAmount),
-        screenshotUrl,
+        screenshotUrl: screenshotUrl,
         status: "pending",
         createdAt: serverTimestamp(),
       };
@@ -142,15 +142,17 @@ const WalletPage = () => {
       const depositCollection = collection(db, "depositRequests");
       await addDoc(depositCollection, depositData);
 
-      toast.success("Deposit request submitted!");
+      toast.success("Deposit request submitted successfully!");
       setDepositAmount("");
       setScreenshot(null);
+      // Reset file input
       const fileInput = document.getElementById('screenshot') as HTMLInputElement;
       if (fileInput) fileInput.value = "";
+
     } catch (error: any) {
       console.error("Error submitting deposit request:", error);
-      toast.error("Failed to submit request.", {
-        description: error.message || "Please check your connection and try again. If the problem persists, contact support."
+      toast.error("Failed to submit deposit request.", {
+        description: error.message || "Please check your permissions or network and try again."
       });
     } finally {
       setIsSubmittingDeposit(false);
@@ -291,3 +293,5 @@ const WalletPage = () => {
 };
 
 export default WalletPage;
+
+    

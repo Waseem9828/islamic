@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Firestore Security Rules for the Islamic Random Selector app.
  *
@@ -177,15 +178,21 @@ service cloud.firestore {
      * @path /depositRequests/{requestId}
      */
     match /depositRequests/{requestId} {
-      // Users can create their own deposit requests.
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      // Users can read their own requests. Admins can read any request.
+      function hasValidDepositData() {
+        let data = request.resource.data;
+        return data.userId == request.auth.uid &&
+               data.amount is number &&
+               data.amount > 0 &&
+               data.screenshotUrl is string &&
+               data.screenshotUrl.size() > 0 &&
+               data.status == 'pending' &&
+               data.keys().hasOnly(['userId', 'amount', 'screenshotUrl', 'status', 'createdAt']);
+      }
+      
+      allow create: if isSignedIn() && hasValidDepositData();
       allow get: if (isOwner(resource.data.userId)) || isAdmin();
-      // A signed-in user can query the collection, the client-side query will filter by userId.
       allow list: if isSignedIn();
-      // Only admins can update requests (e.g., to approve them).
       allow update: if isAdmin();
-      // Only admins can delete requests.
       allow delete: if isAdmin();
     }
     
@@ -219,3 +226,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
