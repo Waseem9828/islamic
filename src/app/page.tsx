@@ -46,7 +46,8 @@ export default function MatchmakingHomePage() {
     if (!allMatches) return { openMatches: [], myActiveMatches: [], ongoingMatches: [], cancelledMatches: [] };
 
     const filtered = allMatches.filter(match => {
-        const isSearchMatch = match.room.toLowerCase().includes(searchQuery.toLowerCase()) || match.creatorName?.toLowerCase().includes(searchQuery.toLowerCase());
+        const searchInput = searchQuery.toLowerCase();
+        const isSearchMatch = match.id.toLowerCase().includes(searchInput) || match.creatorName?.toLowerCase().includes(searchInput) || match.matchTitle?.toLowerCase().includes(searchInput);
         const isInFeeRange = match.entry >= filters.feeRange[0] && match.entry <= filters.feeRange[1];
         const isPlayerCountMatch = filters.playerCount === 'all' || match.players?.length.toString() === filters.playerCount;
         return isSearchMatch && isInFeeRange && isPlayerCountMatch;
@@ -83,7 +84,7 @@ export default function MatchmakingHomePage() {
     <Card className={`overflow-hidden p-2 space-y-2.5 ${borderColor} ${cardClassName}`}>
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle className="text-base font-bold">{match.room}</CardTitle>
+                <CardTitle className="text-base font-bold">{match.matchTitle || match.room}</CardTitle>
                 <CardDescription className="text-xs">By: {match.creatorName}</CardDescription>
             </div>
             <Badge variant="secondary" className="text-sm">₹{match.entry}</Badge>
