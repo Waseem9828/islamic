@@ -11,11 +11,12 @@ import { toast } from 'sonner';
 import { Loader2, IndianRupee, Copy } from 'lucide-react';
 import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { doc } from 'firebase/firestore';
+import QRCode from "qrcode.react";
 
 const requestDepositFunction = httpsCallable(functions, 'requestDeposit');
 
 // Separated Form component to prevent re-renders from parent's data fetching
-function DepositForm({ isLoadingSettings }: { isLoadingSettings: boolean }) {
+function DepositForm({ isLoadingSettings, upiId }: { isLoadingSettings: boolean, upiId: string | undefined }) {
   const [amount, setAmount] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,43 +48,58 @@ function DepositForm({ isLoadingSettings }: { isLoadingSettings: boolean }) {
     }
   };
 
+  const showQrCode = upiId && amount && parseFloat(amount) >= 50;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Submit Deposit Request</CardTitle>
-        <CardDescription>Fill this form after you have completed the payment.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount Deposited (₹)</label>
-            <Input
-              id="amount"
-              type="number"
-              placeholder="Enter exact amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-          <div>
-            <label htmlFor="transactionId" className="block text-sm font-medium text-muted-foreground mb-1">Transaction ID / UTR</label>
-            <Input
-              id="transactionId"
-              type="text"
-              placeholder="Enter the 12-digit UTR number"
-              value={transactionId}
-              onChange={(e) => setTransactionId(e.target.value)}
-              disabled={isSubmitting}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={isSubmitting || isLoadingSettings}>
-            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
-            Submit for Verification
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <>
+        {showQrCode && (
+            <Card className="mb-6 text-center">
+                <CardHeader>
+                    <CardTitle>Scan to Pay</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center gap-4">
+                     <QRCode value={`upi://pay?pa=${upiId}&am=${amount}&cu=INR`} size={160} />
+                     <p className='text-sm text-muted-foreground'>After paying, enter the Transaction ID below.</p>
+                </CardContent>
+            </Card>
+        )}
+        <Card>
+        <CardHeader>
+            <CardTitle>Submit Deposit Request</CardTitle>
+            <CardDescription>Fill this form after you have completed the payment.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount Deposited (₹)</label>
+                <Input
+                id="amount"
+                type="number"
+                placeholder="Enter exact amount (min. ₹50)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={isSubmitting}
+                />
+            </div>
+            <div>
+                <label htmlFor="transactionId" className="block text-sm font-medium text-muted-foreground mb-1">Transaction ID / UTR</label>
+                <Input
+                id="transactionId"
+                type="text"
+                placeholder="Enter the 12-digit UTR number"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                disabled={isSubmitting}
+                />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting || isLoadingSettings}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
+                Submit for Verification
+            </Button>
+            </form>
+        </CardContent>
+        </Card>
+    </>
   );
 }
 
@@ -115,12 +131,12 @@ export default function DepositPage() {
               <Copy className="h-4 w-4" />
             </Button>
           </div>
-          <p>2. After a successful payment, enter the amount and the Transaction ID in the form below.</p>
-          <p>3. Your balance will be updated after admin verification.</p>
+          <p>2. Enter the amount in the form below to generate a QR Code.</p>
+          <p>3. After payment, enter the Transaction ID and submit for verification.</p>
         </CardContent>
       </Card>
       
-      <DepositForm isLoadingSettings={!!isLoadingSettings} />
+      <DepositForm isLoadingSettings={!!isLoadingSettings} upiId={paymentSettings?.upiId} />
     </div>
   );
 }
