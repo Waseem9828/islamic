@@ -27,6 +27,7 @@ service cloud.firestore {
                       && request.resource.data.amount > 0
                       && request.resource.data.screenshotUrl is string
                       && request.resource.data.status == "pending"
+                      && request.time == request.resource.data.createdAt
                       && request.resource.data.keys().hasOnly(['userId', 'amount', 'screenshotUrl', 'status', 'createdAt']);
       allow update: if isSignedIn() && isAdmin();
       allow delete: if false;
@@ -48,7 +49,7 @@ service cloud.firestore {
     
     // Matches
     match /matches/{matchId} {
-      allow get: if isSignedIn() && (resource.data.players.hasAny([request.auth.uid]) || resource.data.privacy == 'public' || isAdmin());
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (resource.data.players.hasAny([request.auth.uid]) || isAdmin());
