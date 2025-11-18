@@ -5,7 +5,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Users, List, IndianRupee, Settings, LayoutDashboard, ArrowLeft } from 'lucide-react';
+import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 
 
@@ -13,6 +13,7 @@ const adminFeatures = [
     { title: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
     { title: 'Users', icon: Users, path: '/admin/users' },
     { title: 'Deposits', icon: IndianRupee, path: '/admin/deposit-requests' },
+    { title: 'Withdrawals', icon: ListChecks, path: '/admin/withdrawal-requests' },
     { title: 'Payments', icon: Settings, path: '/admin/payment-settings' },
 ];
 
@@ -68,7 +69,7 @@ const AdminSidebar = () => {
     }
 
     return (
-        <Sidebar collapsible="icon" className="hidden md:flex">
+        <Sidebar collapsible="icon" className="hidden md:flex bg-muted/30">
             <SidebarContent>
                <AdminSidebarMenuContent />
             </SidebarContent>
@@ -77,3 +78,5 @@ const AdminSidebar = () => {
 };
 
 export default AdminSidebar;
+
+    
