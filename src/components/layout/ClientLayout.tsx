@@ -9,6 +9,7 @@ import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { Sidebar, SidebarProvider, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { Home, Landmark, User, Swords } from 'lucide-react';
+import { ClientFirebaseProvider } from '@/firebase/client-provider';
 
 export default function ClientLayout({
   children,
@@ -20,7 +21,7 @@ export default function ClientLayout({
   const showSidebar = !noSidebarRoutes.includes(pathname) && !pathname.startsWith('/admin');
 
   return (
-    <>
+    <ClientFirebaseProvider>
       <SidebarProvider>
         <div className="flex flex-col min-h-screen w-full">
           <Header />
@@ -74,8 +75,6 @@ export default function ClientLayout({
       </SidebarProvider>
       <ShadToaster />
       <SonnerToaster richColors />
-    </>
+    </ClientFirebaseProvider>
   );
 }
-
-    

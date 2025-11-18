@@ -2,7 +2,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ClientLayout from '@/components/layout/ClientLayout';
-import { ClientFirebaseProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'Premium Numbers',
@@ -22,9 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-background text-foreground">
-        <ClientFirebaseProvider>
-          <ClientLayout>{children}</ClientLayout>
-        </ClientFirebaseProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
