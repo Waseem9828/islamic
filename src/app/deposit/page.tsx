@@ -15,8 +15,7 @@ import QRCode from "qrcode.react";
 
 const requestDepositFunction = httpsCallable(functions, 'requestDeposit');
 
-// Separated Form component to prevent re-renders from parent's data fetching
-function DepositForm({ isLoadingSettings, upiId }: { isLoadingSettings: boolean, upiId: string | undefined }) {
+function DepositForm({ upiId }: { upiId: string | undefined }) {
   const [amount, setAmount] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,8 +28,8 @@ function DepositForm({ isLoadingSettings, upiId }: { isLoadingSettings: boolean,
       toast.error('Invalid Amount', { description: 'Please enter a valid number.' });
       return;
     }
-    if (!transactionId) {
-      toast.error('Transaction ID Required', { description: 'Please enter the payment transaction ID.' });
+    if (!transactionId || transactionId.length < 12) {
+      toast.error('Invalid Transaction ID', { description: 'Please enter a valid 12-digit UTR number.' });
       return;
     }
 
@@ -47,7 +46,7 @@ function DepositForm({ isLoadingSettings, upiId }: { isLoadingSettings: boolean,
       setIsSubmitting(false);
     }
   };
-
+  
   const showQrCode = upiId && amount && parseFloat(amount) >= 50;
 
   return (
@@ -92,7 +91,7 @@ function DepositForm({ isLoadingSettings, upiId }: { isLoadingSettings: boolean,
                 disabled={isSubmitting}
                 />
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting || isLoadingSettings}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || !upiId}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
                 Submit for Verification
             </Button>
@@ -123,20 +122,28 @@ export default function DepositPage() {
         <CardContent className="space-y-4">
           <p>1. Pay your desired amount to the UPI ID given below using any payment app.</p>
           <div className="flex items-center gap-2 p-3 rounded-md bg-background">
-            {isLoadingSettings ?
-              <Loader2 className="h-5 w-5 animate-spin" /> :
-              <p className="font-mono text-lg font-bold">{paymentSettings?.upiId || 'UPI ID not set'}</p>
-            }
-            <Button variant="ghost" size="icon" onClick={copyToClipboard} disabled={!paymentSettings?.upiId}>
-              <Copy className="h-4 w-4" />
-            </Button>
+            {isLoadingSettings ? (
+                <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Loading UPI ID...</span>
+                </div>
+            ) : paymentSettings?.upiId ? (
+                <>
+                    <p className="font-mono text-lg font-bold">{paymentSettings.upiId}</p>
+                    <Button variant="ghost" size="icon" onClick={copyToClipboard}>
+                        <Copy className="h-4 w-4" />
+                    </Button>
+                </>
+            ) : (
+                <p className="text-destructive font-semibold">Deposits are currently unavailable.</p>
+            )}
           </div>
-          <p>2. Enter the amount in the form below to generate a QR Code.</p>
-          <p>3. After payment, enter the Transaction ID and submit for verification.</p>
+          <p>2. Enter the amount in the form below to generate a QR Code for easy payment.</p>
+          <p>3. After payment, copy the 12-digit Transaction ID (UTR) and submit it for verification.</p>
         </CardContent>
       </Card>
       
-      <DepositForm isLoadingSettings={!!isLoadingSettings} upiId={paymentSettings?.upiId} />
+      <DepositForm upiId={paymentSettings?.upiId} />
     </div>
   );
 }

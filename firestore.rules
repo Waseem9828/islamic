@@ -1,39 +1,87 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Admin access rules
     function isAdmin() {
+      // Allow access if the user's UID is the designated admin UID.
       return request.auth.uid == 'Mh28D81npYYDfC3z8mslVIPFu5H3'; // <<<--- YOUR ADMIN UID HAS BEEN SET
     }
 
-    // Settings can be read by any authenticated user
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // SETTINGS
     match /settings/{doc} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin(); // Only admin can write
+      // Any signed-in user can read settings (e.g., for payment info)
+      allow get: if isSignedIn();
+      // Only admins can change settings
+      allow write: if isAdmin();
     }
 
-    // Users collection rules
+    // USERS
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId || isAdmin();
+      // A user can read or write their own profile data. Admins can too.
+      allow read, write: if isOwner(userId) || isAdmin();
     }
 
-    // Wallets collection rules
+    // WALLETS
     match /wallets/{userId} {
-      allow read, write: if request.auth.uid == userId || isAdmin();
+      // A user can read their own wallet.
+      allow get: if isOwner(userId);
+      // Wallet creation/updates are handled by trusted Cloud Functions.
+      // No direct client-side writes are allowed.
+      allow create, update: if false; 
     }
 
-    // Deposit requests can be created by authenticated users, and read/updated by admin
+    // DEPOSIT REQUESTS
     match /depositRequests/{requestId} {
-      allow create: if request.auth != null;
+      // Allow creation only if the user is signed in and the data is structured correctly.
+      allow create: if isSignedIn()
+                      && isOwner(request.resource.data.userId)
+                      && request.resource.data.keys().hasOnly(['userId', 'amount', 'transactionId', 'status', 'requestedAt'])
+                      && request.resource.data.amount > 0
+                      && request.resource.data.transactionId is string
+                      && request.resource.data.transactionId.size() >= 12
+                      && request.resource.data.status == 'pending';
+      // Only admins can read or update (approve/reject) deposit requests.
       allow read, update: if isAdmin();
     }
 
-    // Withdrawal requests can be created by authenticated users, and read/updated by admin
+    // WITHDRAWAL REQUESTS
     match /withdrawalRequests/{requestId} {
-      allow create: if request.auth != null;
+      // Allow creation if the user is the owner and data is valid.
+       allow create: if isSignedIn()
+                      && isOwner(request.resource.data.userId)
+                      && request.resource.data.keys().hasOnly(['userId', 'amount', 'upiId', 'status', 'requestedAt'])
+                      && request.resource.data.amount > 0
+                      && request.resource.data.upiId.matches('^[\\w.-]+@[\\w.-]+$')
+                      && request.resource.data.status == 'pending';
+      // Admins can read and update (approve/reject) withdrawals.
       allow read, update: if isAdmin();
+    }
+    
+    // TRANSACTIONS
+    match /transactions/{transactionId} {
+        // Users can read their own transaction history.
+        allow read: if isSignedIn() && isOwner(resource.data.userId);
+        // Only backend (Cloud Functions) can create transactions.
+        allow write: if false;
+    }
+    
+    // MATCHES
+    match /matches/{matchId} {
+      // Any signed-in user can read match details.
+      allow read: if isSignedIn();
+      // Rules for creating, updating, and deleting matches are complex and handled by Cloud Functions.
+      // No direct client-side writes are allowed to prevent cheating.
+      allow write: if false; 
     }
   }
 }

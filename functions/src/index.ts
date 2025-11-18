@@ -29,7 +29,7 @@ const getAppRules = async () => {
 
 // Helper to check for Admin privileges
 const ensureIsAdmin = (context) => {
-    if (!context.auth || !context.auth.token.isAdmin) {
+    if (!context.auth || context.auth.token.uid !== 'Mh28D81npYYDfC3z8mslVIPFu5H3') {
         throw new functions.https.HttpsError(
             'permission-denied',
             'This function can only be called by an admin.'
@@ -45,10 +45,10 @@ exports.requestDeposit = functions.https.onCall(async (data, context) => {
     const userId = context.auth.uid;
 
     if (typeof amount !== 'number' || amount <= 0) {
-        throw new functions.https.HttpsError("invalid-argument", "Invalid amount.");
+        throw new functions.https.HttpsError("invalid-argument", "Invalid amount specified.");
     }
     if (typeof transactionId !== 'string' || transactionId.length < 12) {
-        throw new functions.https.HttpsError("invalid-argument", "Invalid Transaction ID.");
+        throw new functions.https.HttpsError("invalid-argument", "A valid 12-digit Transaction ID is required.");
     }
 
     await db.collection("depositRequests").add({
@@ -59,7 +59,7 @@ exports.requestDeposit = functions.https.onCall(async (data, context) => {
         requestedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    return { status: "success" };
+    return { status: "success", message: "Deposit request submitted successfully." };
 });
 
 exports.processDeposit = functions.https.onCall(async (data, context) => {
@@ -72,8 +72,8 @@ exports.processDeposit = functions.https.onCall(async (data, context) => {
 
     const requestRef = db.collection('depositRequests').doc(requestId);
     
-    try {
-        const requestDoc = await requestRef.get();
+    return db.runTransaction(async (transaction) => {
+        const requestDoc = await transaction.get(requestRef);
 
         if (!requestDoc.exists) {
             throw new functions.https.HttpsError('not-found', 'Deposit request not found.');
@@ -88,41 +88,50 @@ exports.processDeposit = functions.https.onCall(async (data, context) => {
             const bonusAmount = amount * rules.depositBonusRate;
 
             const walletRef = db.collection('wallets').doc(userId);
-
-            await db.runTransaction(async (transaction) => {
-                const walletDoc = await transaction.get(walletRef);
-                if (!walletDoc.exists) {
-                    transaction.set(walletRef, {
-                        depositBalance: amount,
-                        bonusBalance: bonusAmount,
-                        winningBalance: 0,
-                    });
-                } else {
-                    transaction.update(walletRef, {
-                        depositBalance: admin.firestore.FieldValue.increment(amount),
-                        bonusBalance: admin.firestore.FieldValue.increment(bonusAmount),
-                    });
-                }
-                
-                transaction.update(requestRef, { status: 'approved', processedAt: admin.firestore.FieldValue.serverTimestamp() });
-
-                const txRef = db.collection('transactions').doc();
-                transaction.set(txRef, {
-                    userId, type: 'credit', amount, reason: 'deposit', depositId: requestId, 
-                    bonus: bonusAmount, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            const walletDoc = await transaction.get(walletRef);
+            
+            if (!walletDoc.exists) {
+                // If wallet doesn't exist, create it with the new balances.
+                transaction.set(walletRef, {
+                    depositBalance: amount,
+                    bonusBalance: bonusAmount,
+                    winningBalance: 0,
                 });
+            } else {
+                // If wallet exists, increment the balances.
+                transaction.update(walletRef, {
+                    depositBalance: admin.firestore.FieldValue.increment(amount),
+                    bonusBalance: admin.firestore.FieldValue.increment(bonusAmount),
+                });
+            }
+            
+            transaction.update(requestRef, { status: 'approved', processedAt: admin.firestore.FieldValue.serverTimestamp() });
+
+            // Create a record of this transaction
+            const txRef = db.collection('transactions').doc();
+            transaction.set(txRef, {
+                userId, 
+                type: 'credit', 
+                amount, 
+                reason: 'deposit', 
+                status: 'completed',
+                depositId: requestId, 
+                bonus: bonusAmount, 
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
             });
+            
             return { status: 'success', message: `₹${amount} ( + ₹${bonusAmount} bonus) added to user ${userId}.` };
         } else {
-            await requestRef.update({ status: 'rejected', processedAt: admin.firestore.FieldValue.serverTimestamp() });
+            transaction.update(requestRef, { status: 'rejected', processedAt: admin.firestore.FieldValue.serverTimestamp() });
             return { status: 'success', message: "Deposit request rejected." };
         }
-    } catch (error) {
+    }).catch(error => {
         console.error("Error processing deposit:", error);
         if (error instanceof functions.https.HttpsError) throw error;
-        throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
-    }
+        throw new functions.https.HttpsError("internal", "An unexpected error occurred during the transaction.");
+    });
 });
+
 
 exports.createMatch = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -153,14 +162,15 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     }
     const walletDoc = await transaction.get(walletRef);
     if (!walletDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Wallet not found.");
+      throw new functions.https.HttpsError("not-found", "Wallet not found. Please make a deposit first.");
     }
     const walletData = walletDoc.data();
     const totalBalance = (walletData.depositBalance || 0) + (walletData.winningBalance || 0) + (walletData.bonusBalance || 0);
     if (totalBalance < entryFee) {
-      throw new functions.https.HttpsError("failed-precondition", "Insufficient balance.");
+      throw new functions.https.HttpsError("failed-precondition", "Insufficient total balance.");
     }
 
+    // Deduction Logic: Bonus -> Deposit -> Winnings
     let remainingFee = entryFee;
     let deductedFromBonus = Math.min(remainingFee, walletData.bonusBalance || 0);
     remainingFee -= deductedFromBonus;
@@ -180,17 +190,37 @@ exports.createMatch = functions.https.onCall(async (data, context) => {
     });
     
     const newMatch = {
-        id: matchId.toUpperCase(), room: matchId.toUpperCase(), matchTitle, entry: entryFee, maxPlayers, privacy, timeLimit, status: "waiting", createdBy: userId, creatorName: userDisplayName, createdAt: admin.firestore.FieldValue.serverTimestamp(), players: [userId], playerInfo: { [userId]: { name: userDisplayName, photoURL: userPhotoURL, isReady: false }, },
+        id: matchId.toUpperCase(),
+        room: matchId.toUpperCase(),
+        matchTitle,
+        entry: entryFee,
+        maxPlayers,
+        privacy,
+        timeLimit,
+        status: "waiting",
+        createdBy: userId,
+        creatorName: userDisplayName,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        players: [userId],
+        playerInfo: {
+          [userId]: { name: userDisplayName, photoURL: userPhotoURL, isReady: false },
+        },
     };
     transaction.set(matchRef, newMatch);
     
     const txRef = db.collection("transactions").doc();
     transaction.set(txRef, {
-        userId, type: "debit", amount: entryFee, reason: "match_creation", matchId: matchId.toUpperCase(), timestamp: admin.firestore.FieldValue.serverTimestamp(), 
+        userId,
+        type: "debit",
+        amount: entryFee,
+        reason: "match_creation",
+        status: "completed",
+        matchId: matchId.toUpperCase(),
+        timestamp: admin.firestore.FieldValue.serverTimestamp(), 
         breakdown: { fromDeposit: deductedFromDeposit, fromWinnings: deductedFromWinnings, fromBonus: deductedFromBonus }
     });
     
-    return { status: "success", message: "Match created successfully!" };
+    return { status: "success", message: "Match created successfully!", matchId: matchId.toUpperCase() };
   });
 });
 
@@ -213,12 +243,9 @@ exports.cancelMatch = functions.https.onCall(async (data, context) => {
       const matchData = matchDoc.data();
 
       if (matchData.createdBy !== userId) { throw new functions.https.HttpsError("permission-denied", "Only the creator can cancel."); }
-      if (matchData.status !== "waiting" || matchData.players.length > 1) { throw new functions.https.HttpsError("failed-precondition", "Match cannot be cancelled now."); }
+      if (matchData.status !== "waiting" || matchData.players.length > 1) { throw new functions.https.HttpsError("failed-precondition", "Match cannot be cancelled now as other players have joined."); }
 
       const entryFee = matchData.entry;
-      if (entryFee < rules.cancellationFee) {
-          throw new functions.https.HttpsError("failed-precondition", `Entry fee is less than cancellation charge of ₹${rules.cancellationFee}.`);
-      }
       
       const creationTxQuery = await db.collection('transactions').where('userId', '==', userId).where('matchId', '==', matchId).where('reason', '==', 'match_creation').limit(1).get();
       if (creationTxQuery.empty) {
@@ -229,9 +256,10 @@ exports.cancelMatch = functions.https.onCall(async (data, context) => {
 
       const refundAmount = entryFee - rules.cancellationFee;
 
-      const refundToDeposit = fromDeposit > 0 ? (entryFee - rules.cancellationFee) * (fromDeposit / entryFee) : 0;
-      const refundToWinnings = fromWinnings > 0 ? (entryFee - rules.cancellationFee) * (fromWinnings / entryFee) : 0;
-      const refundToBonus = fromBonus > 0 ? (entryFee - rules.cancellationFee) * (fromBonus / entryFee) : 0;
+      const refundToDeposit = Math.min(fromDeposit, refundAmount);
+      const refundToWinnings = Math.min(fromWinnings, refundAmount - refundToDeposit);
+      const refundToBonus = Math.min(fromBonus, refundAmount - refundToDeposit - refundToWinnings);
+
 
       transaction.update(db.collection('wallets').doc(userId), {
         depositBalance: admin.firestore.FieldValue.increment(refundToDeposit),
@@ -247,7 +275,7 @@ exports.cancelMatch = functions.https.onCall(async (data, context) => {
         breakdown: { toDeposit: refundToDeposit, toWinnings: refundToWinnings, toBonus: refundToBonus, fee: rules.cancellationFee }
       });
       
-      return { status: "success", message: `Match cancelled with a fee of ₹${rules.cancellationFee}.` };
+      return { status: "success", message: `Match cancelled. ₹${refundAmount.toFixed(2)} refunded after a ₹${rules.cancellationFee} fee.` };
   });
 });
 
@@ -267,7 +295,7 @@ exports.distributeWinnings = functions.https.onCall(async (data, context) => {
         if (!matchDoc.exists) { throw new functions.https.HttpsError('not-found', 'Match not found.'); }
         const matchData = matchDoc.data();
 
-        if (matchData.status !== 'inprogress' && matchData.status !== 'waiting') { 
+        if (matchData.status === 'completed' || matchData.status === 'cancelled') { 
             throw new functions.https.HttpsError('failed-precondition', `Match is already ${matchData.status}.`);
         }
         if (!matchData.players.includes(winnerId)){
@@ -287,7 +315,7 @@ exports.distributeWinnings = functions.https.onCall(async (data, context) => {
         const txRef = db.collection('transactions').doc();
         transaction.set(txRef, {
             userId: winnerId, type: 'credit', amount: winnings, reason: 'match_win', matchId: matchId,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            status: 'completed', timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         return { status: 'success', message: `Winnings of ₹${winnings.toFixed(2)} distributed.` };
@@ -313,11 +341,13 @@ exports.requestWithdrawal = functions.https.onCall(async (data, context) => {
     }
     
     transaction.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-amount) });
+    
     const requestRef = db.collection("withdrawalRequests").doc();
-    transaction.set(requestRef, { userId, amount, upiId, status: 'pending', requestedAt: admin.firestore.FieldValue.serverTimestamp(), });
-    transaction.set(db.collection('transactions').doc(), { userId, type: 'debit', amount, reason: 'withdrawal_request', status: 'pending', withdrawalId: requestRef.id, timestamp: admin.firestore.FieldValue.serverTimestamp(), });
+    transaction.set(requestRef, { userId, amount, upiId, status: 'pending', requestedAt: admin.firestore.FieldValue.serverTimestamp() });
+    
+    transaction.set(db.collection('transactions').doc(), { userId, type: 'debit', amount, reason: 'withdrawal_request', status: 'pending', withdrawalId: requestRef.id, timestamp: admin.firestore.FieldValue.serverTimestamp() });
 
-    return { status: "success", message: "Withdrawal request submitted."};
+    return { status: "success", message: "Withdrawal request submitted successfully."};
   });
 });
 
@@ -335,18 +365,18 @@ exports.processWithdrawal = functions.https.onCall(async (data, context) => {
         if (requestData.status !== 'pending') { throw new functions.https.HttpsError('failed-precondition', 'Request already processed.'); }
 
         const txQuery = await db.collection('transactions').where('withdrawalId', '==', requestId).limit(1).get();
-        const txDoc = txQuery.docs[0];
+        const txDoc = txQuery.docs.length > 0 ? txQuery.docs[0] : null;
 
         if (approve) {
             transaction.update(requestRef, { status: 'approved', processedAt: admin.firestore.FieldValue.serverTimestamp() });
             if(txDoc) transaction.update(txDoc.ref, { status: 'completed' });
-            return { message: `Request for ₹${requestData.amount} approved.` };
+            return { status: 'success', message: `Request for ₹${requestData.amount} approved.` };
         } else {
             // Refund the money if rejected
             transaction.update(db.collection('wallets').doc(requestData.userId), { winningBalance: admin.firestore.FieldValue.increment(requestData.amount) });
             transaction.update(requestRef, { status: 'rejected', processedAt: admin.firestore.FieldValue.serverTimestamp() });
             if(txDoc) transaction.update(txDoc.ref, { status: 'rejected' });
-            return { message: `Request for ₹${requestData.amount} rejected and refunded.` };
+            return { status: 'success', message: `Request for ₹${requestData.amount} rejected and refunded.` };
         }
     });
 });
