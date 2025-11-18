@@ -17,7 +17,7 @@ export default function ClientLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
-  const noSidebarRoutes = ['/login', '/signup'];
+  const noSidebarRoutes = ['/login', '/signup', '/'];
   const showSidebar = !noSidebarRoutes.includes(pathname) && !pathname.startsWith('/admin');
 
   return (
@@ -32,7 +32,7 @@ export default function ClientLayout({
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <SidebarMenuButton asChild>
-                        <Link href="/">
+                        <Link href="/matchmaking">
                           <Home className="h-4 w-4" />
                           Home
                         </Link>
