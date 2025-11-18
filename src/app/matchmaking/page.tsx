@@ -202,11 +202,11 @@ export default function MatchmakingHomePage() {
 
         <div className="mt-8"><Button size="lg" className="w-full text-lg py-6" onClick={handleCreateMatch}>Create New Match <ChevronRight className="ml-2 h-5 w-5" /></Button></div>
         <AlertDialog open={isJoinConfirmOpen} onOpenChange={setIsJoinConfirmOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent aria-describedby="alert-dialog-description">
             <AlertDialogHeader>
               <AlertDialogTitle>Join Match Confirmation</AlertDialogTitle>
-              <AlertDialogDescription>You are about to join <span className="font-bold">{selectedMatch?.room}</span>.</AlertDialogDescription>
             </AlertDialogHeader>
+            <AlertDialogDescription id="alert-dialog-description">You are about to join <span className="font-bold">{selectedMatch?.room}</span>.</AlertDialogDescription>
             <div className="space-y-4 py-4">
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <span className="text-muted-foreground">Entry Fee</span>

@@ -29,7 +29,7 @@ export function LoginForm() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success('Logged in successfully');
-      router.push('/');
+      router.push('/matchmaking'); // Redirect to the matchmaking page
     } catch (error) {
       if (error instanceof FirebaseError) {
         toast.error(error.message);

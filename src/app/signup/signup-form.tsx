@@ -29,7 +29,7 @@ export function SignUpForm() {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       toast.success('Signed up successfully');
-      router.push('/');
+      router.push('/matchmaking'); // Redirect to the matchmaking page
     } catch (error) {
       if (error instanceof FirebaseError) {
         toast.error(error.message);
