@@ -46,10 +46,10 @@ export default function CreateMatchPage() {
 
   useEffect(() => {
     if (user) {
-      const userDocRef = doc(firestore, "users", user.uid);
-      getDoc(userDocRef).then(docSnap => {
+      const walletDocRef = doc(firestore, "wallets", user.uid);
+      getDoc(walletDocRef).then(docSnap => {
         if (docSnap.exists()) {
-          setUserWallet(docSnap.data().walletBalance || 0);
+          setUserWallet(docSnap.data().balance || 0);
         }
       });
     }
@@ -170,3 +170,5 @@ export default function CreateMatchPage() {
     </div>
   );
 }
+
+    
