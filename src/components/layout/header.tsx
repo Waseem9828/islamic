@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '../ui/button';
 import { Bell, Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -13,29 +13,9 @@ import { Skeleton } from '../ui/skeleton';
 const Header = () => {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   
   if (pathname.startsWith('/admin') || pathname === '/') {
     return null;
-  }
-
-  if (!isClient) {
-    return (
-        <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-muted/95 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-                 <Skeleton className="h-8 w-8 md:hidden" />
-                 <Skeleton className="h-6 w-36" />
-            </div>
-            <div className="flex items-center gap-2">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <Skeleton className="h-9 w-20" />
-            </div>
-        </header>
-    );
   }
 
   return (
