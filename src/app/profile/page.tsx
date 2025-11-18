@@ -51,17 +51,26 @@ const ProfilePage = () => {
 
     setIsUploading(true);
     try {
+      // 1. Create a storage reference
       const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
+      
+      // 2. Upload the file
       await uploadBytes(storageRef, file);
+      
+      // 3. Get the download URL
       const photoURL = await getDownloadURL(storageRef);
 
+      // 4. Update the user's profile in Firebase Auth
       await updateProfile(auth.currentUser, { photoURL });
       
+      // 5. Update the user's document in Firestore
       const userDocRef = doc(firestore, "users", user.uid);
-      await updateDoc(userDocRef, { photoURL });
+      await updateDoc(userDocRef, { photoURL: photoURL });
       
+      // 6. Update the local state to show the new image immediately
       setAvatarSrc(photoURL);
       toast.success("Profile picture updated successfully!");
+
     } catch (error) {
       console.error("Error uploading profile picture:", error);
       toast.error("Failed to upload profile picture. See console for details.");
