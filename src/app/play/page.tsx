@@ -11,13 +11,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from 'sonner';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, ChevronRight, CheckCircle, Copy, Share2, List, Info, Wallet } from 'lucide-react';
 import { useUser } from '@/firebase/provider';
-import { doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/firebase/config';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { errorEmitter, FirestorePermissionError } from '@/firebase';
+import { functions } from '@/firebase/config'; // Import functions
+import { httpsCallable } from 'firebase/functions';
 
-const entryFees = [10, 50, 100, 500, 1000];
+const entryFees = [50, 100, 500, 1000, 2000];
 const timeLimits = ['15 min', '30 min', '1 hour'];
+const MIN_ENTRY_FEE = 50;
 
 interface MatchDetails {
   entryFee: number;
@@ -29,10 +30,13 @@ interface MatchDetails {
   id: string;
 }
 
+// Define the Cloud Function
+const createMatchFunction = httpsCallable(functions, 'createMatch');
+
 export default function CreateMatchPage() {
   const { user } = useUser();
   const router = useRouter();
-  const [entryFee, setEntryFee] = useState<number | 'custom'>(10);
+  const [entryFee, setEntryFee] = useState<number | 'custom'>(MIN_ENTRY_FEE);
   const [customEntryFee, setCustomEntryFee] = useState<string>('');
   const [maxPlayers, setMaxPlayers] = useState<number>(2);
   const [privacy, setPrivacy] = useState<'public' | 'private'>('public');
@@ -42,88 +46,67 @@ export default function CreateMatchPage() {
   const [matchCreated, setMatchCreated] = useState<boolean>(false);
   const [createdMatchDetails, setCreatedMatchDetails] = useState<MatchDetails | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userWallet, setUserWallet] = useState(0);
+  const [userWallet, setUserWallet] = useState({ deposit: 0, winning: 0, total: 0 });
 
   useEffect(() => {
     if (user) {
       const walletDocRef = doc(firestore, "wallets", user.uid);
       getDoc(walletDocRef).then(docSnap => {
         if (docSnap.exists()) {
-          setUserWallet(docSnap.data().balance || 0);
+          const data = docSnap.data();
+          const deposit = data.depositBalance || 0;
+          const winning = data.winningBalance || 0;
+          setUserWallet({ deposit, winning, total: deposit + winning });
         }
       });
     }
   }, [user]);
 
-  const proceedToCreateMatch = () => {
-    if (!user) return; // Should already be checked, but for safety
-    
-    const finalEntryFee = entryFee === 'custom' ? parseFloat(customEntryFee) : entryFee;
-    const matchId = roomCode.toUpperCase();
-    const matchRef = doc(firestore, 'matches', matchId);
-
-    const newMatch = {
-      id: matchId,
-      room: matchId,
-      matchTitle,
-      entry: finalEntryFee,
-      maxPlayers,
-      privacy,
-      timeLimit,
-      status: 'Waiting for Players',
-      createdBy: user.uid,
-      creatorName: user.displayName || 'Anonymous',
-      createdAt: serverTimestamp(),
-      players: [user.uid],
-      playerInfo: { [user.uid]: { name: user.displayName, photoURL: user.photoURL, isReady: false } },
-    };
-
-    setDocumentNonBlocking(matchRef, newMatch, {});
-
-    // Optimistically update UI
-    setCreatedMatchDetails({ ...newMatch, roomCode: matchId, entryFee: finalEntryFee });
-    setMatchCreated(true);
-    toast.success('Match creation initiated!');
-    setIsSubmitting(false);
-  }
-
   const handleCreateMatch = async () => {
     if (!user) { toast.error('You must be logged in to create a match.'); return; }
     
     const finalEntryFee = entryFee === 'custom' ? parseFloat(customEntryFee) : entryFee;
-    if (isNaN(finalEntryFee) || finalEntryFee <= 0) { toast.error('Please enter a valid entry fee.'); return; }
-    if (userWallet < finalEntryFee) { toast.error('Insufficient balance.', { description: `Your balance is ₹${userWallet}.` }); return; }
+    if (isNaN(finalEntryFee) || finalEntryFee < MIN_ENTRY_FEE) { toast.error(`Entry fee must be at least ₹${MIN_ENTRY_FEE}.`); return; }
+    if (userWallet.total < finalEntryFee) { toast.error('Insufficient balance.', { description: `Your balance is ₹${userWallet.total.toFixed(2)}.` }); return; }
     if (!roomCode || roomCode.trim().length < 4) { toast.error('Please enter a valid Room Code (at least 4 characters).'); return; }
     if (!matchTitle) { toast.error('Please enter a match title.'); return; }
     
     setIsSubmitting(true);
-
     const matchId = roomCode.toUpperCase();
-    const matchRef = doc(firestore, 'matches', matchId);
 
     try {
-        const matchSnap = await getDoc(matchRef);
-        if (matchSnap.exists()) {
-          toast.error('Room code already exists.', { description: "Please choose a different room code." });
-          setIsSubmitting(false);
-          return;
-        }
-        // If it does not exist, Firestore does not throw an error, so we can proceed.
-        proceedToCreateMatch();
-    } catch (e: any) {
-        // This catch block will likely execute if we don't have read access,
-        // which is expected when a document doesn't exist.
-        if (e.name === 'FirebaseError' && e.code === 'permission-denied') {
-             // This is the expected "error" when the doc doesn't exist and we can't read it.
-             // It's safe to assume we can try to create it.
-             proceedToCreateMatch();
-        } else {
-            // A different, unexpected error occurred.
-            console.error("Error checking for existing match:", e);
-            toast.error("An unexpected error occurred.", {description: "Could not verify room code. Please try again."});
-            setIsSubmitting(false);
-        }
-        return;
+      const result = await createMatchFunction({
+        matchId: matchId,
+        matchTitle: matchTitle,
+        entryFee: finalEntryFee,
+        maxPlayers: maxPlayers,
+        privacy: privacy,
+        timeLimit: timeLimit,
+      });
+
+      if (result.data.status === 'success') {
+        setCreatedMatchDetails({
+          id: result.data.matchId,
+          roomCode: result.data.matchId,
+          matchTitle: matchTitle,
+          entryFee: finalEntryFee,
+          maxPlayers: maxPlayers,
+          privacy: privacy,
+          timeLimit: timeLimit,
+        });
+        setMatchCreated(true);
+        toast.success('Match created successfully!');
+      } else {
+        // The 'else' might not be needed if errors are always thrown
+        throw new Error('Failed to create match');
+      }
+
+    } catch (error: any) {
+      console.error('Error calling createMatch function:', error);
+      // Firebase Functions error objects have a 'message' property
+      toast.error('Match creation failed.', { description: error.message || 'An unknown error occurred.' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -155,14 +138,20 @@ export default function CreateMatchPage() {
           <CardDescription>Fill in the details below to start a new match.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"><span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Wallet Balance</span><span className="font-bold text-lg">₹{userWallet.toFixed(2)}</span></div>
+        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Balance</span>
+            <div className='text-right'>
+              <span className="font-bold text-lg">₹{userWallet.total.toFixed(2)}</span>
+              <p className='text-xs text-muted-foreground'>Deposit: ₹{userWallet.deposit.toFixed(2)} | Winnings: ₹{userWallet.winning.toFixed(2)}</p>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label className="text-lg font-semibold flex items-center"><IndianRupee className="mr-2 h-5 w-5" />Entry Fee</Label>
             <RadioGroup value={entryFee.toString()} onValueChange={(value) => setEntryFee(value === 'custom' ? 'custom' : parseInt(value))} className="grid grid-cols-3 gap-2">
               {entryFees.map((fee) => (<Label key={fee} className="flex items-center space-x-2 p-3 rounded-md border cursor-pointer hover:bg-muted/50 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-all"><RadioGroupItem value={fee.toString()} /><span>₹{fee}</span></Label>))}
               <Label className="flex items-center space-x-2 p-3 rounded-md border cursor-pointer hover:bg-muted/50 has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-all"><RadioGroupItem value="custom" /><span>Custom</span></Label>
             </RadioGroup>
-            {entryFee === 'custom' && (<Input type="number" placeholder="Enter custom fee" value={customEntryFee} onChange={(e) => setCustomEntryFee(e.target.value)} className="mt-2" />)}
+            {entryFee === 'custom' && (<Input type="number" placeholder={`Enter custom fee (Min ₹${MIN_ENTRY_FEE})`} value={customEntryFee} onChange={(e) => setCustomEntryFee(e.target.value)} className="mt-2" />)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2"><Label className="text-lg font-semibold flex items-center"><Users className="mr-2 h-5 w-5" />Max Players</Label><RadioGroup value={maxPlayers.toString()} onValueChange={(v) => setMaxPlayers(parseInt(v))} className="flex space-x-4 pt-2">{[2, 4].map(p => <Label key={p} className="flex items-center space-x-2 cursor-pointer"><RadioGroupItem value={p.toString()} /><span>{p} Players</span></Label>)}</RadioGroup></div>
@@ -184,5 +173,3 @@ export default function CreateMatchPage() {
     </div>
   );
 }
-
-    

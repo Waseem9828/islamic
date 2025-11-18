@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 import QRCode from "qrcode.react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
@@ -22,6 +22,7 @@ const MIN_WALLET_BALANCE_FOR_WITHDRAWAL = 300;
 const WalletPage = () => {
   const { user, isUserLoading: isAuthLoading, firestore: db, storage } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
 
   // State declarations
   const [upiId, setUpiId] = useState("");
@@ -57,13 +58,17 @@ const WalletPage = () => {
         }
       } catch (error) {
         console.error("Error fetching UPI ID:", error);
-        toast.error("Could not fetch payment settings.");
+        toast({
+          title: "Error",
+          description: "Could not fetch payment settings.",
+          variant: "destructive",
+        });
       } finally {
         setIsSettingsLoading(false);
       }
     };
     fetchUpiId();
-  }, [db, user]);
+  }, [db, user, toast]);
 
   // Subscribes to the user's wallet for real-time balance updates.
   useEffect(() => {
@@ -79,11 +84,15 @@ const WalletPage = () => {
       setIsBalanceLoading(false);
     }, (error) => {
       console.error("Error fetching wallet balance:", error);
-      toast.error("Could not fetch wallet balance.");
+      toast({
+        title: "Error",
+        description: "Could not fetch wallet balance.",
+        variant: "destructive",
+      });
       setIsBalanceLoading(false);
     });
     return () => unsubscribe();
-  }, [db, user]);
+  }, [db, user, toast]);
 
   // Subscribes to the user's deposit history.
   useEffect(() => {
@@ -121,9 +130,21 @@ const WalletPage = () => {
 
 
   const handleDeposit = async () => {
-    if (!user || !db || !storage) return toast.error("Cannot process request. Please refresh.");
-    if (!depositAmount || !screenshot) return toast.error("Please enter an amount and upload a screenshot.");
-    if (parseFloat(depositAmount) < MIN_DEPOSIT_AMOUNT) return toast.error(`Minimum deposit amount is ₹${MIN_DEPOSIT_AMOUNT}.`);
+    if (!user || !db || !storage) return toast({
+      title: "Error",
+      description: "Cannot process request. Please refresh.",
+      variant: "destructive",
+    });
+    if (!depositAmount || !screenshot) return toast({
+      title: "Error",
+      description: "Please enter an amount and upload a screenshot.",
+      variant: "destructive",
+    });
+    if (parseFloat(depositAmount) < MIN_DEPOSIT_AMOUNT) return toast({
+      title: "Error",
+      description: `Minimum deposit amount is ₹${MIN_DEPOSIT_AMOUNT}.`,
+      variant: "destructive",
+    });
 
     setIsSubmittingDeposit(true);
     try {
@@ -141,7 +162,10 @@ const WalletPage = () => {
       
       await addDoc(collection(db, "depositRequests"), depositData);
 
-      toast.success("Deposit request submitted successfully!");
+      toast({
+        title: "Success",
+        description: "Deposit request submitted successfully!",
+      });
       setDepositAmount("");
       setScreenshot(null);
       const fileInput = document.getElementById('screenshot') as HTMLInputElement;
@@ -149,8 +173,10 @@ const WalletPage = () => {
 
     } catch (error: any) {
       console.error("Error submitting deposit request:", error);
-      toast.error("Failed to submit deposit request.", {
-        description: error.message || "Please check your permissions or network and try again."
+      toast({
+        title: "Error",
+        description: "Failed to submit deposit request.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmittingDeposit(false);
@@ -158,11 +184,27 @@ const WalletPage = () => {
   };
 
   const handleWithdrawal = async () => {
-    if (!user || !db) return toast.error("Cannot process request. Please refresh.");
+    if (!user || !db) return toast({
+      title: "Error",
+      description: "Cannot process request. Please refresh.",
+      variant: "destructive",
+    });
     const amount = parseFloat(withdrawAmount);
-    if (!withdrawAmount || !withdrawUpiId) return toast.error("Please enter an amount and your UPI ID.");
-    if (amount <= 0) return toast.error("Invalid withdrawal amount.");
-    if (amount > withdrawableBalance) return toast.error("Insufficient withdrawable balance.");
+    if (!withdrawAmount || !withdrawUpiId) return toast({
+      title: "Error",
+      description: "Please enter an amount and your UPI ID.",
+      variant: "destructive",
+    });
+    if (amount <= 0) return toast({
+      title: "Error",
+      description: "Invalid withdrawal amount.",
+      variant: "destructive",
+    });
+    if (amount > withdrawableBalance) return toast({
+      title: "Error",
+      description: "Insufficient withdrawable balance.",
+      variant: "destructive",
+    });
 
     setIsSubmittingWithdrawal(true);
     try {
@@ -173,11 +215,18 @@ const WalletPage = () => {
             status: "pending",
             createdAt: serverTimestamp(),
         });
-        toast.success("Withdrawal request submitted!");
+        toast({
+          title: "Success",
+          description: "Withdrawal request submitted!",
+        });
         setWithdrawAmount("");
     } catch (error) {
         console.error("Error submitting withdrawal request:", error);
-        toast.error("Failed to submit request.");
+        toast({
+          title: "Error",
+          description: "Failed to submit request.",
+          variant: "destructive",
+        });
     } finally {
         setIsSubmittingWithdrawal(false);
     }
