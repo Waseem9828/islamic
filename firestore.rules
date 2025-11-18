@@ -54,9 +54,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (resource.data.players.hasAny([request.auth.uid]) || isAdmin());
     }
 
-    // Settings: Only admins can read or write payment settings.
+    // Settings: Admins can write payment settings, signed in users can read.
     match /settings/{settingId} {
-      allow get: if isSignedIn() && isAdmin();
+      allow get: if isSignedIn();
       allow write: if isSignedIn() && isAdmin();
     }
 

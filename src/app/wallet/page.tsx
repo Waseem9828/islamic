@@ -41,9 +41,12 @@ const WalletPage = () => {
 
   const withdrawableBalance = Math.max(0, walletBalance - MIN_WALLET_BALANCE_FOR_WITHDRAWAL);
 
-  // useEffect hooks...
+  // Fetches the UPI ID for deposits once the user is authenticated.
   useEffect(() => {
-    if (!db) return;
+    if (!db || !user) {
+      setIsSettingsLoading(false);
+      return;
+    }
     const fetchUpiId = async () => {
       setIsSettingsLoading(true);
       const upiRef = doc(db, "settings", "payment");
@@ -60,10 +63,61 @@ const WalletPage = () => {
       }
     };
     fetchUpiId();
-  }, [db]);
-  useEffect(() => { if (!db || !user) { setIsBalanceLoading(false); return; } const walletRef = doc(db, "wallets", user.uid); const unsubscribe = onSnapshot(walletRef, (doc) => { if (doc.exists()) { setWalletBalance(doc.data().balance || 0); } setIsBalanceLoading(false); }, (error) => { console.error("Error fetching wallet balance:", error); toast.error("Could not fetch wallet balance."); setIsBalanceLoading(false); }); return () => unsubscribe(); }, [db, user]);
-  useEffect(() => { if (!db || !user) { setIsHistoryLoading(false); return; } const q = query(collection(db, "depositRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc")); const unsubscribe = onSnapshot(q, (snapshot) => { setDepositHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); setIsHistoryLoading(false); }, (error) => { console.error("Error fetching deposit history:", error); setIsHistoryLoading(false); }); return () => unsubscribe(); }, [db, user]);
-  useEffect(() => { if (!db || !user) { setIsWithdrawalHistoryLoading(false); return; } const q = query(collection(db, "withdrawalRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc")); const unsubscribe = onSnapshot(q, (snapshot) => { setWithdrawalHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); setIsWithdrawalHistoryLoading(false); }, (error) => { console.error("Error fetching withdrawal history:", error); setIsWithdrawalHistoryLoading(false); }); return () => unsubscribe(); }, [db, user]);
+  }, [db, user]);
+
+  // Subscribes to the user's wallet for real-time balance updates.
+  useEffect(() => {
+    if (!db || !user) {
+      setIsBalanceLoading(false);
+      return;
+    }
+    const walletRef = doc(db, "wallets", user.uid);
+    const unsubscribe = onSnapshot(walletRef, (doc) => {
+      if (doc.exists()) {
+        setWalletBalance(doc.data().balance || 0);
+      }
+      setIsBalanceLoading(false);
+    }, (error) => {
+      console.error("Error fetching wallet balance:", error);
+      toast.error("Could not fetch wallet balance.");
+      setIsBalanceLoading(false);
+    });
+    return () => unsubscribe();
+  }, [db, user]);
+
+  // Subscribes to the user's deposit history.
+  useEffect(() => {
+    if (!db || !user) {
+      setIsHistoryLoading(false);
+      return;
+    }
+    const q = query(collection(db, "depositRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setDepositHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setIsHistoryLoading(false);
+    }, (error) => {
+      console.error("Error fetching deposit history:", error);
+      setIsHistoryLoading(false);
+    });
+    return () => unsubscribe();
+  }, [db, user]);
+
+  // Subscribes to the user's withdrawal history.
+  useEffect(() => {
+    if (!db || !user) {
+      setIsWithdrawalHistoryLoading(false);
+      return;
+    }
+    const q = query(collection(db, "withdrawalRequests"), where("userId", "==", user.uid), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setWithdrawalHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setIsWithdrawalHistoryLoading(false);
+    }, (error) => {
+      console.error("Error fetching withdrawal history:", error);
+      setIsWithdrawalHistoryLoading(false);
+    });
+    return () => unsubscribe();
+  }, [db, user]);
 
 
   const handleDeposit = async () => {
