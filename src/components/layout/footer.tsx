@@ -8,7 +8,7 @@ import { Home, Landmark, User, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: 'Home', icon: Home },
+  { href: '/matchmaking', label: 'Home', icon: Home },
   { href: '/play', label: 'Play', icon: Swords },
   { href: '/wallet', label: 'Wallet', icon: Landmark },
   { href: '/profile', label: 'Profile', icon: User },
@@ -17,7 +17,8 @@ const navItems = [
 const Footer = () => {
   const pathname = usePathname();
   
-  if (pathname.startsWith('/admin') || pathname === '/login' || pathname === '/signup') {
+  const hiddenRoutes = ['/admin', '/login', '/signup', '/'];
+  if (hiddenRoutes.some(p => pathname.startsWith(p) && (p !== '/' || pathname === '/'))) {
     return null;
   }
 

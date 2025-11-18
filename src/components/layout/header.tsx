@@ -19,7 +19,7 @@ const Header = () => {
     setIsClient(true);
   }, []);
   
-  if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin') || pathname === '/') {
     return null;
   }
 
