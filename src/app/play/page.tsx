@@ -55,6 +55,38 @@ export default function CreateMatchPage() {
     }
   }, [user]);
 
+  const proceedToCreateMatch = () => {
+    if (!user) return; // Should already be checked, but for safety
+    
+    const finalEntryFee = entryFee === 'custom' ? parseFloat(customEntryFee) : entryFee;
+    const matchId = roomCode.toUpperCase();
+    const matchRef = doc(firestore, 'matches', matchId);
+
+    const newMatch = {
+      id: matchId,
+      room: matchId,
+      matchTitle,
+      entry: finalEntryFee,
+      maxPlayers,
+      privacy,
+      timeLimit,
+      status: 'Waiting for Players',
+      createdBy: user.uid,
+      creatorName: user.displayName || 'Anonymous',
+      createdAt: serverTimestamp(),
+      players: [user.uid],
+      playerInfo: { [user.uid]: { name: user.displayName, photoURL: user.photoURL, isReady: false } },
+    };
+
+    setDocumentNonBlocking(matchRef, newMatch, {});
+
+    // Optimistically update UI
+    setCreatedMatchDetails({ ...newMatch, roomCode: matchId, entryFee: finalEntryFee });
+    setMatchCreated(true);
+    toast.success('Match creation initiated!');
+    setIsSubmitting(false);
+  }
+
   const handleCreateMatch = async () => {
     if (!user) { toast.error('You must be logged in to create a match.'); return; }
     
@@ -76,41 +108,23 @@ export default function CreateMatchPage() {
           setIsSubmitting(false);
           return;
         }
-    } catch (e) {
-        const permissionError = new FirestorePermissionError({
-            path: matchRef.path,
-            operation: 'get',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        setIsSubmitting(false);
+        // If it does not exist, Firestore does not throw an error, so we can proceed.
+        proceedToCreateMatch();
+    } catch (e: any) {
+        // This catch block will likely execute if we don't have read access,
+        // which is expected when a document doesn't exist.
+        if (e.name === 'FirebaseError' && e.code === 'permission-denied') {
+             // This is the expected "error" when the doc doesn't exist and we can't read it.
+             // It's safe to assume we can try to create it.
+             proceedToCreateMatch();
+        } else {
+            // A different, unexpected error occurred.
+            console.error("Error checking for existing match:", e);
+            toast.error("An unexpected error occurred.", {description: "Could not verify room code. Please try again."});
+            setIsSubmitting(false);
+        }
         return;
     }
-
-
-    const newMatch = {
-      id: matchId,
-      room: matchId,
-      matchTitle,
-      entry: finalEntryFee,
-      maxPlayers,
-      privacy,
-      timeLimit,
-      status: 'Waiting for Players',
-      createdBy: user.uid,
-      creatorName: user.displayName || 'Anonymous',
-      createdAt: serverTimestamp(),
-      players: [user.uid],
-      playerInfo: { [user.uid]: { name: user.displayName, photoURL: user.photoURL, isReady: false } },
-    };
-
-    // Use non-blocking write which handles permission errors
-    setDocumentNonBlocking(matchRef, newMatch, {});
-
-    // Optimistically update UI
-    setCreatedMatchDetails({ ...newMatch, roomCode: matchId, entryFee: finalEntryFee });
-    setMatchCreated(true);
-    toast.success('Match creation initiated!');
-    setIsSubmitting(false);
   };
 
   const handleCopyCode = () => { if (createdMatchDetails?.roomCode) { navigator.clipboard.writeText(createdMatchDetails.roomCode); toast.success('Room code copied to clipboard!'); } };
