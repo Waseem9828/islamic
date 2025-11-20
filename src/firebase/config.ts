@@ -1,8 +1,7 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+
+// This file is intended to store the Firebase configuration object.
+// It is used by `core.ts` to initialize the app, especially in non-production environments.
+// Avoid initializing Firebase services here to prevent conflicts. Let `core.ts` be the single source of truth for initialization.
 
 export const firebaseConfig = {
   "projectId": "studio-4431476254-c1156",
@@ -13,12 +12,3 @@ export const firebaseConfig = {
   "messagingSenderId": "23513776021",
   "storageBucket": "studio-4431476254-c1156.appspot.com"
 };
-
-
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const firestore = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const functions = getFunctions(app);
-
-export { app, firestore, auth, storage, functions };

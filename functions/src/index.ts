@@ -39,27 +39,33 @@ const ensureIsAdmin = (context) => {
 
 exports.requestDeposit = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "You must be logged in.");
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to request a deposit.");
     }
+
     const { amount, transactionId } = data;
     const userId = context.auth.uid;
 
-    if (typeof amount !== 'number' || amount <= 0) {
-        throw new functions.https.HttpsError("invalid-argument", "Invalid amount specified.");
-    }
-    if (typeof transactionId !== 'string' || transactionId.length < 12) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid 12-digit Transaction ID is required.");
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'A valid deposit amount is required.');
     }
 
-    await db.collection("depositRequests").add({
-        userId,
-        amount,
-        transactionId,
-        status: 'pending',
-        requestedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length < 12) {
+        throw new functions.https.HttpsError('invalid-argument', 'A valid 12-digit Transaction ID is required.');
+    }
 
-    return { status: "success", message: "Deposit request submitted successfully." };
+    try {
+        await db.collection("depositRequests").add({
+            userId,
+            amount,
+            transactionId: transactionId.trim(),
+            status: 'pending',
+            requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { status: "success", message: "Deposit request submitted successfully." };
+    } catch (error) {
+        console.error("Error creating deposit request:", error);
+        throw new functions.https.HttpsError("internal", "An error occurred while submitting your deposit request. Please try again later.");
+    }
 });
 
 exports.processDeposit = functions.https.onCall(async (data, context) => {

@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { firestore, functions } from '@/firebase/config';
+import { useFirebase } from '@/firebase/provider'; // CORRECT: Use the hook
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,25 +12,30 @@ import { toast } from 'sonner';
 import { Loader2, CheckCircle, XCircle, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const processDepositFunction = httpsCallable(functions, 'processDeposit');
-
 export default function ManageDepositsPage() {
+  const { firestore, functions } = useFirebase(); // CORRECT: Get services from the hook
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
 
-  const requestsQuery = useMemo(() => 
-    query(
+  const requestsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(
       collection(firestore, 'depositRequests'), 
       where('status', '==', 'pending'), 
       orderBy('requestedAt', 'desc')
-    ), 
-  []);
+    );
+  }, [firestore]);
 
   const [requests, loading, error] = useCollection(requestsQuery);
 
   const handleProcessRequest = async (requestId: string, approve: boolean) => {
+    if (!functions) { 
+      toast.error('Functions service is not available.'); 
+      return; 
+    }
     setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
-
+    
     try {
+      const processDepositFunction = httpsCallable(functions, 'processDeposit');
       const result = await processDepositFunction({ requestId, approve });
       toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
         description: (result.data as any).message as string,

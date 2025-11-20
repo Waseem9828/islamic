@@ -1,149 +1,108 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
+import { useUser, useFirebase } from '@/firebase/provider';
+import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { functions, firestore } from '@/firebase/config';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
-import { Loader2, IndianRupee, Copy } from 'lucide-react';
-import { useDocumentData } from 'react-firebase-hooks/firestore';
-import { doc } from 'firebase/firestore';
-import QRCode from "qrcode.react";
-
-const requestDepositFunction = httpsCallable(functions, 'requestDeposit');
-
-function DepositForm({ upiId }: { upiId: string | undefined }) {
-  const [amount, setAmount] = useState('');
-  const [transactionId, setTransactionId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const depositAmount = parseInt(amount, 10);
-
-    if (isNaN(depositAmount) || depositAmount <= 0) {
-      toast.error('Invalid Amount', { description: 'Please enter a valid number.' });
-      return;
-    }
-    if (!transactionId || transactionId.length < 12) {
-      toast.error('Invalid Transaction ID', { description: 'Please enter a valid 12-digit UTR number.' });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await requestDepositFunction({ amount: depositAmount, transactionId });
-      toast.success('Request Submitted', { description: 'Your deposit request is under review. Please wait for admin approval.' });
-      setAmount('');
-      setTransactionId('');
-    } catch (error: any) {
-      console.error('Error submitting deposit request:', error);
-      toast.error('Submission Failed', { description: error.message || 'An unknown error occurred.' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  const showQrCode = upiId && amount && parseFloat(amount) >= 50;
-
-  return (
-    <>
-        {showQrCode && (
-            <Card className="mb-6 text-center">
-                <CardHeader>
-                    <CardTitle>Scan to Pay</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center gap-4">
-                     <QRCode value={`upi://pay?pa=${upiId}&am=${amount}&cu=INR`} size={160} />
-                     <p className='text-sm text-muted-foreground'>After paying, enter the Transaction ID below.</p>
-                </CardContent>
-            </Card>
-        )}
-        <Card>
-        <CardHeader>
-            <CardTitle>Submit Deposit Request</CardTitle>
-            <CardDescription>Fill this form after you have completed the payment.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="amount" className="block text-sm font-medium text-muted-foreground mb-1">Amount Deposited (₹)</label>
-                <Input
-                id="amount"
-                type="number"
-                placeholder="Enter exact amount (min. ₹50)"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={isSubmitting}
-                />
-            </div>
-            <div>
-                <label htmlFor="transactionId" className="block text-sm font-medium text-muted-foreground mb-1">Transaction ID / UTR</label>
-                <Input
-                id="transactionId"
-                type="text"
-                placeholder="Enter the 12-digit UTR number"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-                disabled={isSubmitting}
-                />
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting || !upiId}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
-                Submit for Verification
-            </Button>
-            </form>
-        </CardContent>
-        </Card>
-    </>
-  );
-}
+import { Loader2 } from 'lucide-react';
 
 export default function DepositPage() {
-  const paymentSettingsRef = useMemo(() => doc(firestore, 'settings', 'payment'), []);
-  const [paymentSettings, isLoadingSettings] = useDocumentData(paymentSettingsRef);
+    const { user } = useUser();
+    const { firestore, functions } = useFirebase(); // Correct way to get services
+    const [amount, setAmount] = useState('');
+    const [transactionId, setTransactionId] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const copyToClipboard = () => {
-    if (paymentSettings?.upiId) {
-      navigator.clipboard.writeText(paymentSettings.upiId);
-      toast.success('UPI ID Copied!');
-    }
-  }
+    const upiId = "ludowizard.dev@ybl"; // Replace with your actual UPI ID
 
-  return (
-    <div className="container mx-auto max-w-lg py-8">
-      <Card className="mb-6 bg-secondary/30 border-dashed">
-        <CardHeader>
-          <CardTitle>How to Deposit?</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p>1. Pay your desired amount to the UPI ID given below using any payment app.</p>
-          <div className="flex items-center gap-2 p-3 rounded-md bg-background">
-            {isLoadingSettings ? (
-                <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Loading UPI ID...</span>
-                </div>
-            ) : paymentSettings?.upiId ? (
-                <>
-                    <p className="font-mono text-lg font-bold">{paymentSettings.upiId}</p>
-                    <Button variant="ghost" size="icon" onClick={copyToClipboard}>
-                        <Copy className="h-4 w-4" />
-                    </Button>
-                </>
-            ) : (
-                <p className="text-destructive font-semibold">Deposits are currently unavailable.</p>
-            )}
-          </div>
-          <p>2. Enter the amount in the form below to generate a QR Code for easy payment.</p>
-          <p>3. After payment, copy the 12-digit Transaction ID (UTR) and submit it for verification.</p>
-        </CardContent>
-      </Card>
-      
-      <DepositForm upiId={paymentSettings?.upiId} />
-    </div>
-  );
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !functions || !firestore) {
+            toast.error('You must be logged in to make a deposit.');
+            return;
+        }
+
+        const depositAmount = parseFloat(amount);
+        if (isNaN(depositAmount) || depositAmount <= 0) {
+            toast.error('Please enter a valid amount.');
+            return;
+        }
+        if (!transactionId) {
+            toast.error('Please enter the transaction ID.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const requestDeposit = httpsCallable(functions, 'requestDeposit');
+            const result = await requestDeposit({ amount: depositAmount, transactionId });
+            toast.success('Deposit request submitted', {
+                description: 'Your request is under review and will be processed shortly.',
+            });
+            setAmount('');
+            setTransactionId('');
+        } catch (error: any) {
+            console.error("Error submitting deposit request:", error);
+            toast.error('Submission failed', {
+                description: error.message || 'An unknown error occurred.',
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="container mx-auto max-w-md py-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Make a Deposit</CardTitle>
+                    <CardDescription>Follow the steps below to add funds to your wallet.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-4 text-center p-4 bg-muted rounded-lg">
+                        <p className="text-sm text-muted-foreground">Scan the QR code or use the UPI ID</p>
+                        <div>
+                           <img src="/qr.jpeg" alt="UPI QR Code" className="mx-auto w-48 h-48 rounded-md" />
+                        </div>
+                        <p className="font-mono text-lg font-semibold">{upiId}</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="amount">Amount Deposited</Label>
+                            <Input 
+                                id="amount" 
+                                type="number" 
+                                placeholder="e.g., 500" 
+                                value={amount} 
+                                onChange={(e) => setAmount(e.target.value)} 
+                                required 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="transactionId">Transaction ID / UTR</Label>
+                            <Input 
+                                id="transactionId" 
+                                type="text" 
+                                placeholder="Your 12-digit transaction reference" 
+                                value={transactionId} 
+                                onChange={(e) => setTransactionId(e.target.value)} 
+                                required 
+                            />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+    );
 }
