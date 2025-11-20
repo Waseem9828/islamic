@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { firestore, functions } from '@/firebase/config';
+import { useFirebase } from '@/firebase/provider';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,24 +12,35 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Loader2, Crown, Trophy } from 'lucide-react';
 
-// Define the Cloud Function
-const distributeWinningsFunction = httpsCallable(functions, 'distributeWinnings');
-
 export default function ManageMatchesPage() {
+  const { firestore, functions } = useFirebase();
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
   const [selectedWinner, setSelectedWinner] = useState<Record<string, string>>({});
 
-  const matchesQuery = useMemo(() => 
-    query(
-      collection(firestore, 'matches'), 
-      where('status', 'in', ['waiting', 'inprogress']), 
-      orderBy('createdAt', 'desc')
-    ), 
-  []);
+  const distributeWinningsFunction = useMemo(() => {
+    if (!functions) return null;
+    return httpsCallable(functions, 'distributeWinnings');
+  }, [functions]);
+
+
+  const matchesQuery = useMemo(() => {
+      if (!firestore) return null;
+      return query(
+        collection(firestore, 'matches'), 
+        where('status', 'in', ['waiting', 'inprogress']), 
+        orderBy('createdAt', 'desc')
+      );
+    }, 
+    [firestore]
+  );
 
   const [matches, loading, error] = useCollection(matchesQuery);
 
   const handleDeclareWinner = async (matchId: string) => {
+    if (!distributeWinningsFunction) {
+        toast.error('Functions service not ready.');
+        return;
+    }
     const winnerId = selectedWinner[matchId];
     if (!winnerId) {
       toast.error('Please select a winner for the match.');
@@ -41,12 +51,13 @@ export default function ManageMatchesPage() {
 
     try {
       const result = await distributeWinningsFunction({ matchId, winnerId });
-      if (result.data.status === 'success') {
+      const data = result.data as { status: string, message: string };
+      if (data.status === 'success') {
         toast.success('Winner Declared!', { 
-          description: result.data.message as string,
+          description: data.message,
         });
       } else {
-        throw new Error('Failed to declare winner.');
+        throw new Error(data.message || 'Failed to declare winner.');
       }
     } catch (err: any) {
       console.error('Error declaring winner:', err);

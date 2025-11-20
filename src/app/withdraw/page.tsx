@@ -1,40 +1,41 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { functions, firestore } from '@/firebase/config';
+import { useFirebase, useUser } from '@/firebase/provider';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useUser } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Loader2, IndianRupee } from 'lucide-react';
 
-const requestWithdrawalFunction = httpsCallable(functions, 'requestWithdrawal');
-
 interface Wallet {
     winningBalance: number;
-    // add other wallet properties if they exist
 }
 
 export default function WithdrawPage() {
   const { user } = useUser();
+  const { functions, firestore } = useFirebase();
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const requestWithdrawalFunction = useMemo(() => {
+    if (!functions) return null;
+    return httpsCallable(functions, 'requestWithdrawal');
+  }, [functions]);
+
   useEffect(() => {
-    if (user) {
+    if (user && firestore) {
       const walletRef = doc(firestore, 'wallets', user.uid);
       const unsubscribe = onSnapshot(walletRef, (docSnap) => {
         if (docSnap.exists()) {
           setWallet(docSnap.data() as Wallet);
         } else {
-          setWallet(null); // Handle case where wallet doesn't exist
+          setWallet(null);
         }
         setIsLoading(false);
       }, (error) => {
@@ -43,14 +44,20 @@ export default function WithdrawPage() {
         setIsLoading(false);
       });
 
-      return () => unsubscribe(); // Cleanup listener on component unmount
+      return () => unsubscribe();
     } else {
-        setIsLoading(false); // No user, so not loading
+        setIsLoading(false);
     }
-  }, [user]);
+  }, [user, firestore]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!requestWithdrawalFunction) {
+        toast.error('Functions service not ready.');
+        return;
+    }
+
     const withdrawalAmount = parseInt(amount, 10);
 
     if (!user || !wallet) return;
@@ -70,7 +77,6 @@ export default function WithdrawPage() {
     setIsSubmitting(true);
     try {
       const result = await requestWithdrawalFunction({ amount: withdrawalAmount, upiId });
-      // Casting result.data to a more specific type if you know its structure
       const responseData = result.data as { status: string; message: string }; 
 
       if (responseData.status === 'success') {

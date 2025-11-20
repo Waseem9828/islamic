@@ -24,7 +24,7 @@ const useFirebaseServices = () => {
  */
 export const ClientFirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Get the singleton instances of Firebase services.
-  const { firebaseApp, auth, firestore, storage } = useFirebaseServices();
+  const { firebaseApp, auth, firestore, storage, functions } = useFirebaseServices();
 
   // Pass the initialized services down to the context provider.
   return (
@@ -33,6 +33,7 @@ export const ClientFirebaseProvider: React.FC<{ children: React.ReactNode }> = (
       auth={auth}
       firestore={firestore}
       storage={storage}
+      functions={functions}
     >
       {children}
     </FirebaseProvider>

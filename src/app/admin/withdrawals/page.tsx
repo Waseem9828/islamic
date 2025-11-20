@@ -1,35 +1,41 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { collection, query, where, orderBy, onSnapshot, QuerySnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { firestore, functions } from '@/firebase/config';
+import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, XCircle, ListChecks } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const processWithdrawalFunction = httpsCallable(functions, 'processWithdrawal');
-
-// Define the structure of a request
 interface WithdrawalRequest {
     id: string;
     amount: number;
     upiId: string;
     userId: string;
     requestedAt: { toDate: () => Date };
-    // Add other fields as necessary
 }
 
 export default function ManageWithdrawalsPage() {
+  const { firestore, functions } = useFirebase();
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
   const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const processWithdrawalFunction = useMemo(() => {
+    if (!functions) return null;
+    return httpsCallable(functions, 'processWithdrawal');
+  }, [functions]);
+
   useEffect(() => {
+    if (!firestore) {
+        setLoading(false);
+        setError(new Error("Firestore not available"));
+        return;
+    }
     const q = query(
       collection(firestore, 'withdrawalRequests'), 
       where('status', '==', 'pending'), 
@@ -50,10 +56,14 @@ export default function ManageWithdrawalsPage() {
       }
     );
 
-    return () => unsubscribe(); // Unsubscribe when component unmounts
-  }, []);
+    return () => unsubscribe();
+  }, [firestore]);
 
   const handleProcessRequest = async (requestId: string, approve: boolean) => {
+    if (!processWithdrawalFunction) {
+        toast.error('Functions service not ready.');
+        return;
+    }
     setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
     try {
       const result = await processWithdrawalFunction({ requestId, approve });

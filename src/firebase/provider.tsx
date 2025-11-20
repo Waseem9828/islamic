@@ -5,6 +5,7 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
+import { Functions } from 'firebase/functions';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -12,6 +13,7 @@ interface FirebaseProviderProps {
   firestore: Firestore;
   auth: Auth;
   storage: FirebaseStorage;
+  functions: Functions;
 }
 
 interface UserAuthState {
@@ -25,6 +27,7 @@ export interface FirebaseContextState {
   firestore: Firestore | null;
   auth: Auth | null;
   storage: FirebaseStorage | null;
+  functions: Functions | null;
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -38,6 +41,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   firestore,
   auth,
   storage,
+  functions,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
@@ -69,10 +73,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     firestore,
     auth,
     storage,
+    functions,
     user: userAuthState.user,
     isUserLoading: userAuthState.isUserLoading,
     userError: userAuthState.userError,
-  }), [firebaseApp, firestore, auth, storage, userAuthState]);
+  }), [firebaseApp, firestore, auth, storage, functions, userAuthState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>

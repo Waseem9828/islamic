@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +14,7 @@ import QRCode from 'qrcode.react';
 
 export default function DepositPage() {
     const { user } = useUser();
-    const { functions: fbFunctions, firestore } = useFirebase();
+    const { functions, firestore } = useFirebase();
     const [amount, setAmount] = useState('');
     const [transactionId, setTransactionId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +52,7 @@ export default function DepositPage() {
             return;
         }
 
-        if (!fbFunctions) {
+        if (!functions) {
             toast.error('Cannot connect to services. Please try again later.');
             return;
         }
@@ -70,7 +69,7 @@ export default function DepositPage() {
 
         setIsSubmitting(true);
         try {
-            const requestDeposit = httpsCallable(fbFunctions, 'requestDeposit');
+            const requestDeposit = httpsCallable(functions, 'requestDeposit');
             const result = await requestDeposit({ amount: depositAmount, transactionId: transactionId.trim() });
             toast.success('Deposit request submitted', {
                 description: 'Your request is under review and will be processed shortly.',
@@ -103,7 +102,7 @@ export default function DepositPage() {
                         <div className="space-y-4 text-center p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">1. Enter amount & scan QR or use UPI ID</p>
                             <div className="flex justify-center p-2 bg-white rounded-md">
-                               {amount && parseFloat(amount) > 0 && upiId ? (
+                               {upiId && parseFloat(amount) > 0 ? (
                                     <QRCode value={upiLink} size={192} />
                                 ) : (
                                     <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-center text-sm text-gray-500">Enter an amount to generate QR code</div>
