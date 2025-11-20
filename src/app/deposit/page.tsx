@@ -2,7 +2,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser, useFirebase } from '@/firebase/provider';
+import { useUser } from '@/firebase/provider'; 
+import { firestore, functions } from '@/firebase/core';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ import { Loader2 } from 'lucide-react';
 
 export default function DepositPage() {
     const { user } = useUser();
-    const { firestore, functions } = useFirebase(); // Correct way to get services
     const [amount, setAmount] = useState('');
     const [transactionId, setTransactionId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +23,7 @@ export default function DepositPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !functions || !firestore) {
+        if (!user) {
             toast.error('You must be logged in to make a deposit.');
             return;
         }
