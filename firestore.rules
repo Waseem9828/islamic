@@ -75,9 +75,10 @@ service cloud.firestore {
     match /matches/{matchId} {
       // Any signed-in user can read match details.
       allow read: if isSignedIn();
-      // Rules for creating, updating, and deleting matches are complex and handled by Cloud Functions.
-      // No direct client-side writes are allowed to prevent cheating.
-      allow write: if false; 
+      // Allow signed-in users to update a match (e.g. for joining, leaving, setting ready status).
+      // Creation is handled by the Cloud Function. Deletion is not allowed from client.
+      allow update: if isSignedIn(); 
+      allow create, delete: if false;
     }
   }
 }
