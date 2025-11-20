@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { firestore } from '@/firebase/config';
-import { useUser } from '@/firebase/provider';
+import { useUser, useFirebase } from '@/firebase/provider';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,12 +36,13 @@ interface MatchData {
 export default function MatchLobbyPage() {
   const { matchId } = useParams();
   const { user } = useUser();
+  const { firestore } = useFirebase();
   const [match, setMatch] = useState<MatchData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!matchId) return;
+    if (!matchId || !firestore) return;
 
     const matchRef = doc(firestore, 'matches', matchId as string);
     const unsubscribe = onSnapshot(matchRef, (docSnap) => {
@@ -61,10 +61,10 @@ export default function MatchLobbyPage() {
     });
 
     return () => unsubscribe();
-  }, [matchId]);
+  }, [matchId, firestore]);
 
   const handleJoinLeave = async (action: 'join' | 'leave') => {
-    if (!user || !match) return;
+    if (!user || !match || !firestore) return;
     const matchRef = doc(firestore, 'matches', match.id);
     const playerInfoPayload = { name: user.displayName, photoURL: user.photoURL, isReady: false };
 
@@ -89,7 +89,7 @@ export default function MatchLobbyPage() {
   };
   
   const handleReadyToggle = async () => {
-    if (!user || !match) return;
+    if (!user || !match || !firestore) return;
     const matchRef = doc(firestore, 'matches', match.id);
     const currentReadyStatus = match.playerInfo[user.uid]?.isReady || false;
     try {
