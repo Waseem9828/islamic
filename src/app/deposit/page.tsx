@@ -1,9 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useUser } from '@/firebase/provider'; 
-import { firestore, functions } from '@/firebase/core';
+import { useState, useEffect } from 'react';
+import { useUser, useFirebase } from '@/firebase/provider'; 
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { Button } from "@/components/ui/button";
@@ -12,14 +11,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import QRCode from 'qrcode.react';
 
 export default function DepositPage() {
     const { user } = useUser();
+    const { functions: fbFunctions, firestore } = useFirebase();
     const [amount, setAmount] = useState('');
     const [transactionId, setTransactionId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+    const [upiId, setUpiId] = useState('');
+    const [payeeName, setPayeeName] = useState('Ludo Wizard'); // Default name
 
-    const upiId = "ludowizard.dev@ybl"; // Replace with your actual UPI ID
+    useEffect(() => {
+        const fetchSettings = async () => {
+            if (firestore) {
+                const settingsRef = doc(firestore, 'settings', 'payment');
+                try {
+                    const docSnap = await getDoc(settingsRef);
+                    if (docSnap.exists()) {
+                        const settings = docSnap.data();
+                        setUpiId(settings.upiId || '');
+                        setPayeeName(settings.payeeName || 'Ludo Wizard');
+                    }
+                } catch (error) {
+                    console.error("Error fetching payment settings:", error);
+                    toast.error("Could not load payment settings.");
+                } finally {
+                    setIsLoadingSettings(false);
+                }
+            }
+        };
+        fetchSettings();
+    }, [firestore]);
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,20 +53,25 @@ export default function DepositPage() {
             return;
         }
 
+        if (!fbFunctions) {
+            toast.error('Cannot connect to services. Please try again later.');
+            return;
+        }
+
         const depositAmount = parseFloat(amount);
         if (isNaN(depositAmount) || depositAmount <= 0) {
             toast.error('Please enter a valid amount.');
             return;
         }
-        if (!transactionId) {
-            toast.error('Please enter the transaction ID.');
+        if (!transactionId || transactionId.trim().length < 12) {
+            toast.error('Please enter the valid 12-digit transaction ID.');
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const requestDeposit = httpsCallable(functions, 'requestDeposit');
-            const result = await requestDeposit({ amount: depositAmount, transactionId });
+            const requestDeposit = httpsCallable(fbFunctions, 'requestDeposit');
+            const result = await requestDeposit({ amount: depositAmount, transactionId: transactionId.trim() });
             toast.success('Deposit request submitted', {
                 description: 'Your request is under review and will be processed shortly.',
             });
@@ -56,6 +86,8 @@ export default function DepositPage() {
             setIsSubmitting(false);
         }
     };
+    
+    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=LudoDeposit`;
 
     return (
         <div className="container mx-auto max-w-md py-8">
@@ -65,17 +97,25 @@ export default function DepositPage() {
                     <CardDescription>Follow the steps below to add funds to your wallet.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="space-y-4 text-center p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Scan the QR code or use the UPI ID</p>
-                        <div>
-                           <img src="/qr.jpeg" alt="UPI QR Code" className="mx-auto w-48 h-48 rounded-md" />
+                    {isLoadingSettings ? (
+                         <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                    ) : (
+                        <div className="space-y-4 text-center p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground">1. Enter amount & scan QR or use UPI ID</p>
+                            <div className="flex justify-center p-2 bg-white rounded-md">
+                               {amount && parseFloat(amount) > 0 && upiId ? (
+                                    <QRCode value={upiLink} size={192} />
+                                ) : (
+                                    <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-center text-sm text-gray-500">Enter an amount to generate QR code</div>
+                                )}
+                            </div>
+                            <p className="font-mono text-lg font-semibold">{upiId}</p>
                         </div>
-                        <p className="font-mono text-lg font-semibold">{upiId}</p>
-                    </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="amount">Amount Deposited</Label>
+                            <Label htmlFor="amount">Amount to Deposit</Label>
                             <Input 
                                 id="amount" 
                                 type="number" 
@@ -86,19 +126,21 @@ export default function DepositPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="transactionId">Transaction ID / UTR</Label>
+                            <Label htmlFor="transactionId">2. Transaction ID / UTR</Label>
                             <Input 
                                 id="transactionId" 
                                 type="text" 
-                                placeholder="Your 12-digit transaction reference" 
+                                placeholder="Enter the 12-digit transaction ID" 
                                 value={transactionId} 
                                 onChange={(e) => setTransactionId(e.target.value)} 
                                 required 
+                                minLength={12}
+                                maxLength={12}
                             />
                         </div>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        <Button type="submit" className="w-full" disabled={isSubmitting || isLoadingSettings}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                            {isSubmitting ? 'Submitting...' : '3. Submit for Verification'}
                         </Button>
                     </form>
                 </CardContent>
