@@ -29,15 +29,10 @@ export default function MatchmakingHomePage() {
     }
   }, [user, loading, router]);
 
-  const [isClient, setIsClient] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isJoinConfirmOpen, setIsJoinConfirmOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
   const [filters, setFilters] = useState({ feeRange: [10, 1000], playerCount: 'all', status: 'all' });
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const walletDocRef = useMemo(() => firestore && user ? doc(firestore, 'wallets', user.uid) : null, [firestore, user]);
   const { data: wallet, isLoading: isWalletLoading } = useDoc(walletDocRef);
@@ -152,8 +147,8 @@ export default function MatchmakingHomePage() {
     );
   };
 
-  if (!isClient || loading || !user) {
-    return null; // Or a loading spinner
+  if (loading || !user) {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
