@@ -2,24 +2,8 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Deposit Screenshots:
-    // Users can only upload files to a folder matching their own user ID.
-    // They can also read their own uploaded files.
-    // This prevents one user from seeing or overwriting another user's screenshots.
-    match /deposit-screenshots/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Profile Pictures: Similar rules for profile pictures.
-    match /profile-pictures/{userId}/{allPaths=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Result Screenshots:
-    // Allow a user to write (upload) a result screenshot if they are authenticated.
-    // The path ensures the screenshot is tied to a specific match and user.
-    match /results/{matchId}/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }

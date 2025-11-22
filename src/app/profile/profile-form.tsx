@@ -11,7 +11,7 @@ import { useUser } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase/core';
 import { errorEmitter } from '@/firebase/errors';
 import { signOut, updateProfile } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,8 @@ export function ProfileForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+
 
   useEffect(() => {
     if (user && firestore) {
@@ -66,25 +68,55 @@ export function ProfileForm() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setIsUploading(true);
-    try {
-      const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const photoURL = await getDownloadURL(storageRef);
-      await updateProfile(auth.currentUser, { photoURL });
-      
-      const userDocRef = doc(firestore, "users", user.uid);
-      await updateDoc(userDocRef, { photoURL: photoURL });
-      
-      setAvatarSrc(photoURL);
-      toast.success("Profile picture updated!");
-
-    } catch (error) {
-      console.error("Error uploading profile picture:", error);
-      toast.error("Failed to upload profile picture.");
-    } finally {
-      setIsUploading(false);
+    if (!file.type.match('image.*')) {
+      toast.error('Please select an image file');
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size should be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    const timestamp = Date.now();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `profile-pictures/${user.uid}/${timestamp}.${fileExtension}`;
+    const storageRef = ref(storage, fileName);
+
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error('Upload error:', error);
+        toast.error(`Upload failed: ${error.message}`);
+        setIsUploading(false);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          await updateProfile(auth.currentUser, { photoURL: downloadURL });
+          
+          const userDocRef = doc(firestore, "users", user.uid);
+          await updateDoc(userDocRef, { photoURL: downloadURL });
+          
+          setAvatarSrc(downloadURL);
+          toast.success("Profile picture updated!");
+        } catch (error) {
+          console.error('Error updating profile:', error);
+          toast.error('Error updating profile');
+        } finally {
+          setIsUploading(false);
+          setUploadProgress(0);
+        }
+      }
+    );
   };
 
   const handleProfileSave = async () => {
@@ -92,7 +124,6 @@ export function ProfileForm() {
 
     setIsSaving(true);
     
-    // This part remains synchronous and can show immediate feedback
     try {
         if (auth.currentUser.displayName !== displayName) {
             await updateProfile(auth.currentUser, { displayName });
@@ -111,7 +142,6 @@ export function ProfileForm() {
         upiId: upiId,
     };
 
-    // This is the non-blocking Firestore update.
     updateDoc(userDocRef, updatedData)
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -141,7 +171,10 @@ export function ProfileForm() {
                 </Avatar>
                 {isUploading && (
                     <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-full">
-                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <div className="text-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+                            <p className="text-sm text-primary mt-2">{uploadProgress.toFixed(0)}%</p>
+                        </div>
                     </div>
                 )}
                 </div>
