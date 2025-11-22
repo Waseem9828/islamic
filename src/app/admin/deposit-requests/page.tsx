@@ -1,16 +1,15 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, QuerySnapshot } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider'; 
-import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, Copy } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Copy, Banknote, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Request {
   id: string;
@@ -24,9 +23,14 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
   const [timeAgo, setTimeAgo] = useState('');
 
   useEffect(() => {
-    if (request.requestedAt) {
-      setTimeAgo(formatDistanceToNow(request.requestedAt.toDate()));
+    const updateDate = () => {
+      if (request.requestedAt) {
+        setTimeAgo(formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true }));
+      }
     }
+    updateDate();
+    const interval = setInterval(updateDate, 60000);
+    return () => clearInterval(interval);
   }, [request.requestedAt]);
 
   const copyToClipboard = (text: string) => {
@@ -35,37 +39,28 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-          <div>
-              <p className="font-bold text-lg">₹{request.amount}</p>
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  Transaction ID: <span className="font-mono">{request.transactionId}</span>
-                  <button onClick={() => copyToClipboard(request.transactionId)}><Copy className="h-3 w-3"/></button>
-              </p>
-              <p className="text-xs text-muted-foreground">User ID: {request.userId}</p>
-              <p className="text-xs text-muted-foreground">Requested {timeAgo} ago</p>
-          </div>
-          <div className="flex gap-2 mt-4 sm:mt-0">
-              <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onProcess(request.id, false)}
-                  disabled={isSubmitting}
-              >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
-                  Reject
-              </Button>
-              <Button 
-                  size="sm"
-                  onClick={() => onProcess(request.id, true)}
-                  disabled={isSubmitting}    
-              >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                  Approve
-              </Button>
-          </div>
-      </div>
+    <Card className="p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+        <div className="md:col-span-2 space-y-2">
+             <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
+             <div className='text-sm text-muted-foreground flex items-center gap-2'>
+                <p className="flex items-center gap-1">
+                    <User className="h-3 w-3"/> <span className='font-mono'>{request.userId}</span>
+                </p>
+                <p className="flex items-center gap-1">
+                    ID: <span className="font-mono">{request.transactionId}</span>
+                    <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
+                </p>
+             </div>
+             <p className="text-xs text-muted-foreground">{timeAgo}</p>
+        </div>
+        <div className="flex gap-2 justify-self-start md:justify-self-end">
+            <Button variant="outline" size="sm" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>} Reject
+            </Button>
+            <Button size="sm" onClick={() => onProcess(request.id, true)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>} Approve
+            </Button>
+        </div>
     </Card>
   );
 };
@@ -74,17 +69,34 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
 export default function ManageDepositsPage() {
   const { firestore, functions } = useFirebase(); 
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const requestsQuery = useMemo(() => {
-    if (!firestore) return null;
-    return query(
+  useEffect(() => {
+    if (!firestore) return;
+
+    const requestsQuery = query(
       collection(firestore, 'depositRequests'), 
       where('status', '==', 'pending'), 
       orderBy('requestedAt', 'desc')
     );
+
+    const unsubscribe = onSnapshot(requestsQuery, 
+      (snapshot: QuerySnapshot) => {
+        const newRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Request));
+        setRequests(newRequests);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching deposit requests:", error);
+        toast.error("Failed to load requests", { description: error.message });
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, [firestore]);
 
-  const [requests, loading, error] = useCollection(requestsQuery);
 
   const processDepositFunction = useMemo(() => {
       if (!functions) return null;
@@ -112,36 +124,34 @@ export default function ManageDepositsPage() {
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-500">Error loading requests: {error.message}</div>;
-  }
-
   return (
     <div className="container mx-auto max-w-4xl py-8">
       <Card>
         <CardHeader>
-          <CardTitle>Deposit Requests</CardTitle>
+          <CardTitle className="flex items-center"><Banknote className="mr-2"/>Deposit Requests</CardTitle>
           <CardDescription>Review and process pending deposit requests. Approving a request will add the funds and bonus to the user's wallet.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {requests && requests.docs.length === 0 && (
-            <p className="text-center text-muted-foreground py-6">No pending deposit requests.</p>
+          {loading && (
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
           )}
-          {requests && requests.docs.map(doc => {
-            const request = { id: doc.id, ...doc.data() } as Request;
-            return (
+          {!loading && requests.length === 0 && (
+            <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                <h3 className="text-lg font-semibold">All Caught Up!</h3>
+                <p className="text-muted-foreground mt-1">There are no pending deposit requests.</p>
+            </div>
+          )}
+          {!loading && requests.map(request => (
               <RequestCard
                 key={request.id}
                 request={request}
                 onProcess={handleProcessRequest}
                 isSubmitting={isSubmitting[request.id]}
               />
-            );
-          })}
+          ))}
         </CardContent>
       </Card>
     </div>

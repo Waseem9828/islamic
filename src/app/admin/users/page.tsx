@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -8,6 +7,7 @@ import { collection } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ShieldCheck } from 'lucide-react';
 
 export default function ManageUsersPage() {
   const { firestore } = useFirebase();
@@ -46,12 +46,12 @@ export default function ManageUsersPage() {
                         <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="font-semibold">{user.username || user.email}</p>
-                        <p className="text-sm text-muted-foreground">{user.id}</p>
+                        <p className="font-semibold">{user.displayName || user.email}</p>
+                        <p className="text-sm text-muted-foreground font-mono">{user.id}</p>
                     </div>
                   </div>
                   <div>
-                    {user.isAdmin && <Badge>Admin</Badge>}
+                    {user.isAdmin && <Badge variant="destructive" className="flex items-center gap-1"><ShieldCheck className="h-3 w-3"/>Admin</Badge>}
                   </div>
                 </div>
               ))}
