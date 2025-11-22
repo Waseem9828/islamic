@@ -7,7 +7,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
-import { useUser, useFirebase } from '@/firebase/provider';
+import { useUser } from '@/firebase/provider';
+import { auth, storage, firestore } from '@/firebase/core';
 import { errorEmitter } from '@/firebase/errors';
 import { signOut, updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -20,7 +21,6 @@ import { FirestorePermissionError, SecurityRuleContext } from '@/firebase/errors
 export function ProfileForm() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
-  const { auth, storage, firestore } = useFirebase();
   
   const [displayName, setDisplayName] = useState('');
   const [upiId, setUpiId] = useState('');
