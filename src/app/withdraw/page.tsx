@@ -14,6 +14,10 @@ interface Wallet {
     winningBalance: number;
 }
 
+interface UserProfile {
+    upiId?: string;
+}
+
 export default function WithdrawPage() {
   const { user } = useUser();
   const { functions, firestore } = useFirebase();
@@ -31,7 +35,9 @@ export default function WithdrawPage() {
   useEffect(() => {
     if (user && firestore) {
       const walletRef = doc(firestore, 'wallets', user.uid);
-      const unsubscribe = onSnapshot(walletRef, (docSnap) => {
+      const userRef = doc(firestore, 'users', user.uid);
+      
+      const unsubWallet = onSnapshot(walletRef, (docSnap) => {
         if (docSnap.exists()) {
           setWallet(docSnap.data() as Wallet);
         } else {
@@ -44,7 +50,19 @@ export default function WithdrawPage() {
         setIsLoading(false);
       });
 
-      return () => unsubscribe();
+      const unsubUser = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data() as UserProfile;
+          if (userData.upiId) {
+            setUpiId(userData.upiId);
+          }
+        }
+      });
+
+      return () => {
+        unsubWallet();
+        unsubUser();
+      };
     } else {
         setIsLoading(false);
     }
@@ -69,7 +87,7 @@ export default function WithdrawPage() {
       toast.error('Insufficient Winnings', { description: 'You can only withdraw from your winning balance.' });
       return;
     }
-    if (!upiId.match(/^[\w.-]+@[\w.-]+$/)) {
+    if (!upiId.match(/^[\\w.-]+@[\w.-]+$/)) {
         toast.error('Invalid UPI ID', { description: 'Please enter a valid UPI ID (e.g., yourname@bank).' });
         return;
     }
@@ -82,7 +100,6 @@ export default function WithdrawPage() {
       if (responseData.status === 'success') {
         toast.success('Request Submitted', { description: responseData.message || 'Your withdrawal request has been sent for approval.' });
         setAmount('');
-        setUpiId('');
       } else {
         throw new Error(responseData.message || 'Failed to submit request.');
       }

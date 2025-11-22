@@ -4,12 +4,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Landmark, User, Swords } from 'lucide-react';
+import { Home, Landmark, User, Swords, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/matchmaking', label: 'Home', icon: Home },
   { href: '/play', label: 'Play', icon: Swords },
+  { href: '/leaderboard', label: 'Ranks', icon: Trophy },
   { href: '/wallet', label: 'Wallet', icon: Landmark },
   { href: '/profile', label: 'Profile', icon: User },
 ];
@@ -21,7 +22,6 @@ const Footer = () => {
   if (hiddenRoutes.some(p => pathname.startsWith(p) && (p !== '/' || pathname === '/'))) {
     return null;
   }
-
 
   return (
     <footer className="sticky bottom-0 z-50 bg-muted border-t backdrop-blur-sm md:hidden">
@@ -50,5 +50,3 @@ const Footer = () => {
 };
 
 export default Footer;
-
-    

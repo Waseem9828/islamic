@@ -2,30 +2,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2 } from 'lucide-react';
+import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
 import { useUser, useFirebase } from '@/firebase/provider';
 import { signOut, updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export function ProfileForm() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
   const { auth, storage, firestore } = useFirebase();
+  
+  const [displayName, setDisplayName] = useState('');
+  const [upiId, setUpiId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState('');
 
   useEffect(() => {
     if (user) {
       setAvatarSrc(user.photoURL || `https://avatar.vercel.sh/${user.email}.png`);
+      setDisplayName(user.displayName || '');
+
+      const userDocRef = doc(firestore!, "users", user.uid);
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setUpiId(docSnap.data().upiId || '');
+        }
+      });
     }
-  }, [user]);
+  }, [user, firestore]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -51,107 +64,139 @@ export function ProfileForm() {
 
     setIsUploading(true);
     try {
-      // 1. Create a storage reference
       const storageRef = ref(storage, `profile-pictures/${user.uid}/${file.name}`);
-      
-      // 2. Upload the file
       await uploadBytes(storageRef, file);
-      
-      // 3. Get the download URL
       const photoURL = await getDownloadURL(storageRef);
-
-      // 4. Update the user's profile in Firebase Auth
       await updateProfile(auth.currentUser, { photoURL });
       
-      // 5. Update the user's document in Firestore
       const userDocRef = doc(firestore, "users", user.uid);
       await updateDoc(userDocRef, { photoURL: photoURL });
       
-      // 6. Update the local state to show the new image immediately
       setAvatarSrc(photoURL);
-      toast.success("Profile picture updated successfully!");
+      toast.success("Profile picture updated!");
 
     } catch (error) {
       console.error("Error uploading profile picture:", error);
-      toast.error("Failed to upload profile picture. See console for details.");
+      toast.error("Failed to upload profile picture.");
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleProfileSave = async () => {
+    if (!user || !firestore || !auth.currentUser) return;
+
+    setIsSaving(true);
+    try {
+      // Update Firebase Auth profile
+      if (auth.currentUser.displayName !== displayName) {
+        await updateProfile(auth.currentUser, { displayName });
+      }
+
+      // Update Firestore document
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, {
+        displayName: displayName,
+        upiId: upiId,
+      });
+
+      toast.success("Profile saved successfully!");
+
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      toast.error("Failed to save profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (isUserLoading || !user) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
-    <Card className="max-w-md mx-auto">
-      <CardHeader className="text-center">
-        <div className="relative mx-auto w-24 h-24 mb-4">
-          <Avatar className="w-full h-full">
-            <AvatarImage src={avatarSrc} alt={user.displayName || 'User'} />
-            <AvatarFallback>{user.email ? user.email[0].toUpperCase() : 'U'}</AvatarFallback>
-          </Avatar>
-          {isUploading && (
-              <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-full">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-          )}
-        </div>
-         <Input
-            id="picture"
-            type="file"
-            accept="image/*"
-            onChange={handlePictureUpload}
-            className="hidden"
-            disabled={isUploading}
-          />
-          <label htmlFor="picture" className="cursor-pointer">
-            <Button asChild disabled={isUploading} variant="link">
-              <span>Change Picture</span>
-            </Button>
-          </label>
-        <CardTitle className="text-xl">{user.displayName || user.email}</CardTitle>
-        <p className="text-sm text-gray-500">UID: {user.uid}</p>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/wallet')}>
-            <div className="flex items-center">
-              <Wallet className="mr-2 h-4 w-4" />
-              <span>My Wallet</span>
-            </div>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" className="w-full justify-between">
-            <div className="flex items-center">
-              <Bell className="mr-2 h-4 w-4" />
-              <span>Notifications</span>
-            </div>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" className="w-full justify-between">
-            <div className="flex items-center">
-              <Shield className="mr-2 h-4 w-4" />
-              <span>Security</span>
-            </div>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/admin')}>
-            <div className="flex items-center">
-              <UserCog className="mr-2 h-4 w-4" />
-              <span>Admin Panel</span>
-            </div>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button variant="destructive" className="w-full" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
-      </CardFooter>
-    </Card>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <Card className="md:col-span-1">
+             <CardHeader className="text-center">
+                <div className="relative mx-auto w-24 h-24 mb-4">
+                <Avatar className="w-full h-full">
+                    <AvatarImage src={avatarSrc} alt={displayName || 'User'} />
+                    <AvatarFallback>{displayName ? displayName[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : 'U')}</AvatarFallback>
+                </Avatar>
+                {isUploading && (
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-full">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    </div>
+                )}
+                </div>
+                <Input
+                    id="picture"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePictureUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                />
+                <label htmlFor="picture" className="cursor-pointer">
+                    <Button asChild disabled={isUploading} variant="link">
+                    <span>Change Picture</span>
+                    </Button>
+                </label>
+                <CardTitle className="text-xl">{displayName || user.email}</CardTitle>
+                <p className="text-sm text-gray-500 font-mono">{user.uid}</p>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-2">
+                <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/wallet')}>
+                    <div className="flex items-center">
+                    <Wallet className="mr-2 h-4 w-4" />
+                    <span>My Wallet</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+                 <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/admin')}>
+                    <div className="flex items-center">
+                    <UserCog className="mr-2 h-4 w-4" />
+                    <span>Admin Panel</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+                </div>
+            </CardContent>
+            <CardFooter>
+                <Button variant="destructive" className="w-full" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+                </Button>
+            </CardFooter>
+        </Card>
+        <Card className="md:col-span-2">
+            <CardHeader>
+                <CardTitle className="flex items-center"><UserIcon className="mr-2"/>Personal Information</CardTitle>
+                <CardDescription>Update your display name and UPI ID for withdrawals.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your name" />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={user.email || ''} disabled />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="upiId">Default UPI ID</Label>
+                    <Input id="upiId" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@bank" />
+                </div>
+            </CardContent>
+            <CardFooter>
+                <Button onClick={handleProfileSave} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Save Changes
+                </Button>
+            </CardFooter>
+        </Card>
+
+    </div>
   );
 }

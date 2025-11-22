@@ -8,7 +8,7 @@ import { Toaster as SonnerToaster } from 'sonner';
 import Header from '@/components/layout/header';
 import Footer from '@/components/layout/footer';
 import { Sidebar, SidebarProvider, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Home, Landmark, User, Swords } from 'lucide-react';
+import { Home, Landmark, User, Swords, Trophy } from 'lucide-react';
 import { ClientFirebaseProvider } from '@/firebase/client-provider';
 
 export default function ClientLayout({
@@ -43,6 +43,14 @@ export default function ClientLayout({
                         <Link href="/play">
                           <Swords className="h-4 w-4" />
                           Play
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <Link href="/leaderboard">
+                          <Trophy className="h-4 w-4" />
+                          Leaderboard
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
