@@ -1,16 +1,26 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot, QuerySnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, getDoc, doc, DocumentData } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, Copy, Banknote, User } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Copy, Banknote } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+// Define the structure for a user
+interface User {
+  id: string;
+  email?: string;
+  displayName?: string;
+  photoURL?: string;
+}
+
+// Define the structure for a deposit request
 interface Request {
   id: string;
   amount: number;
@@ -19,7 +29,10 @@ interface Request {
   requestedAt: { toDate: () => Date };
 }
 
-const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; onProcess: (id: string, approve: boolean) => void; isSubmitting: boolean }) => {
+// Combine Request with User information
+type RequestWithUser = Request & { user?: User };
+
+const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWithUser; onProcess: (id: string, approve: boolean) => void; isSubmitting: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
 
   useEffect(() => {
@@ -38,20 +51,27 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
     toast.info('Copied to clipboard');
   }
 
+  const userDisplayName = request.user?.displayName || request.user?.email || 'Unknown User';
+  const userIdentifier = request.user?.email || request.userId;
+
   return (
-    <Card className="p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-        <div className="md:col-span-2 space-y-2">
-             <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
-             <div className='text-sm text-muted-foreground flex items-center gap-2 flex-wrap'>
-                <p className="flex items-center gap-1">
-                    <User className="h-3 w-3"/> <span className='font-mono'>{request.userId}</span>
-                </p>
-                <p className="flex items-center gap-1">
-                    ID: <span className="font-mono">{request.transactionId}</span>
-                    <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
-                </p>
-             </div>
-             <p className="text-xs text-muted-foreground">{timeAgo}</p>
+    <Card className="p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4 transition-all hover:shadow-md">
+        <div className="md:col-span-2 flex items-start gap-4">
+            <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
+                <AvatarImage src={request.user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
+                <AvatarFallback>{userDisplayName[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div className="space-y-1">
+                 <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
+                 <p className='font-semibold'>{userDisplayName}</p>
+                 <div className='text-xs text-muted-foreground flex items-center gap-2 flex-wrap'>
+                    <p className="flex items-center gap-1 font-mono">
+                        {request.transactionId}
+                        <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
+                    </p>
+                 </div>
+                 <p className="text-xs text-muted-foreground">{timeAgo}</p>
+            </div>
         </div>
         <div className="flex gap-2 justify-self-start md:justify-self-end">
             <Button variant="outline" size="sm" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
@@ -65,11 +85,10 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
   );
 };
 
-
 export default function ManageDepositsPage() {
   const { firestore, functions } = useFirebase(); 
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<RequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,9 +101,23 @@ export default function ManageDepositsPage() {
     );
 
     const unsubscribe = onSnapshot(requestsQuery, 
-      (snapshot: QuerySnapshot) => {
+      async (snapshot) => {
         const newRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Request));
-        setRequests(newRequests);
+        
+        // Fetch user data for each request
+        const requestsWithUsers = await Promise.all(newRequests.map(async (request) => {
+            try {
+                const userDoc = await getDoc(doc(firestore, 'users', request.userId));
+                if (userDoc.exists()) {
+                    return { ...request, user: { id: userDoc.id, ...userDoc.data() } as User };
+                }
+            } catch (error) {
+                console.error(`Failed to fetch user ${request.userId}`, error);
+            }
+            return { ...request, user: undefined }; // Return request even if user fetch fails
+        }));
+
+        setRequests(requestsWithUsers);
         setLoading(false);
       },
       (error) => {
@@ -134,8 +167,8 @@ export default function ManageDepositsPage() {
         <CardContent className="space-y-4">
           {loading && (
             <div className="space-y-4">
-              <Skeleton className="h-24 w-full" />
-              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
             </div>
           )}
           {!loading && requests.length === 0 && (

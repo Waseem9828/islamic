@@ -1,16 +1,26 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, orderBy, onSnapshot, QuerySnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, ListChecks } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ListChecks, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+// Define the structure for a user
+interface User {
+  id: string;
+  email?: string;
+  displayName?: string;
+  photoURL?: string;
+}
+
+// Define the structure for a withdrawal request
 interface WithdrawalRequest {
     id: string;
     amount: number;
@@ -19,44 +29,65 @@ interface WithdrawalRequest {
     requestedAt: { toDate: () => Date };
 }
 
-const RequestCard = ({ request, onProcess, isSubmitting }: { request: WithdrawalRequest, onProcess: (id: string, approve: boolean) => void, isSubmitting: boolean }) => {
+// Combine WithdrawalRequest with User information
+type RequestWithUser = WithdrawalRequest & { user?: User };
+
+const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWithUser, onProcess: (id: string, approve: boolean) => void, isSubmitting: boolean }) => {
   const [timeAgo, setTimeAgo] = useState('');
 
   useEffect(() => {
     if (request.requestedAt) {
-      setTimeAgo(formatDistanceToNow(request.requestedAt.toDate()));
+      setTimeAgo(formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true }));
     }
   }, [request.requestedAt]);
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.info('Copied to clipboard');
+  }
+  
+  const userDisplayName = request.user?.displayName || request.user?.email || 'Unknown User';
+  const userIdentifier = request.user?.email || request.userId;
+
   return (
-    <Card className="p-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-          <div>
-              <p className="font-bold text-lg">₹{request.amount}</p>
-              <p className="text-sm text-muted-foreground">To: <span className="font-mono">{request.upiId}</span></p>
-              <p className="text-xs text-muted-foreground">User: {request.userId}</p>
-              <p className="text-xs text-muted-foreground">Requested {timeAgo} ago</p>
-          </div>
-          <div className="flex gap-2 mt-4 sm:mt-0">
-              <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onProcess(request.id, false)}
-                  disabled={isSubmitting}
-              >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
-                  Reject
-              </Button>
-              <Button 
-                  size="sm"
-                  onClick={() => onProcess(request.id, true)}
-                  disabled={isSubmitting}    
-              >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                  Approve
-              </Button>
-          </div>
-      </div>
+    <Card className="p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4 transition-all hover:shadow-md">
+        <div className="md:col-span-2 flex items-start gap-4">
+             <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
+                <AvatarImage src={request.user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
+                <AvatarFallback>{userDisplayName[0].toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <div>
+                 <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
+                 <p className='font-semibold'>{userDisplayName}</p>
+                 <div className='text-xs text-muted-foreground flex items-center gap-2 flex-wrap'>
+                    <p className="flex items-center gap-1 font-mono">
+                       To: {request.upiId}
+                        <button onClick={() => copyToClipboard(request.upiId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
+                    </p>
+                 </div>
+                 <p className="text-xs text-muted-foreground">{timeAgo}</p>
+            </div>
+        </div>
+        <div className="flex gap-2 justify-self-start md:justify-self-end">
+            <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => onProcess(request.id, false)}
+                disabled={isSubmitting}
+            >
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>}
+                Reject
+            </Button>
+            <Button 
+                size="sm"
+                onClick={() => onProcess(request.id, true)}
+                disabled={isSubmitting}    
+                 className="bg-green-600 hover:bg-green-700"
+            >
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                Approve
+            </Button>
+        </div>
     </Card>
   );
 };
@@ -65,9 +96,8 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Withdrawal
 export default function ManageWithdrawalsPage() {
   const { firestore, functions } = useFirebase();
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
-  const [requests, setRequests] = useState<WithdrawalRequest[]>([]);
+  const [requests, setRequests] = useState<RequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
   const processWithdrawalFunction = useMemo(() => {
     if (!functions) return null;
@@ -77,7 +107,6 @@ export default function ManageWithdrawalsPage() {
   useEffect(() => {
     if (!firestore) {
         setLoading(false);
-        setError(new Error("Firestore not available"));
         return;
     }
     const q = query(
@@ -87,16 +116,28 @@ export default function ManageWithdrawalsPage() {
     );
 
     const unsubscribe = onSnapshot(q, 
-      (snapshot: QuerySnapshot) => {
+      async (snapshot) => {
         const newRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as WithdrawalRequest));
-        setRequests(newRequests);
+        
+        const requestsWithUsers = await Promise.all(newRequests.map(async (request) => {
+            try {
+                const userDoc = await getDoc(doc(firestore, 'users', request.userId));
+                if (userDoc.exists()) {
+                    return { ...request, user: { id: userDoc.id, ...userDoc.data() } as User };
+                }
+            } catch (error) {
+                console.error(`Failed to fetch user ${request.userId}`, error);
+            }
+            return { ...request, user: undefined };
+        }));
+
+        setRequests(requestsWithUsers);
         setLoading(false);
       },
       (err) => {
         console.error("Error fetching withdrawal requests:", err);
-        setError(err);
+        toast.error("Failed to load requests.", { description: err.message });
         setLoading(false);
-        toast.error("Failed to load requests.");
       }
     );
 
@@ -127,14 +168,6 @@ export default function ManageWithdrawalsPage() {
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-500">Error loading requests: {error.message}</div>;
-  }
-
   return (
     <div className="container mx-auto max-w-4xl py-8">
       <Card>
@@ -143,10 +176,19 @@ export default function ManageWithdrawalsPage() {
           <CardDescription>Review and process pending withdrawal requests from users.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {requests.length === 0 && (
-            <p className="text-center text-muted-foreground py-6">No pending withdrawal requests.</p>
+          {loading && (
+             <div className="space-y-4">
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
+            </div>
           )}
-          {requests.map(request => (
+          {!loading && requests.length === 0 && (
+             <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                <h3 className="text-lg font-semibold">All Caught Up!</h3>
+                <p className="text-muted-foreground mt-1">There are no pending withdrawal requests.</p>
+            </div>
+          )}
+          {!loading && requests.map(request => (
               <RequestCard 
                 key={request.id}
                 request={request}
