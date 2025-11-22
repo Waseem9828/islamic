@@ -1,14 +1,13 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldCheck, Wallet, PiggyBank, Trophy, Loader2 } from 'lucide-react';
+import { ShieldCheck, Wallet, PiggyBank, Trophy, Users, UserCheck, UserPlus, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface User {
@@ -17,6 +16,8 @@ interface User {
   displayName?: string;
   photoURL?: string;
   isAdmin?: boolean;
+  lastActive?: Timestamp;
+  createdAt?: Timestamp;
 }
 
 interface Wallet {
@@ -27,6 +28,19 @@ interface Wallet {
 }
 
 type UserWithWallet = User & { wallet?: Omit<Wallet, 'id'> };
+
+const StatCard = ({ title, value, icon: Icon }) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+);
+
 
 export default function ManageUsersPage() {
   const { firestore } = useFirebase();
@@ -82,8 +96,25 @@ export default function ManageUsersPage() {
     );
   }, [users, search]);
 
+  const stats = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const totalUsers = users.length;
+    const newUsersToday = users.filter(u => u.createdAt && u.createdAt.toDate() >= today).length;
+    const activeLast7Days = users.filter(u => u.lastActive && u.lastActive.toDate() >= sevenDaysAgo).length;
+
+    return { totalUsers, newUsersToday, activeLast7Days };
+  }, [users]);
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <StatCard title="Total Users" value={stats.totalUsers} icon={Users} />
+            <StatCard title="Active Users (7 days)" value={stats.activeLast7Days} icon={UserCheck} />
+            <StatCard title="New Users (Today)" value={stats.newUsersToday} icon={UserPlus} />
+        </div>
       <Card>
         <CardHeader>
           <CardTitle>Manage Users</CardTitle>

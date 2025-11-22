@@ -16,10 +16,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, Loader2, Share2, Copy, CheckCircle, ArrowRight, Info, Wallet } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-const generateRoomCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
-
 export default function PlayPage() {
     const router = useRouter();
     const { user, isUserLoading } = useUser();
@@ -36,11 +32,6 @@ export default function PlayPage() {
     const [isLoadingWallet, setIsLoadingWallet] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [isMatchCreated, setIsMatchCreated] = useState(false);
-    
-    useEffect(() => {
-        // Generate room code only on the client side after hydration
-        setMatchId(generateRoomCode());
-    }, []);
 
     const totalBalance = useMemo(() => {
         if (!wallet) return 0;
@@ -75,6 +66,11 @@ export default function PlayPage() {
     const handleCreateMatch = async () => {
         if (!user || !createMatchFunction) {
             toast.error("User or Firebase Functions not available.");
+            return;
+        }
+
+        if (!matchId || matchId.length !== 8) {
+            toast.error("Invalid Room Code", { description: "Please enter the 8-digit code from Ludo King." });
             return;
         }
 
@@ -223,11 +219,14 @@ export default function PlayPage() {
                         </div>
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="match-id">Room Code</Label>
-                        <div className="flex items-center gap-2">
-                            <Input id="match-id" value={matchId} readOnly className="font-mono tracking-widest text-lg" />
-                            <Button variant="secondary" onClick={() => setMatchId(generateRoomCode())}>Generate New</Button>
-                        </div>
+                        <Label htmlFor="match-id">Ludo King Room Code</Label>
+                        <Input 
+                            id="match-id" 
+                            placeholder="Enter 8-digit room code" 
+                            value={matchId} 
+                            onChange={(e) => setMatchId(e.target.value.toUpperCase())}
+                            maxLength={8}
+                            className="font-mono tracking-widest text-lg" />
                     </div>
                     <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isCreating || isLoadingWallet}>
                         {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}

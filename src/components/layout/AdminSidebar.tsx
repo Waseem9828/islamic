@@ -1,11 +1,10 @@
-
 'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks, Trophy, History } from 'lucide-react';
+import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks, Trophy, History, HardDrive } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 
 
@@ -18,6 +17,7 @@ const adminFeatures = [
     { title: 'Withdrawals', icon: ListChecks, path: '/admin/withdrawals' },
     { title: 'App Rules', icon: Settings, path: '/admin/settings' },
     { title: 'Payments', icon: Settings, path: '/admin/payment-settings' },
+    { title: 'Storage', icon: HardDrive, path: '/admin/storage' },
 ];
 
 const AdminSidebarMenuContent = () => {

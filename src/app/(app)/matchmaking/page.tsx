@@ -54,7 +54,7 @@ export default function MatchmakingHomePage() {
   const { data: allMatches, isLoading: isLoadingMatches } = useCollection(matchesQuery);
 
   const filteredMatches = useMemo(() => {
-    if (!allMatches) return { openMatches: [], myActiveMatches: [], ongoingMatches: [], cancelledMatches: [] };
+    if (!allMatches) return { openMatches: [], myActiveMatches: [], ongoingMatches: [] };
 
     const filtered = allMatches.filter(match => {
         const searchInput = searchQuery.toLowerCase();
@@ -67,13 +67,12 @@ export default function MatchmakingHomePage() {
     const openMatches = filtered.filter((m: any) => m.status === 'waiting' && !(user && m.players.includes(user.uid)));
     const myActiveMatches = user ? filtered.filter((m: any) => (m.status === 'waiting' || m.status === 'inprogress') && m.players.includes(user.uid)) : [];
     const ongoingMatches = filtered.filter((m: any) => m.status === 'inprogress' && !(user && m.players.includes(user.uid)));
-    const cancelledMatches = filtered.filter((m: any) => m.status === 'cancelled');
     
-    return { openMatches, myActiveMatches, ongoingMatches, cancelledMatches };
+    return { openMatches, myActiveMatches, ongoingMatches };
 
   }, [allMatches, searchQuery, filters, user]);
 
-  const { openMatches, myActiveMatches, ongoingMatches, cancelledMatches } = filteredMatches;
+  const { openMatches, myActiveMatches, ongoingMatches } = filteredMatches;
 
   const handleCreateMatch = () => router.push('/play');
   const handleViewLobby = (matchId: string) => router.push(`/match/${matchId}`);
@@ -112,7 +111,7 @@ export default function MatchmakingHomePage() {
     </Card>
   );
   
-  const renderMatchList = (matches: any[], type: 'my' | 'open' | 'ongoing' | 'cancelled') => {
+  const renderMatchList = (matches: any[], type: 'my' | 'open' | 'ongoing') => {
     if (isLoadingMatches) {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -145,15 +144,11 @@ export default function MatchmakingHomePage() {
             button = (match: any) => <Button size="sm" variant="outline" disabled className="w-full text-xs h-8">In Progress</Button>;
             borderColor = "border-orange-500/30 border-2";
             break;
-        case 'cancelled':
-             button = () => <Button size="sm" variant="ghost" disabled className="w-full text-xs h-8">Cancelled</Button>;
-             borderColor = "border-red-500/30 border-2";
-             break;
     }
     
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {matches.map(m => <MatchCard key={m.id} match={m} borderColor={borderColor} button={button(m)} cardClassName={type === 'cancelled' ? 'opacity-75' : ''}/>)}
+            {matches.map(m => <MatchCard key={m.id} match={m} borderColor={borderColor} button={button(m)} />)}
         </div>
     );
   };
@@ -231,7 +226,6 @@ export default function MatchmakingHomePage() {
             <AccordionItem value="my-active-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-blue-600 hover:no-underline rounded-lg bg-blue-500/10 px-4"><div className='flex items-center'>My Active<Badge variant="secondary" className="ml-2">{myActiveMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(myActiveMatches, 'my')}</AccordionContent></AccordionItem>
             <AccordionItem value="open-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-green-600 hover:no-underline rounded-lg bg-green-500/10 px-4"><div className='flex items-center'><Flame className="mr-2 h-5 w-5" /> Open<Badge variant="secondary" className="ml-2">{openMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(openMatches, 'open')}</AccordionContent></AccordionItem>
             <AccordionItem value="ongoing-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-orange-600 hover:no-underline rounded-lg bg-orange-500/10 px-4"><div className='flex items-center'>Ongoing<Badge variant="secondary" className="ml-2">{ongoingMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(ongoingMatches, 'ongoing')}</AccordionContent></AccordionItem>
-            <AccordionItem value="cancelled-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-red-600 hover:no-underline rounded-lg bg-red-500/10 px-4"><div className='flex items-center'><XCircle className="mr-2 h-5 w-5"/>Cancelled<Badge variant="secondary" className="ml-2">{cancelledMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(cancelledMatches, 'cancelled')}</AccordionContent></AccordionItem>
         </Accordion>
 
         <div className="mt-8"><Button size="lg" className="w-full text-lg py-6" onClick={handleCreateMatch}>Create New Match <ChevronRight className="ml-2 h-5 w-5" /></Button></div>
