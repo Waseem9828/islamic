@@ -53,7 +53,7 @@ export default function DepositPage() {
             setIsLoadingSettings(false);
         };
         fetchPaymentSettings();
-    }, [firestore, toast]);
+    }, [firestore]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
