@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFirebase } from '@/firebase/provider';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { FirebaseError } from 'firebase/app';
 import Link from 'next/link';
@@ -18,16 +19,41 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
 
   const handleLogin = async () => {
-    if (!auth) {
+    if (!auth || !firestore) {
       toast.error('Auth service is not available. Please try again later.');
       return;
     }
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check if user and wallet documents exist, create them if they don't
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+            email: user.email,
+            displayName: user.email?.split('@')[0] || 'New User',
+            photoURL: user.photoURL || '',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+      }
+
+      const walletDocRef = doc(firestore, 'wallets', user.uid);
+      const walletDoc = await getDoc(walletDocRef);
+      if (!walletDoc.exists()) {
+        await setDoc(walletDocRef, {
+            depositBalance: 0,
+            winningBalance: 0,
+            bonusBalance: 0,
+        });
+      }
+
       toast.success('Logged in successfully');
       router.push('/matchmaking'); // Redirect to the matchmaking page
     } catch (error) {

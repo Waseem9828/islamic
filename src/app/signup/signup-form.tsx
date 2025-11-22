@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFirebase } from '@/firebase/provider';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { FirebaseError } from 'firebase/app';
 import Link from 'next/link';
@@ -18,16 +19,36 @@ export function SignUpForm() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
 
   const handleSignUp = async () => {
-    if (!auth) {
+    if (!auth || !firestore) {
       toast.error('Auth service is not available. Please try again later.');
       return;
     }
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user and wallet documents in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, {
+        email: user.email,
+        displayName: user.email?.split('@')[0] || 'New User',
+        photoURL: user.photoURL || '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      
+      const walletDocRef = doc(firestore, 'wallets', user.uid);
+      await setDoc(walletDocRef, {
+        depositBalance: 0,
+        winningBalance: 0,
+        bonusBalance: 0,
+      });
+
+
       toast.success('Signed up successfully');
       router.push('/matchmaking'); // Redirect to the matchmaking page
     } catch (error) {
