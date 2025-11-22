@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from 'sonner';
-import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck } from 'lucide-react';
+import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy } from 'lucide-react';
 
 interface Player {
   uid: string;
@@ -101,6 +102,18 @@ export default function MatchLobbyPage() {
     }
   };
 
+  const handleOpenLudoKing = () => {
+    if (!match) return;
+    // This uses a deep link to open Ludo King with the room code
+    window.location.href = `ludoking://?room_code=${match.id}`;
+  };
+
+  const handleCopyCode = () => {
+    if (!match) return;
+    navigator.clipboard.writeText(match.id);
+    toast.success("Room Code Copied!");
+  };
+
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
   const allPlayersReady = match && match.players.length > 1 && match.players.every(p => match.playerInfo[p]?.isReady);
@@ -124,7 +137,7 @@ export default function MatchLobbyPage() {
             <CardTitle className="text-2xl font-bold flex items-center"><Swords className="mr-2" />{match.matchTitle}</CardTitle>
             <Badge variant={match.privacy === 'public' ? 'secondary' : 'destructive'}>{match.privacy}</Badge>
           </div>
-          <CardDescription>Room Code: <span className="font-semibold text-foreground">{match.id}</span></CardDescription>
+          <CardDescription>Created by: <span className="font-semibold text-foreground">{match.creatorName}</span></CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -133,6 +146,27 @@ export default function MatchLobbyPage() {
                 <div className="p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">Time Limit</p><p className="font-bold text-lg flex items-center justify-center"><Clock className="h-4 w-4 mr-1"/>{match.timeLimit}</p></div>
                 <div className="p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">Status</p><p className="font-bold text-lg">{match.status}</p></div>
             </div>
+
+            {isUserInMatch && (
+              <Card className="bg-green-500/10 border-green-500/30">
+                  <CardHeader>
+                      <CardTitle className="text-lg flex items-center"><Gamepad2 className="mr-2 text-green-700"/>Start Playing!</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                       <div className="text-center space-y-1">
+                            <Label className="text-muted-foreground">Room Code</Label>
+                            <div className="p-3 bg-muted rounded-lg border-2 border-dashed flex justify-between items-center">
+                                <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
+                                <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
+                            </div>
+                        </div>
+                      <Button onClick={handleOpenLudoKing} className="w-full bg-green-600 hover:bg-green-700">
+                          Play on Ludo King
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center">This will open the Ludo King app. Make sure you have it installed.</p>
+                  </CardContent>
+              </Card>
+            )}
 
           <div>
             <h3 className="text-lg font-semibold mb-3">Players ({match.players.length}/{match.maxPlayers})</h3>
@@ -166,10 +200,10 @@ export default function MatchLobbyPage() {
               <Button onClick={() => handleJoinLeave('join')} className="w-full"><LogIn className="mr-2 h-4 w-4"/>Join Match</Button>
             ) : (
               <>
-                <Button onClick={() => handleJoinLeave('leave')} variant="destructive" className="w-full"><LogOut className="mr-2 h-4 w-4"/>Leave Match</Button>
                 <Button onClick={handleReadyToggle} className="w-full" variant={match.playerInfo[user!.uid]?.isReady ? 'secondary' : 'default'}>
-                    {match.playerInfo[user!.uid]?.isReady ? 'Set as Not Ready' : 'Set as Ready'}
+                    {match.playerInfo[user!.uid]?.isReady ? 'Set as Not Ready' : <><CheckCircle className="mr-2 h-4 w-4"/>Set as Ready</>}
                 </Button>
+                <Button onClick={() => handleJoinLeave('leave')} variant="destructive" className="w-full"><LogOut className="mr-2 h-4 w-4"/>Leave Match</Button>
               </>
             )}
           </div>
@@ -179,7 +213,7 @@ export default function MatchLobbyPage() {
                 <CardHeader><CardTitle className="text-lg flex items-center"><ShieldCheck className="mr-2"/>Creator Controls</CardTitle></CardHeader>
                 <CardContent>
                     <Button disabled={!allPlayersReady} className="w-full bg-green-600 hover:bg-green-700">Start Match</Button>
-                    <p className="text-xs text-muted-foreground mt-2">Match can start when all players are ready.</p>
+                    <p className="text-xs text-muted-foreground mt-2">Match can start when at least 2 players are ready.</p>
                 </CardContent>
             </Card>
           )}
