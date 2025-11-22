@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play } from 'lucide-react';
+import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play, Lock, Unlock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -133,6 +134,13 @@ export default function MatchLobbyPage() {
       toast.error("Couldn't update status.");
     }
   };
+  
+  const handleLudoKingRedirect = () => {
+    if (!match) return;
+    const ludoKingURL = `ludoking://?join=${match.id}`;
+    window.location.href = ludoKingURL;
+    toast.info("Redirecting to Ludo King...");
+  };
 
   const handleCopyCode = () => {
     if (!match) return;
@@ -163,55 +171,67 @@ export default function MatchLobbyPage() {
   const totalPot = match.entry * match.players.length;
 
   return (
-    <div className="p-4 max-w-lg mx-auto pb-28"> 
-      <div className="text-center mb-4">
-        <h1 className="text-2xl font-bold">{match.matchTitle}</h1>
-        <p className="text-sm text-muted-foreground">
-            Created by <span className="font-semibold text-primary">{match.creatorName}</span>
-        </p>
-        <div className="mt-2 text-xl font-bold text-green-600">
-            Total Prize: ₹{totalPot}
+    <div className="p-4 max-w-lg mx-auto pb-28 flex flex-col h-screen justify-between"> 
+      <div>
+        <div className="text-center mb-4">
+            <h1 className="text-2xl font-bold">{match.matchTitle}</h1>
+            <p className="text-sm text-muted-foreground">
+                Created by <span className="font-semibold text-primary">{match.creatorName}</span>
+            </p>
+            <div className="mt-2 text-xl font-bold text-green-600">
+                Total Prize: ₹{totalPot}
+            </div>
         </div>
-         <Badge variant="secondary" className="mt-2">Entry: ₹{match.entry}</Badge>
+         <div className="grid grid-cols-4 gap-2 text-center text-xs mb-4">
+            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><IndianRupee className='h-3 w-3'/>{match.entry}</span><span className='text-muted-foreground'>Entry</span></div>
+            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><Users className='h-3 w-3'/>{match.players.length}/{match.maxPlayers}</span><span className='text-muted-foreground'>Players</span></div>
+            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><Clock className='h-3 w-3'/>{match.timeLimit}</span><span className='text-muted-foreground'>Time</span></div>
+            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'>{match.privacy === 'private' ? <Lock className='h-3 w-3'/> : <Unlock className='h-3 w-3'/>}</span><span className='text-muted-foreground capitalize'>{match.privacy}</span></div>
+        </div>
+
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+            {playersList.map((player, index) => (
+                <PlayerSlot key={player?.uid || index} player={player} isCreator={player?.uid === match.createdBy} />
+            ))}
+        </div>
+
+        {isUserInMatch && (
+            <Card className="mb-4 bg-muted/50">
+                <CardHeader className='p-3'>
+                    <CardTitle className="text-base">Ludo King Room Code</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 flex gap-2">
+                    <div className="p-3 bg-background rounded-lg border-2 border-dashed flex justify-between items-center flex-grow">
+                        <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
+                        <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
+                    </div>
+                    <Button onClick={handleLudoKingRedirect} className='h-auto bg-green-600 hover:bg-green-700 flex-col gap-1 px-4'>
+                        <Gamepad2 className="h-6 w-6"/>
+                        <span className="text-xs">Play</span>
+                    </Button>
+                </CardContent>
+            </Card>
+        )}
+
+        {isUserInMatch && match.status === 'waiting' && <Alert className="mb-4">
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+                When all players are ready, the creator can start the match.
+            </AlertDescription>
+        </Alert>}
+        
+        {match.status === 'cancelled' && <Alert variant="destructive">
+            <X className="h-4 w-4" />
+            <AlertDescription>
+                This match has been cancelled.
+            </AlertDescription>
+        </Alert>}
       </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        {playersList.map((player, index) => (
-            <PlayerSlot key={player?.uid || index} player={player} isCreator={player?.uid === match.createdBy} />
-        ))}
-      </div>
-
-       {isUserInMatch && (
-        <Card className="mb-4 bg-muted/50">
-            <CardHeader className='p-3'>
-                <CardTitle className="text-base">Ludo King Room Code</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-                <div className="p-3 bg-background rounded-lg border-2 border-dashed flex justify-between items-center">
-                    <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
-                    <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
-                </div>
-            </CardContent>
-        </Card>
-      )}
-
-      {isUserInMatch && match.status === 'waiting' && <Alert className="mb-4">
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-              When all players are ready, the creator can start the match.
-          </AlertDescription>
-      </Alert>}
-      
-       {match.status === 'cancelled' && <Alert variant="destructive">
-          <X className="h-4 w-4" />
-          <AlertDescription>
-              This match has been cancelled.
-          </AlertDescription>
-      </Alert>}
 
 
       {/* Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-sm border-t md:static md:bg-transparent md:p-0 md:border-0">
+      <div className="p-0 m-0">
           <div className="max-w-lg mx-auto grid grid-cols-2 gap-2">
             {!isUserInMatch ? (
                 <Button size="lg" onClick={() => handleJoinLeave('join')} className="col-span-2 text-base h-12" disabled={match.players.length >= match.maxPlayers || match.status !== 'waiting'}>
@@ -229,8 +249,7 @@ export default function MatchLobbyPage() {
                         <CheckCircle className="mr-2 h-5 w-5"/>{match.playerInfo[user!.uid]?.isReady ? 'Set Not Ready' : 'Set Ready'}
                     </Button>
 
-                     {/* The leave button only shows if the user is not the creator, or if they are the creator but no one else has joined */}
-                    {(!isCreator || (isCreator && match.players.length === 1)) && (
+                     {(!isCreator || (isCreator && match.players.length === 1)) && (
                          <Button size="lg" variant="destructive" onClick={() => handleJoinLeave('leave')} className="col-span-2 text-base h-12">
                              <LogOut className="mr-2 h-5 w-5"/>
                              {isCreator ? 'Cancel Match' : 'Leave Match'}
