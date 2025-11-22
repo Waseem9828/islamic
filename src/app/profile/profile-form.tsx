@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
 import { useUser } from '@/firebase/provider';
-import { auth, storage, firestore } from '@/firebase/core';
+import { initializeFirebase } from '@/firebase/core';
 import { errorEmitter } from '@/firebase/errors';
 import { signOut, updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FirestorePermissionError, SecurityRuleContext } from '@/firebase/errors';
+
+const { auth, storage, firestore } = initializeFirebase();
 
 export function ProfileForm() {
   const router = useRouter();
