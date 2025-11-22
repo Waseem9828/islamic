@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { useFirebase } from '@/firebase/provider'; // CORRECT: Use the hook
+import { useFirebase } from '@/firebase/provider'; 
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,7 +13,7 @@ import { Loader2, CheckCircle, XCircle, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function ManageDepositsPage() {
-  const { firestore, functions } = useFirebase(); // CORRECT: Get services from the hook
+  const { firestore, functions } = useFirebase(); 
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
 
   const requestsQuery = useMemo(() => {
@@ -27,18 +27,23 @@ export default function ManageDepositsPage() {
 
   const [requests, loading, error] = useCollection(requestsQuery);
 
+  const processDepositFunction = useMemo(() => {
+      if (!functions) return null;
+      return httpsCallable(functions, 'processDeposit');
+  }, [functions]);
+
   const handleProcessRequest = async (requestId: string, approve: boolean) => {
-    if (!functions) { 
+    if (!processDepositFunction) { 
       toast.error('Functions service is not available.'); 
       return; 
     }
     setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
     
     try {
-      const processDepositFunction = httpsCallable(functions, 'processDeposit');
       const result = await processDepositFunction({ requestId, approve });
+      const data = (result.data as any)?.result;
       toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
-        description: (result.data as any).message as string,
+        description: data?.message as string,
       });
     } catch (err: any) {
       console.error('Error processing request:', err);
@@ -85,7 +90,7 @@ export default function ManageDepositsPage() {
                             <button onClick={() => copyToClipboard(request.transactionId)}><Copy className="h-3 w-3"/></button>
                         </p>
                         <p className="text-xs text-muted-foreground">User ID: {request.userId}</p>
-                        <p className="text-xs text-muted-foreground">Requested {formatDistanceToNow(request.requestedAt.toDate())} ago</p>
+                        <p className="text-xs text-muted-foreground">Requested {request.requestedAt ? formatDistanceToNow(request.requestedAt.toDate()) : ''} ago</p>
                     </div>
                     <div className="flex gap-2 mt-4 sm:mt-0">
                         <Button 

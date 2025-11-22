@@ -51,7 +51,7 @@ export default function ManageMatchesPage() {
 
     try {
       const result = await distributeWinningsFunction({ matchId, winnerId });
-      const data = result.data as { status: string, message: string };
+      const data = (result.data as any).result as { status: string, message: string };
       if (data.status === 'success') {
         toast.success('Winner Declared!', { 
           description: data.message,

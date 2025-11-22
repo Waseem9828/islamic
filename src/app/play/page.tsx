@@ -60,8 +60,14 @@ export default function PlayPage() {
         }
     }, [user, firestore, isUserLoading, router]);
 
+    const createMatchFunction = useMemo(() => {
+        if (!functions) return null;
+        return httpsCallable(functions, 'createMatch');
+    }, [functions]);
+
+
     const handleCreateMatch = async () => {
-        if (!user || !functions) {
+        if (!user || !createMatchFunction) {
             toast.error("User or Firebase Functions not available.");
             return;
         }
@@ -73,7 +79,6 @@ export default function PlayPage() {
         
         setIsCreating(true);
         try {
-            const createMatchFunction = httpsCallable(functions, 'createMatch');
             const result = await createMatchFunction({
                 matchId,
                 matchTitle: matchTitle || `Match ${matchId}`,
@@ -82,7 +87,7 @@ export default function PlayPage() {
                 privacy,
                 timeLimit: `${timeLimit} mins`
             });
-            const data = result.data as { status: string; message: string; matchId: string };
+            const data = (result.data as any).result as { status: string; message: string; matchId: string };
             if (data.status === 'success') {
                 toast.success("Match Created!", { description: data.message });
                 setMatchId(data.matchId);

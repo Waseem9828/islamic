@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirebase } from '@/firebase/provider'; 
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -44,6 +44,11 @@ export default function DepositPage() {
         fetchSettings();
     }, [firestore]);
 
+    const requestDepositFunction = useMemo(() => {
+        if (!functions) return null;
+        return httpsCallable(functions, 'requestDeposit');
+    }, [functions]);
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,7 +57,7 @@ export default function DepositPage() {
             return;
         }
 
-        if (!functions) {
+        if (!requestDepositFunction) {
             toast.error('Cannot connect to services. Please try again later.');
             return;
         }
@@ -69,10 +74,10 @@ export default function DepositPage() {
 
         setIsSubmitting(true);
         try {
-            const requestDeposit = httpsCallable(functions, 'requestDeposit');
-            const result = await requestDeposit({ amount: depositAmount, transactionId: transactionId.trim() });
+            const result = await requestDepositFunction({ amount: depositAmount, transactionId: transactionId.trim() });
+            const data = (result.data as any)?.result;
             toast.success('Deposit request submitted', {
-                description: 'Your request is under review and will be processed shortly.',
+                description: data?.message || 'Your request is under review and will be processed shortly.',
             });
             setAmount('');
             setTransactionId('');

@@ -77,7 +77,7 @@ export default function WithdrawPage() {
     setIsSubmitting(true);
     try {
       const result = await requestWithdrawalFunction({ amount: withdrawalAmount, upiId });
-      const responseData = result.data as { status: string; message: string }; 
+      const responseData = (result.data as any).result as { status: string; message: string }; 
 
       if (responseData.status === 'success') {
         toast.success('Request Submitted', { description: responseData.message || 'Your withdrawal request has been sent for approval.' });

@@ -67,7 +67,7 @@ export default function ManageWithdrawalsPage() {
     setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
     try {
       const result = await processWithdrawalFunction({ requestId, approve });
-      const responseData = result.data as { status: string; message: string };
+      const responseData = (result.data as any).result as { status: string; message: string };
       if (responseData.status === 'success') {
         toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
           description: responseData.message,
