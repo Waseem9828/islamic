@@ -3,6 +3,7 @@
 import './globals.css';
 import ClientLayout from '@/components/layout/ClientLayout';
 import BottomNavbar from '@/components/BottomNavbar';
+import { Toaster } from "@/components/ui/toaster";
 
 export default function RootLayout({
   children,
@@ -20,6 +21,7 @@ export default function RootLayout({
           <div className="pb-16">{children}</div>
           <BottomNavbar />
         </ClientLayout>
+        <Toaster />
       </body>
     </html>
   );
