@@ -131,8 +131,9 @@ exports.processDeposit = onCall(async (data, context) => {
 // --- Match Functions ---
 exports.createMatch = onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
+    
     const { matchId, matchTitle, entryFee, maxPlayers, privacy, timeLimit } = data;
-    const { uid, name, picture } = context.auth.token;
+    const { uid } = context.auth; // Correctly get UID
     const rules = await getAppRules();
 
     if (typeof matchId !== 'string' || matchId.length < 4) throw new functions.https.HttpsError("invalid-argument", "Invalid Match ID.");
@@ -140,15 +141,23 @@ exports.createMatch = onCall(async (data, context) => {
 
     const matchRef = db.collection("matches").doc(matchId.toUpperCase());
     const walletRef = db.collection("wallets").doc(uid);
+    const userRef = db.collection("users").doc(uid); // Ref to user document
 
     return db.runTransaction(async (t) => {
-        const matchDoc = await t.get(matchRef);
+        const [matchDoc, walletDoc, userDoc] = await Promise.all([
+            t.get(matchRef),
+            t.get(walletRef),
+            t.get(userRef) // Get user doc in transaction
+        ]);
+
         if (matchDoc.exists) throw new functions.https.HttpsError("already-exists", "Room code already exists.");
-        const walletDoc = await t.get(walletRef);
         if (!walletDoc.exists) throw new functions.https.HttpsError("not-found", "Wallet not found.");
+        if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "User profile not found.");
 
         const walletData = walletDoc.data();
+        const userData = userDoc.data();
         const totalBalance = (walletData.depositBalance || 0) + (walletData.winningBalance || 0) + (walletData.bonusBalance || 0);
+        
         if (totalBalance < entryFee) throw new functions.https.HttpsError("failed-precondition", "Insufficient total balance.");
 
         let remainingFee = entryFee;
@@ -166,12 +175,40 @@ exports.createMatch = onCall(async (data, context) => {
             winningBalance: admin.firestore.FieldValue.increment(-deductedFromWinnings),
         });
         
+        const creatorName = userData.displayName || "Anonymous";
+        const creatorPhoto = userData.photoURL || null;
+
         t.set(matchRef, {
-            id: matchId.toUpperCase(), room: matchId.toUpperCase(), matchTitle, entry: entryFee, maxPlayers, privacy, timeLimit, status: "waiting", createdBy: uid, creatorName: name || "Anonymous", createdAt: admin.firestore.FieldValue.serverTimestamp(), players: [uid], playerInfo: { [uid]: { name: name || "Anonymous", photoURL: picture || null, isReady: false } },
+            id: matchId.toUpperCase(),
+            room: matchId.toUpperCase(),
+            matchTitle,
+            entry: entryFee,
+            maxPlayers,
+            privacy,
+            timeLimit,
+            status: "waiting",
+            createdBy: uid,
+            creatorName: creatorName,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            players: [uid],
+            playerInfo: {
+                [uid]: {
+                    name: creatorName,
+                    photoURL: creatorPhoto,
+                    isReady: false
+                }
+            },
         });
         
         t.set(db.collection("transactions").doc(), {
-            userId: uid, type: "debit", amount: entryFee, reason: "match_creation", status: "completed", matchId: matchId.toUpperCase(), timestamp: admin.firestore.FieldValue.serverTimestamp(), breakdown: { fromDeposit: deductedFromDeposit, fromWinnings: deductedFromWinnings, fromBonus: deductedFromBonus }
+            userId: uid,
+            type: "debit",
+            amount: entryFee,
+            reason: "match_creation",
+            status: "completed",
+            matchId: matchId.toUpperCase(),
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            breakdown: { fromDeposit: deductedFromDeposit, fromWinnings: deductedFromWinnings, fromBonus: deductedFromBonus }
         });
         
         return { status: "success", message: "Match created!", matchId: matchId.toUpperCase() };
@@ -291,4 +328,5 @@ exports.processWithdrawal = onCall(async (data, context) => {
     });
 });
 
+    
     
