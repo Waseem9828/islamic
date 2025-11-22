@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -17,6 +18,49 @@ interface WithdrawalRequest {
     userId: string;
     requestedAt: { toDate: () => Date };
 }
+
+const RequestCard = ({ request, onProcess, isSubmitting }: { request: WithdrawalRequest, onProcess: (id: string, approve: boolean) => void, isSubmitting: boolean }) => {
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (request.requestedAt) {
+      setTimeAgo(formatDistanceToNow(request.requestedAt.toDate()));
+    }
+  }, [request.requestedAt]);
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+              <p className="font-bold text-lg">₹{request.amount}</p>
+              <p className="text-sm text-muted-foreground">To: <span className="font-mono">{request.upiId}</span></p>
+              <p className="text-xs text-muted-foreground">User: {request.userId}</p>
+              <p className="text-xs text-muted-foreground">Requested {timeAgo} ago</p>
+          </div>
+          <div className="flex gap-2 mt-4 sm:mt-0">
+              <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onProcess(request.id, false)}
+                  disabled={isSubmitting}
+              >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
+                  Reject
+              </Button>
+              <Button 
+                  size="sm"
+                  onClick={() => onProcess(request.id, true)}
+                  disabled={isSubmitting}    
+              >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                  Approve
+              </Button>
+          </div>
+      </div>
+    </Card>
+  );
+};
+
 
 export default function ManageWithdrawalsPage() {
   const { firestore, functions } = useFirebase();
@@ -67,7 +111,7 @@ export default function ManageWithdrawalsPage() {
     setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
     try {
       const result = await processWithdrawalFunction({ requestId, approve });
-      const responseData = (result.data as any).result as { status: string; message: string };
+      const responseData = (result.data as any);
       if (responseData.status === 'success') {
         toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
           description: responseData.message,
@@ -103,35 +147,12 @@ export default function ManageWithdrawalsPage() {
             <p className="text-center text-muted-foreground py-6">No pending withdrawal requests.</p>
           )}
           {requests.map(request => (
-              <Card key={request.id} className="p-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <div>
-                        <p className="font-bold text-lg">₹{request.amount}</p>
-                        <p className="text-sm text-muted-foreground">To: <span className="font-mono">{request.upiId}</span></p>
-                        <p className="text-xs text-muted-foreground">User: {request.userId}</p>
-                        <p className="text-xs text-muted-foreground">Requested {formatDistanceToNow(request.requestedAt.toDate())} ago</p>
-                    </div>
-                    <div className="flex gap-2 mt-4 sm:mt-0">
-                        <Button 
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleProcessRequest(request.id, false)}
-                            disabled={isSubmitting[request.id]}
-                        >
-                            {isSubmitting[request.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
-                            Reject
-                        </Button>
-                        <Button 
-                            size="sm"
-                            onClick={() => handleProcessRequest(request.id, true)}
-                            disabled={isSubmitting[request.id]}    
-                        >
-                            {isSubmitting[request.id] ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                            Approve
-                        </Button>
-                    </div>
-                </div>
-              </Card>
+              <RequestCard 
+                key={request.id}
+                request={request}
+                onProcess={handleProcessRequest}
+                isSubmitting={isSubmitting[request.id]}
+              />
             ))}
         </CardContent>
       </Card>

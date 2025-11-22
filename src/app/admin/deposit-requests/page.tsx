@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider'; 
@@ -11,6 +11,65 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, XCircle, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+interface Request {
+  id: string;
+  amount: number;
+  transactionId: string;
+  userId: string;
+  requestedAt: { toDate: () => Date };
+}
+
+const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; onProcess: (id: string, approve: boolean) => void; isSubmitting: boolean }) => {
+  const [timeAgo, setTimeAgo] = useState('');
+
+  useEffect(() => {
+    if (request.requestedAt) {
+      setTimeAgo(formatDistanceToNow(request.requestedAt.toDate()));
+    }
+  }, [request.requestedAt]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.info('Copied to clipboard');
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+              <p className="font-bold text-lg">₹{request.amount}</p>
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  Transaction ID: <span className="font-mono">{request.transactionId}</span>
+                  <button onClick={() => copyToClipboard(request.transactionId)}><Copy className="h-3 w-3"/></button>
+              </p>
+              <p className="text-xs text-muted-foreground">User ID: {request.userId}</p>
+              <p className="text-xs text-muted-foreground">Requested {timeAgo} ago</p>
+          </div>
+          <div className="flex gap-2 mt-4 sm:mt-0">
+              <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onProcess(request.id, false)}
+                  disabled={isSubmitting}
+              >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
+                  Reject
+              </Button>
+              <Button 
+                  size="sm"
+                  onClick={() => onProcess(request.id, true)}
+                  disabled={isSubmitting}    
+              >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
+                  Approve
+              </Button>
+          </div>
+      </div>
+    </Card>
+  );
+};
+
 
 export default function ManageDepositsPage() {
   const { firestore, functions } = useFirebase(); 
@@ -41,7 +100,7 @@ export default function ManageDepositsPage() {
     
     try {
       const result = await processDepositFunction({ requestId, approve });
-      const data = (result.data as any)?.result;
+      const data = (result.data as any);
       toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
         description: data?.message as string,
       });
@@ -52,11 +111,6 @@ export default function ManageDepositsPage() {
       setIsSubmitting(prev => ({ ...prev, [requestId]: false }));
     }
   };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.info('Copied to clipboard');
-  }
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -78,41 +132,14 @@ export default function ManageDepositsPage() {
             <p className="text-center text-muted-foreground py-6">No pending deposit requests.</p>
           )}
           {requests && requests.docs.map(doc => {
-            const request = doc.data();
-            const requestId = doc.id;
+            const request = { id: doc.id, ...doc.data() } as Request;
             return (
-              <Card key={requestId} className="p-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <div>
-                        <p className="font-bold text-lg">₹{request.amount}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                            Transaction ID: <span className="font-mono">{request.transactionId}</span>
-                            <button onClick={() => copyToClipboard(request.transactionId)}><Copy className="h-3 w-3"/></button>
-                        </p>
-                        <p className="text-xs text-muted-foreground">User ID: {request.userId}</p>
-                        <p className="text-xs text-muted-foreground">Requested {request.requestedAt ? formatDistanceToNow(request.requestedAt.toDate()) : ''} ago</p>
-                    </div>
-                    <div className="flex gap-2 mt-4 sm:mt-0">
-                        <Button 
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleProcessRequest(requestId, false)}
-                            disabled={isSubmitting[requestId]}
-                        >
-                            {isSubmitting[requestId] ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
-                            Reject
-                        </Button>
-                        <Button 
-                            size="sm"
-                            onClick={() => handleProcessRequest(requestId, true)}
-                            disabled={isSubmitting[requestId]}    
-                        >
-                            {isSubmitting[requestId] ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
-                            Approve
-                        </Button>
-                    </div>
-                </div>
-              </Card>
+              <RequestCard
+                key={request.id}
+                request={request}
+                onProcess={handleProcessRequest}
+                isSubmitting={isSubmitting[request.id]}
+              />
             );
           })}
         </CardContent>
