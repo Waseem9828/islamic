@@ -20,14 +20,19 @@ const getAppRules = async () => {
 };
 
 // Admin check helper
-const ensureIsAdmin = (context) => {
-    if (!context.auth || context.auth.token.uid !== 'Mh28D81npYYDfC3z8mslVIPFu5H3') {
+const ensureIsAdmin = async (context: any) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Admin-only function.');
+    }
+    const adminDoc = await db.collection('roles_admin').doc(context.auth.uid).get();
+    if (!adminDoc.exists) {
         throw new functions.https.HttpsError('permission-denied', 'Admin-only function.');
     }
 };
 
+
 // Wrapper for callable functions to handle CORS and emulate onCall behavior
-const onCall = (handler) => {
+const onCall = (handler: (data: any, context: any) => Promise<any>) => {
   return functions.https.onRequest((req, res) => {
     // This wraps the main logic in the cors handler
     cors(req, res, async () => {
@@ -90,7 +95,7 @@ exports.requestDeposit = onCall(async (data, context) => {
 });
 
 exports.processDeposit = onCall(async (data, context) => {
-    ensureIsAdmin(context);
+    await ensureIsAdmin(context);
     const { requestId, approve } = data;
     if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Request ID required.');
 
@@ -129,7 +134,7 @@ exports.processDeposit = onCall(async (data, context) => {
 
 // --- Match Functions ---
 exports.createMatch = onCall(async (data, context) => {
-    if (!context.auth) throw new functions.httpsHttpsError("unauthenticated", "Login required.");
+    if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
     
     const { matchId, matchTitle, entryFee, maxPlayers, privacy, timeLimit } = data;
     const { uid } = context.auth; // Correctly get UID
@@ -250,7 +255,7 @@ exports.cancelMatch = onCall(async (data, context) => {
 });
 
 exports.distributeWinnings = onCall(async (data, context) => {
-    ensureIsAdmin(context);
+    await ensureIsAdmin(context);
     const { matchId, winnerId } = data;
     if (!matchId || !winnerId) throw new functions.https.HttpsError('invalid-argument', 'matchId and winnerId required.');
 
@@ -300,7 +305,7 @@ exports.requestWithdrawal = onCall(async (data, context) => {
 });
 
 exports.processWithdrawal = onCall(async (data, context) => {
-    ensureIsAdmin(context);
+    await ensureIsAdmin(context);
     const { requestId, approve } = data;
     if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Request ID required.');
 
@@ -326,3 +331,5 @@ exports.processWithdrawal = onCall(async (data, context) => {
         }
     });
 });
+
+    
