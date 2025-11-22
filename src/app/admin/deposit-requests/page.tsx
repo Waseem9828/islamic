@@ -7,10 +7,17 @@ import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, Copy, Banknote } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Copy, Banknote, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+// Define the structure for a wallet
+interface Wallet {
+  balance?: number;
+  totalDeposit?: number;
+  totalWinnings?: number;
+}
 
 // Define the structure for a user
 interface User {
@@ -18,6 +25,7 @@ interface User {
   email?: string;
   displayName?: string;
   photoURL?: string;
+  wallet?: Wallet;
 }
 
 // Define the structure for a deposit request
@@ -27,6 +35,7 @@ interface Request {
   transactionId: string;
   userId: string;
   requestedAt: { toDate: () => Date };
+  screenshotURL?: string;
 }
 
 // Combine Request with User information
@@ -55,32 +64,61 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
   const userIdentifier = request.user?.email || request.userId;
 
   return (
-    <Card className="p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4 transition-all hover:shadow-md">
-        <div className="md:col-span-2 flex items-start gap-4">
-            <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
-                <AvatarImage src={request.user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
-                <AvatarFallback>{userDisplayName[0].toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="space-y-1">
-                 <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
-                 <p className='font-semibold'>{userDisplayName}</p>
-                 <div className='text-xs text-muted-foreground flex items-center gap-2 flex-wrap'>
-                    <p className="flex items-center gap-1 font-mono">
-                        {request.transactionId}
-                        <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
-                    </p>
-                 </div>
-                 <p className="text-xs text-muted-foreground">{timeAgo}</p>
+    <Card className="p-4 transition-all hover:shadow-md">
+        <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
+            <div className="md:col-span-2 flex items-start gap-4">
+                <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
+                    <AvatarImage src={request.user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
+                    <AvatarFallback>{userDisplayName[0].toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="space-y-1">
+                     <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
+                     <p className='font-semibold'>{userDisplayName}</p>
+                     <div className='text-xs text-muted-foreground flex items-center gap-2 flex-wrap'>
+                        <p className="flex items-center gap-1 font-mono">
+                            {request.transactionId}
+                            <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
+                        </p>
+                     </div>
+                     <p className="text-xs text-muted-foreground">{timeAgo}</p>
+                </div>
+            </div>
+            <div className="flex gap-2 justify-self-start md:justify-self-end">
+                <Button variant="outline" size="sm" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>} Reject
+                </Button>
+                <Button size="sm" onClick={() => onProcess(request.id, true)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>} Approve
+                </Button>
             </div>
         </div>
-        <div className="flex gap-2 justify-self-start md:justify-self-end">
-            <Button variant="outline" size="sm" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>} Reject
-            </Button>
-            <Button size="sm" onClick={() => onProcess(request.id, true)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>} Approve
-            </Button>
-        </div>
+        {request.screenshotURL && (
+            <div className='mt-4'>
+                <Button variant="outline" size="sm" asChild>
+                    <a href={request.screenshotURL} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Screenshot
+                    </a>
+                </Button>
+            </div>
+        )}
+        {request.user?.wallet && (
+          <div className="mt-4 pt-4 border-t space-y-2 text-sm text-muted-foreground">
+              <h4 className="text-sm font-semibold text-primary mb-2">User Wallet</h4>
+              <div className="flex justify-between items-center">
+                  <span>Wallet Balance:</span>
+                  <span className="font-mono text-base text-primary">₹{request.user.wallet.balance?.toLocaleString() ?? 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                  <span>Total Deposits:</span>
+                  <span className="font-mono">₹{request.user.wallet.totalDeposit?.toLocaleString() ?? 'N/A'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                  <span>Total Winnings:</span>
+                  <span className="font-mono">₹{request.user.wallet.totalWinnings?.toLocaleString() ?? 'N/A'}</span>
+              </div>
+          </div>
+        )}
     </Card>
   );
 };
@@ -104,17 +142,22 @@ export default function ManageDepositsPage() {
       async (snapshot) => {
         const newRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Request));
         
-        // Fetch user data for each request
         const requestsWithUsers = await Promise.all(newRequests.map(async (request) => {
             try {
                 const userDoc = await getDoc(doc(firestore, 'users', request.userId));
+                let user: User | undefined;
                 if (userDoc.exists()) {
-                    return { ...request, user: { id: userDoc.id, ...userDoc.data() } as User };
+                    user = { id: userDoc.id, ...userDoc.data() } as User;
+                    const walletDoc = await getDoc(doc(firestore, 'wallets', request.userId));
+                    if (walletDoc.exists()) {
+                        user.wallet = walletDoc.data() as Wallet;
+                    }
                 }
+                return { ...request, user };
             } catch (error) {
-                console.error(`Failed to fetch user ${request.userId}`, error);
+                console.error(`Failed to fetch user or wallet for ${request.userId}`, error);
             }
-            return { ...request, user: undefined }; // Return request even if user fetch fails
+            return { ...request, user: undefined };
         }));
 
         setRequests(requestsWithUsers);
@@ -167,8 +210,8 @@ export default function ManageDepositsPage() {
         <CardContent className="space-y-4">
           {loading && (
             <div className="space-y-4">
-              <Skeleton className="h-28 w-full" />
-              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-36 w-full" />
+              <Skeleton className="h-36 w-full" />
             </div>
           )}
           {!loading && requests.length === 0 && (

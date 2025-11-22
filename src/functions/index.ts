@@ -277,6 +277,7 @@ exports.processWithdrawal = onCall(async (data, context) => {
     });
 });
 
-    
 
-    
+
+
+exports.grantAdminRole = require("./grantAdminRole").grantAdminRole;
