@@ -64,7 +64,7 @@ const AdminSidebar = () => {
   return (
     <Sidebar
       collapsible={isMobile ? "offcanvas" : "icon"}
-      className={isMobile ? "md:hidden" : "hidden md:flex bg-muted/30"}
+      className="bg-muted/30"
       side="left"
     >
       <SidebarContent>
