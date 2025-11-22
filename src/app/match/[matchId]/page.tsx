@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play, Lock, Unlock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 
 
 interface Player {
@@ -151,7 +152,7 @@ export default function MatchLobbyPage() {
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
   const readyPlayerCount = match ? match.players.filter(p => match.playerInfo[p]?.isReady).length : 0;
-  const canStart = readyPlayerCount >= 2;
+  const canStart = isCreator && readyPlayerCount >= 2;
 
   if (loading) return <div className="flex justify-center items-center h-[80vh]"><Hourglass className="animate-spin h-8 w-8 text-primary" /></div>;
   if (error) return <div className="flex justify-center items-center h-[80vh] text-red-500">Error: {error}</div>;
@@ -171,8 +172,8 @@ export default function MatchLobbyPage() {
   const totalPot = match.entry * match.players.length;
 
   return (
-    <div className="p-4 max-w-lg mx-auto pb-28 flex flex-col h-screen justify-between"> 
-      <div>
+    <div className="p-4 max-w-lg mx-auto flex flex-col h-screen"> 
+      <div className="flex-grow overflow-y-auto">
         <div className="text-center mb-4">
             <h1 className="text-2xl font-bold">{match.matchTitle}</h1>
             <p className="text-sm text-muted-foreground">
@@ -231,7 +232,7 @@ export default function MatchLobbyPage() {
 
 
       {/* Sticky Action Bar */}
-      <div className="p-0 m-0">
+      <div className="py-2 mt-auto">
           <div className="max-w-lg mx-auto grid grid-cols-2 gap-2">
             {!isUserInMatch ? (
                 <Button size="lg" onClick={() => handleJoinLeave('join')} className="col-span-2 text-base h-12" disabled={match.players.length >= match.maxPlayers || match.status !== 'waiting'}>
@@ -240,7 +241,7 @@ export default function MatchLobbyPage() {
             ) : (
                  <>
                     {isCreator && (
-                        <Button size="lg" onClick={() => {}} disabled={!canStart} className="text-base h-12 bg-green-600 hover:bg-green-700">
+                        <Button size="lg" onClick={handleLudoKingRedirect} disabled={!canStart} className="text-base h-12 bg-green-600 hover:bg-green-700">
                            <Play className="mr-2 h-5 w-5"/> Start Match
                         </Button>
                     )}
@@ -262,5 +263,3 @@ export default function MatchLobbyPage() {
     </div>
   );
 }
-
-    
