@@ -26,29 +26,50 @@ const ensureIsAdmin = (context) => {
     }
 };
 
-// Wrapper for callable functions to handle CORS
+// Wrapper for callable functions to handle CORS and emulate onCall behavior
 const onCall = (handler) => {
   return functions.https.onRequest((req, res) => {
+    // This wraps the main logic in the cors handler
     cors(req, res, async () => {
+      // For onCall functions, the client SDK sends a POST request.
+      // The preflight OPTIONS request is handled automatically by the cors middleware.
       if (req.method !== 'POST') {
         res.status(405).send('Method Not Allowed');
         return;
       }
+
       try {
+        // The client SDK wraps data in a `data` object.
         const { data } = req.body;
-        // Recreate the context object that onCall functions expect
+
+        // Recreate the context object that onCall functions expect.
+        // The client SDK sends the auth token in the Authorization header.
         const context = {
             auth: req.headers.authorization ? await admin.auth().verifyIdToken(req.headers.authorization.split('Bearer ')[1]) : null
         };
 
         const result = await handler(data, context);
+        // The client SDK expects the response to be wrapped in a `result` object.
         res.status(200).send({ result });
       } catch (error) {
         console.error("Error in function execution:", error);
         if (error instanceof functions.https.HttpsError) {
-          res.status(error.httpErrorCode.status).send({ error: { code: error.code, message: error.message } });
+          // If it's a known HttpsError, send it back in the format the client SDK expects.
+          res.status(error.httpErrorCode.status).send({ 
+            error: { 
+              code: `functions/${error.code}`, // The client SDK expects this format
+              message: error.message,
+              details: error.details,
+            } 
+          });
         } else {
-          res.status(500).send({ error: { code: 'internal', message: 'An internal error occurred.' } });
+          // For unknown errors, send a generic internal error.
+          res.status(500).send({ 
+            error: { 
+              code: 'functions/internal', 
+              message: 'An internal error occurred.' 
+            } 
+          });
         }
       }
     });
@@ -59,7 +80,7 @@ const onCall = (handler) => {
 exports.requestDeposit = onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
     const { amount, transactionId } = data;
-    if (!amount || typeof amount !== 'number' || amount <= 0) throw new functions.https-HttpsError('invalid-argument', 'Valid amount required.');
+    if (!amount || typeof amount !== 'number' || amount <= 0) throw new functions.https.HttpsError('invalid-argument', 'Valid amount required.');
     if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length < 12) throw new functions.https.HttpsError('invalid-argument', 'Valid 12-digit Transaction ID required.');
     
     await db.collection("depositRequests").add({
@@ -221,7 +242,7 @@ exports.distributeWinnings = onCall(async (data, context) => {
 
 // --- Withdrawal Functions ---
 exports.requestWithdrawal = onCall(async (data, context) => {
-  if (!context.auth) throw new functions.httpsah.HttpsError("unauthenticated", "Login required.");
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
   const { amount, upiId } = data;
   const userId = context.auth.uid;
 
