@@ -7,22 +7,27 @@ import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
+// Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const firestore = getFirestore(app);
-export const functions = getFunctions(app);
-export const storage = getStorage(app);
-export const auth = getAuth(app);
+// Initialize services
+const firestore = getFirestore(app);
+const functions = getFunctions(app);
+// Pass the storageBucket URL to getStorage
+const storage = getStorage(app, firebaseConfig.storageBucket);
+const auth = getAuth(app);
 
-export { getFirestore, getFunctions, getStorage, getAuth };
+// Export the initialized services
+export { app, firestore, functions, storage, auth };
 
+// A function to get all SDKs, which can be used in providers
 export const initializeFirebase = () => {
   return {
-    firebaseApp: app, 
+    firebaseApp: app,
     firestore,
     functions,
     storage,
-    auth
+    auth,
   };
 };
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ export default function MatchmakingHomePage() {
   const [isJoinConfirmOpen, setIsJoinConfirmOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any | null>(null);
   const [filters, setFilters] = useState({ feeRange: [10, 1000], playerCount: 'all', status: 'all' });
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const walletDocRef = useMemo(() => firestore && user ? doc(firestore, 'wallets', user.uid) : null, [firestore, user]);
   const { data: wallet, isLoading: isWalletLoading } = useDoc(walletDocRef);
@@ -92,17 +93,17 @@ export default function MatchmakingHomePage() {
   }
 
   const MatchCard = ({ match, button, borderColor, cardClassName }: any) => (
-    <Card className={`overflow-hidden p-2 space-y-2.5 ${borderColor} ${cardClassName}`}>
-        <div className="flex justify-between items-start">
+    <Card className={`overflow-hidden p-3 space-y-3 ${borderColor} ${cardClassName}`}>
+        <div className="flex justify-between items-start gap-2">
             <div>
-                <CardTitle className="text-base font-bold">{match.matchTitle || match.room}</CardTitle>
-                <CardDescription className="text-xs">By: {match.creatorName}</CardDescription>
+                <CardTitle className="text-base font-bold leading-tight">{match.matchTitle || match.room}</CardTitle>
+                <CardDescription className="text-xs mt-1">By: {match.creatorName}</CardDescription>
             </div>
-            <Badge variant="secondary" className="text-sm">₹{match.entry}</Badge>
+            <Badge variant="secondary" className="text-sm shrink-0">₹{match.entry}</Badge>
         </div>
         <div className="flex justify-between items-center text-xs text-muted-foreground">
-            <span className="flex items-center"><Users className="mr-1 h-3 w-3" />{match.players.length}/{match.maxPlayers}</span>
-            <span className="flex items-center"><Clock className="mr-1 h-3 w-3" />{match.timeLimit}</span>
+            <span className="flex items-center"><Users className="mr-1.5 h-3 w-3" />{match.players.length}/{match.maxPlayers}</span>
+            <span className="flex items-center"><Clock className="mr-1.5 h-3 w-3" />{match.timeLimit}</span>
         </div>
         <div className="flex justify-between items-center">
           <StatusBadge status={match.status} />
@@ -114,7 +115,7 @@ export default function MatchmakingHomePage() {
   const renderMatchList = (matches: any[], type: 'my' | 'open' | 'ongoing' | 'cancelled') => {
     if (isLoadingMatches) {
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {[1,2,3].map(i => <Card key={i} className="p-4 space-y-3"><div className="flex justify-between"><Loader2 className='w-4 h-4 animate-spin' /> <Loader2 className='w-4 h-4 animate-spin' /></div><Loader2 className='w-full h-4 animate-spin' /><Loader2 className='w-full h-8 animate-spin' /></Card>)}
             </div>
         )
@@ -151,61 +152,90 @@ export default function MatchmakingHomePage() {
     }
     
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {matches.map(m => <MatchCard key={m.id} match={m} borderColor={borderColor} button={button(m)} cardClassName={type === 'cancelled' ? 'opacity-75' : ''}/>)}
         </div>
     );
   };
+
+  const FiltersContent = () => (
+    <div className="p-4 space-y-4">
+        <div className="space-y-2">
+            <Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label>
+            <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={5000} step={10} />
+        </div>
+        <div className="space-y-2">
+            <Label>Player Count</Label>
+            <Select value={filters.playerCount} onValueChange={(val) => handleFilterChange('playerCount', val)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="2">2 Players</SelectItem>
+                    <SelectItem value="4">4 Players</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </div>
+  );
 
   if (loading || !user) {
     return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
   return (
-    <div className="container mx-auto max-w-4xl py-4">
-        <header className="text-center mb-6"><h1 className="text-3xl sm:text-4xl font-bold tracking-tight flex items-center justify-center"><Gamepad2 className="mr-2 h-8 w-8" /> Ludo Match Making</h1><p className="text-muted-foreground mt-2">Find, join, or create Ludo matches.</p></header>
+    <div className="container mx-auto max-w-4xl py-4 px-2 sm:px-4">
+        <header className="text-center mb-6"><h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center justify-center"><Gamepad2 className="mr-2 h-7 w-7" /> Ludo Match Making</h1><p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">Find, join, or create Ludo matches.</p></header>
 
         <div className="flex items-center gap-2 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input placeholder="Search by Room Code or Creator..." className="pl-10 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <Button variant="outline"><SlidersHorizontal className="mr-2 h-4 w-4"/> Filters</Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="absolute z-10 top-full right-0 mt-2 w-full max-w-xs bg-card border shadow-lg rounded-lg p-4 space-y-4">
-                <div className="space-y-2">
-                    <Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label>
-                    <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={5000} step={10} />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Player Count</Label>
-                        <Select value={filters.playerCount} onValueChange={(val) => handleFilterChange('playerCount', val)}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="2">2 Players</SelectItem>
-                                <SelectItem value="4">4 Players</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 5000], playerCount: 'all', status: 'all' })}>Reset</Button>
-            </CollapsibleContent>
-          </Collapsible>
+          
+          {/* Filters for Mobile - Bottom Sheet */}
+          <div className="sm:hidden">
+            <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+              <SheetTrigger asChild>
+                 <Button variant="outline"><SlidersHorizontal className="h-4 w-4"/></Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-lg">
+                <SheetHeader>
+                  <SheetTitle>Filters</SheetTitle>
+                </SheetHeader>
+                <FiltersContent />
+                <SheetFooter className="mt-4">
+                  <Button variant="secondary" onClick={() => {setFilters({ feeRange: [10, 5000], playerCount: 'all', status: 'all' }); setIsFiltersOpen(false);}}>Reset</Button>
+                  <SheetClose asChild><Button>Apply</Button></SheetClose>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          {/* Filters for Desktop - Dropdown */}
+          <div className="hidden sm:block">
+             <div className="relative">
+                <Button variant="outline" onClick={() => setIsFiltersOpen(!isFiltersOpen)}><SlidersHorizontal className="mr-2 h-4 w-4"/> Filters</Button>
+                {isFiltersOpen && (
+                  <div className="absolute z-10 top-full right-0 mt-2 w-72 bg-card border shadow-lg rounded-lg">
+                    <FiltersContent />
+                     <div className="flex justify-end p-4 border-t">
+                        <Button variant="secondary" size="sm" onClick={() => {setFilters({ feeRange: [10, 5000], playerCount: 'all', status: 'all' }); setIsFiltersOpen(false)}}>Reset</Button>
+                     </div>
+                  </div>
+                )}
+             </div>
+          </div>
         </div>
 
-
         <Accordion type="multiple" defaultValue={['my-active-matches', 'open-matches', 'ongoing-matches']} className="w-full space-y-4">
-            <AccordionItem value="my-active-matches" className="border-none"><AccordionTrigger className="text-lg font-semibold text-blue-600 hover:no-underline rounded-lg bg-blue-500/10 px-4"><div className='flex items-center'>My Active<Badge variant="secondary" className="ml-2">{myActiveMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-2">{renderMatchList(myActiveMatches, 'my')}</AccordionContent></AccordionItem>
-            <AccordionItem value="open-matches" className="border-none"><AccordionTrigger className="text-lg font-semibold text-green-600 hover:no-underline rounded-lg bg-green-500/10 px-4"><div className='flex items-center'><Flame className="mr-2 h-5 w-5" /> Open<Badge variant="secondary" className="ml-2">{openMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-2">{renderMatchList(openMatches, 'open')}</AccordionContent></AccordionItem>
-            <AccordionItem value="ongoing-matches" className="border-none"><AccordionTrigger className="text-lg font-semibold text-orange-600 hover:no-underline rounded-lg bg-orange-500/10 px-4"><div className='flex items-center'>Ongoing<Badge variant="secondary" className="ml-2">{ongoingMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-2">{renderMatchList(ongoingMatches, 'ongoing')}</AccordionContent></AccordionItem>
-            <AccordionItem value="cancelled-matches" className="border-none"><AccordionTrigger className="text-lg font-semibold text-red-600 hover:no-underline rounded-lg bg-red-500/10 px-4"><div className='flex items-center'><XCircle className="mr-2 h-5 w-5"/>Cancelled<Badge variant="secondary" className="ml-2">{cancelledMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-2">{renderMatchList(cancelledMatches, 'cancelled')}</AccordionContent></AccordionItem>
+            <AccordionItem value="my-active-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-blue-600 hover:no-underline rounded-lg bg-blue-500/10 px-4"><div className='flex items-center'>My Active<Badge variant="secondary" className="ml-2">{myActiveMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(myActiveMatches, 'my')}</AccordionContent></AccordionItem>
+            <AccordionItem value="open-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-green-600 hover:no-underline rounded-lg bg-green-500/10 px-4"><div className='flex items-center'><Flame className="mr-2 h-5 w-5" /> Open<Badge variant="secondary" className="ml-2">{openMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(openMatches, 'open')}</AccordionContent></AccordionItem>
+            <AccordionItem value="ongoing-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-orange-600 hover:no-underline rounded-lg bg-orange-500/10 px-4"><div className='flex items-center'>Ongoing<Badge variant="secondary" className="ml-2">{ongoingMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(ongoingMatches, 'ongoing')}</AccordionContent></AccordionItem>
+            <AccordionItem value="cancelled-matches" className="border-none"><AccordionTrigger className="text-base sm:text-lg font-semibold text-red-600 hover:no-underline rounded-lg bg-red-500/10 px-4"><div className='flex items-center'><XCircle className="mr-2 h-5 w-5"/>Cancelled<Badge variant="secondary" className="ml-2">{cancelledMatches.length}</Badge></div></AccordionTrigger><AccordionContent className="pt-3">{renderMatchList(cancelledMatches, 'cancelled')}</AccordionContent></AccordionItem>
         </Accordion>
 
         <div className="mt-8"><Button size="lg" className="w-full text-lg py-6" onClick={handleCreateMatch}>Create New Match <ChevronRight className="ml-2 h-5 w-5" /></Button></div>
+        
         <AlertDialog open={isJoinConfirmOpen} onOpenChange={setIsJoinConfirmOpen}>
           <AlertDialogContent aria-describedby="alert-dialog-description">
             <AlertDialogHeader>

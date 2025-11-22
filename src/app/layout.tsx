@@ -2,6 +2,7 @@
 
 import './globals.css';
 import ClientLayout from '@/components/layout/ClientLayout';
+import BottomNavbar from '@/components/BottomNavbar';
 
 export default function RootLayout({
   children,
@@ -15,7 +16,10 @@ export default function RootLayout({
         <meta name="description" content="Your premium number prediction service" />
       </head>
       <body>
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout>
+          <div className="pb-16">{children}</div>
+          <BottomNavbar />
+        </ClientLayout>
       </body>
     </html>
   );

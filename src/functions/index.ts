@@ -19,66 +19,7 @@ const getAppRules = async () => {
     return { ...defaultRules, ...rulesDoc.data() };
 };
 
-// Admin check helper
-const ensureIsAdmin = async (context: any) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Admin-only function.');
-    }
-    const adminDoc = await db.collection('roles_admin').doc(context.auth.uid).get();
-    if (!adminDoc.exists) {
-        throw new functions.https.HttpsError('permission-denied', 'Admin-only function.');
-    }
-};
 
-
-// Wrapper for callable functions to handle CORS and emulate onCall behavior
-const onCall = (handler: (data: any, context: any) => Promise<any>) => {
-  return functions.https.onRequest((req, res) => {
-    // This wraps the main logic in the cors handler
-    cors(req, res, async () => {
-      // For onCall functions, the client SDK sends a POST request.
-      // The preflight OPTIONS request is handled automatically by the cors middleware.
-      if (req.method !== 'POST') {
-        res.status(405).send('Method Not Allowed');
-        return;
-      }
-
-      try {
-        // The client SDK wraps data in a `data` object.
-        const data = req.body.data;
-        
-        let authToken = null;
-        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-            authToken = req.headers.authorization.split('Bearer ')[1];
-        }
-
-        // Recreate the context object that onCall functions expect.
-        const context = {
-            auth: authToken ? await admin.auth().verifyIdToken(authToken) : null
-        };
-
-        const result = await handler(data, context);
-        // The client SDK expects the response to be wrapped in a `result` object.
-        res.status(200).send({ result });
-      } catch (error) {
-        console.error("Error in function execution:", error);
-        if (error instanceof functions.https.HttpsError) {
-          // If it's a known HttpsError, send it back in the format the client SDK expects.
-          res.status(error.httpErrorCode.status).send({ 
-            error: { 
-              code: `functions/${error.code}`, // The client SDK expects this format
-              message: error.message,
-              details: error.details,
-            } 
-          });
-        } else {
-          // For unknown errors, send a generic internal error.
-          res.status(500).send({ 
-            error: { 
-              code: 'functions/internal', 
-              message: 'An internal error occurred.' 
-            } 
-          });
         }
       }
     });

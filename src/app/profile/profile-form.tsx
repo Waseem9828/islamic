@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription }
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
-import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
+import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon, Camera } from 'lucide-react';
 import { useUser, useFirebase } from '@/firebase/provider';
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { uploadFile } from '@/firebase/storage';
+import { Separator } from '@/components/ui/separator';
 
 export function ProfileForm() {
   const router = useRouter();
@@ -111,22 +112,16 @@ export function ProfileForm() {
   }
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto p-4">
-        <Card className="md:col-span-1">
-             <CardHeader className="text-center">
-                <div className="relative mx-auto w-24 h-24 mb-4">
-                    <label htmlFor="picture" className="cursor-pointer rounded-full">
-                        <Avatar className="w-full h-full">
-                            <AvatarImage src={avatarSrc} alt={displayName || 'User'} />
-                            <AvatarFallback>{displayName ? displayName[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : 'U')}</AvatarFallback>
-                        </Avatar>
-                        {isUploading && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
-                                <Loader2 className="w-8 h-8 animate-spin text-white" />
-                            </div>
-                        )}
-                    </label>
-                </div>
+    <Card className="max-w-2xl mx-auto my-4 sm:my-8 shadow-lg">
+        <CardHeader className="text-center items-center p-4 sm:p-6">
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28">
+                <Avatar className="w-full h-full border-2 border-primary/20">
+                    <AvatarImage src={avatarSrc} alt={displayName || 'User'} />
+                    <AvatarFallback className="text-3xl">{displayName ? displayName[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : 'U')}</AvatarFallback>
+                </Avatar>
+                <label htmlFor="picture" className="absolute -bottom-2 -right-2 cursor-pointer p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-transform transform hover:scale-110">
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                </label>
                 <Input
                     id="picture"
                     type="file"
@@ -135,65 +130,56 @@ export function ProfileForm() {
                     className="hidden"
                     disabled={isUploading}
                 />
-                <label htmlFor="picture" className="cursor-pointer">
-                    <Button asChild disabled={isUploading} variant="link">
-                    <span>Change Picture</span>
-                    </Button>
-                </label>
-                <CardTitle className="text-xl">{displayName || user.email}</CardTitle>
-                <p className="text-sm text-gray-500 font-mono">{user.uid}</p>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-2">
-                    <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/wallet')}>
-                        <div className="flex items-center">
-                        <Wallet className="mr-2 h-4 w-4" />
-                        <span>My Wallet</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/admin')}>
-                        <div className="flex items-center">
-                        <UserCog className="mr-2 h-4 w-4" />
-                        <span>Admin Panel</span>
-                        </div>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+            </div>
+            <CardTitle className="text-xl sm:text-2xl mt-3 font-bold">{displayName || user.email}</CardTitle>
+            <CardDescription className="text-xs sm:text-sm font-mono bg-muted px-2 py-1 rounded-md">UID: {user.uid}</CardDescription>
+        </CardHeader>
+        
+        <CardContent className="p-4 sm:p-6">
+            <div className="space-y-4 mb-6">
+                <h3 className="text-lg font-semibold flex items-center"><UserIcon className="mr-2 h-5 w-5"/>Personal Information</h3>
+                <div className="space-y-3">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="displayName">Display Name</Label>
+                        <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your name" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" value={user.email || ''} disabled />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="upiId">Default UPI ID</Label>
+                        <Input id="upiId" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@bank" />
+                    </div>
                 </div>
-            </CardContent>
-            <CardFooter>
-                <Button variant="destructive" className="w-full" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
+            </div>
+
+            <Separator className="my-6" />
+            
+            <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Actions</h3>
+                <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/wallet')}>
+                    <div className="flex items-center"><Wallet className="mr-2 h-5 w-5" />My Wallet</div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </Button>
-            </CardFooter>
-        </Card>
-        <Card className="md:col-span-2">
-            <CardHeader>
-                <CardTitle className="flex items-center"><UserIcon className="mr-2"/>Personal Information</CardTitle>
-                <CardDescription>Update your display name and UPI ID for withdrawals.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="displayName">Display Name</Label>
-                    <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your name" />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" value={user.email || ''} disabled />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="upiId">Default UPI ID</Label>
-                    <Input id="upiId" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@bank" />
-                </div>
-            </CardContent>
-            <CardFooter>
-                <Button onClick={handleProfileSave} disabled={isSaving || isUploading}>
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Changes
+                {/* Add a check for admin role if available */}
+                <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/admin')}>
+                    <div className="flex items-center"><UserCog className="mr-2 h-5 w-5" />Admin Panel</div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </Button>
-            </CardFooter>
-        </Card>
-    </div>
+            </div>
+        </CardContent>
+        
+        <CardFooter className="flex flex-col gap-3 p-4 sm:p-6">
+            <Button onClick={handleProfileSave} disabled={isSaving || isUploading} className="w-full py-6 text-base">
+                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                Save Changes
+            </Button>
+            <Button variant="destructive" className="w-full py-6 text-base" onClick={handleLogout}>
+              <LogOut className="mr-2 h-5 w-5" />
+              Logout
+            </Button>
+        </CardFooter>
+    </Card>
   );
 }
