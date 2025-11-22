@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -81,7 +82,7 @@ export default function SubmitResultPage() {
 
     try {
       // 1. Upload Screenshot
-      const screenshotRef = ref(storage, `results/${match.id}/${user.uid}_${Date.now()}`);
+      const screenshotRef = ref(storage, `results/${match.id}/${user.uid}/${Date.now()}`);
       const uploadResult = await uploadBytes(screenshotRef, screenshot);
       const screenshotUrl = await getDownloadURL(uploadResult.ref);
 
