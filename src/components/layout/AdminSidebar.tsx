@@ -60,10 +60,15 @@ const AdminSidebarMenuContent = () => {
 
 const AdminSidebar = () => {
   const { isMobile } = useSidebar();
+  const [collapsibleMode, setCollapsibleMode] = React.useState<'icon' | 'offcanvas'>('icon');
+
+  React.useEffect(() => {
+    setCollapsibleMode(isMobile ? 'offcanvas' : 'icon');
+  }, [isMobile]);
 
   return (
     <Sidebar
-      collapsible={isMobile ? "offcanvas" : "icon"}
+      collapsible={collapsibleMode}
       className="bg-muted/30"
       side="left"
     >
