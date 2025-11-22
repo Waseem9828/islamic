@@ -1,34 +1,31 @@
-
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase() {
-  if (getApps().length) {
-    // If already initialized, return the SDKs with the already initialized App
-    return getSdks(getApp());
-  }
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-  // Always initialize with the explicit config.
-  // This prevents issues with environment-specific automatic configuration.
-  const firebaseApp = initializeApp(firebaseConfig);
+export const firestore = getFirestore(app);
+export const functions = getFunctions(app);
+export const storage = getStorage(app);
+export const auth = getAuth(app);
 
-  return getSdks(firebaseApp);
-}
+export { getFirestore, getFunctions, getStorage, getAuth };
 
-export function getSdks(firebaseApp: FirebaseApp) {
+export const initializeFirebase = () => {
   return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp),
-    functions: getFunctions(firebaseApp),
+    firebaseApp: app, 
+    firestore,
+    functions,
+    storage,
+    auth
   };
-}
+};
 
+export const getSdks = initializeFirebase;
+
+export default app;

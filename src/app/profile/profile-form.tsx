@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,31 +5,25 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription }
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
-import { useUser } from '@/firebase/provider';
-import { initializeFirebase } from '@/firebase/core';
-import { errorEmitter } from '@/firebase/errors';
+import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
+import { useUser, useFirebase } from '@/firebase/provider';
 import { signOut, updateProfile } from 'firebase/auth';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FirestorePermissionError, SecurityRuleContext } from '@/firebase/errors';
-
-const { auth, storage, firestore } = initializeFirebase();
+import { uploadFile } from '@/firebase/storage';
 
 export function ProfileForm() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const { auth, firestore } = useFirebase(); // Correctly use the hook
   
   const [displayName, setDisplayName] = useState('');
   const [upiId, setUpiId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
-
 
   useEffect(() => {
     if (user && firestore) {
@@ -64,63 +57,32 @@ export function ProfileForm() {
   };
   
   const handlePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !storage || !firestore || !auth.currentUser) return;
+    if (!user || !auth?.currentUser || !firestore) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.match('image.*')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size should be less than 5MB');
-      return;
-    }
-
     setIsUploading(true);
-    setUploadProgress(0);
 
-    const timestamp = Date.now();
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `profile-pictures/${user.uid}/${timestamp}.${fileExtension}`;
-    const storageRef = ref(storage, fileName);
+    try {
+      const downloadURL = await uploadFile(file, user.uid, 'profile-pictures');
 
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error('Upload error:', error);
-        toast.error(`Upload failed: ${error.message}`);
-        setIsUploading(false);
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          await updateProfile(auth.currentUser, { photoURL: downloadURL });
-          
-          const userDocRef = doc(firestore, "users", user.uid);
-          await updateDoc(userDocRef, { photoURL: downloadURL });
-          
-          setAvatarSrc(downloadURL);
-          toast.success("Profile picture updated!");
-        } catch (error) {
-          console.error('Error updating profile:', error);
-          toast.error('Error updating profile');
-        } finally {
-          setIsUploading(false);
-          setUploadProgress(0);
-        }
-      }
-    );
+      await updateProfile(auth.currentUser, { photoURL: downloadURL });
+      
+      const userDocRef = doc(firestore, "users", user.uid);
+      await updateDoc(userDocRef, { photoURL: downloadURL });
+      
+      setAvatarSrc(downloadURL);
+      toast.success("Profile picture updated!");
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || "An unknown error occurred during upload.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleProfileSave = async () => {
-    if (!user || !firestore || !auth.currentUser) return;
+    if (!user || !firestore || !auth?.currentUser) return;
 
     setIsSaving(true);
     
@@ -128,32 +90,20 @@ export function ProfileForm() {
         if (auth.currentUser.displayName !== displayName) {
             await updateProfile(auth.currentUser, { displayName });
         }
+        
+        const userDocRef = doc(firestore, "users", user.uid);
+        await updateDoc(userDocRef, {
+            displayName: displayName,
+            upiId: upiId,
+        });
+
         toast.success("Profile saved successfully!");
-    } catch (authError) {
-        console.error("Error updating auth profile:", authError);
-        toast.error("Failed to update display name.");
+    } catch (error) {
+        console.error("Error saving profile:", error);
+        toast.error("Failed to save profile.");
+    } finally {
         setIsSaving(false);
-        return;
     }
-
-    const userDocRef = doc(firestore, "users", user.uid);
-    const updatedData = {
-        displayName: displayName,
-        upiId: upiId,
-    };
-
-    updateDoc(userDocRef, updatedData)
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'update',
-            requestResourceData: updatedData
-        } satisfies SecurityRuleContext);
-        errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setIsSaving(false);
-      });
   };
 
   if (isUserLoading || !user) {
@@ -161,22 +111,21 @@ export function ProfileForm() {
   }
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto p-4">
         <Card className="md:col-span-1">
              <CardHeader className="text-center">
                 <div className="relative mx-auto w-24 h-24 mb-4">
-                <Avatar className="w-full h-full">
-                    <AvatarImage src={avatarSrc} alt={displayName || 'User'} />
-                    <AvatarFallback>{displayName ? displayName[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : 'U')}</AvatarFallback>
-                </Avatar>
-                {isUploading && (
-                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-full">
-                        <div className="text-center">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-                            <p className="text-sm text-primary mt-2">{uploadProgress.toFixed(0)}%</p>
-                        </div>
-                    </div>
-                )}
+                    <label htmlFor="picture" className="cursor-pointer rounded-full">
+                        <Avatar className="w-full h-full">
+                            <AvatarImage src={avatarSrc} alt={displayName || 'User'} />
+                            <AvatarFallback>{displayName ? displayName[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : 'U')}</AvatarFallback>
+                        </Avatar>
+                        {isUploading && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
+                                <Loader2 className="w-8 h-8 animate-spin text-white" />
+                            </div>
+                        )}
+                    </label>
                 </div>
                 <Input
                     id="picture"
@@ -196,20 +145,20 @@ export function ProfileForm() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-2">
-                <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/wallet')}>
-                    <div className="flex items-center">
-                    <Wallet className="mr-2 h-4 w-4" />
-                    <span>My Wallet</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-                 <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/admin')}>
-                    <div className="flex items-center">
-                    <UserCog className="mr-2 h-4 w-4" />
-                    <span>Admin Panel</span>
-                    </div>
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
+                    <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/wallet')}>
+                        <div className="flex items-center">
+                        <Wallet className="mr-2 h-4 w-4" />
+                        <span>My Wallet</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" className="w-full justify-between" onClick={() => router.push('/admin')}>
+                        <div className="flex items-center">
+                        <UserCog className="mr-2 h-4 w-4" />
+                        <span>Admin Panel</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
                 </div>
             </CardContent>
             <CardFooter>
@@ -239,13 +188,12 @@ export function ProfileForm() {
                 </div>
             </CardContent>
             <CardFooter>
-                <Button onClick={handleProfileSave} disabled={isSaving}>
+                <Button onClick={handleProfileSave} disabled={isSaving || isUploading}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Save Changes
                 </Button>
             </CardFooter>
         </Card>
-
     </div>
   );
 }

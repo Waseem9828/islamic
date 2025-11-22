@@ -1,16 +1,19 @@
 'use client';
 import {
   Auth,
-  User,
   signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { getFirestore, doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { getSdks } from './core';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { firestore, functions, auth } from './core';
 
 type AuthCallback = (error?: FirebaseError) => void;
+
+// For backward compatibility
+export const getSdks = () => ({ firestore, functions, auth });
+
 
 /** Initiate anonymous sign-in (non-blocking). */
 export function initiateAnonymousSignIn(authInstance: Auth): void {
@@ -29,7 +32,6 @@ export function initiateEmailSignUp(
       try {
         // After user is created, create their document in Firestore.
         const user = userCredential.user;
-        const { firestore } = getSdks(authInstance.app);
         const userDocRef = doc(firestore, 'users', user.uid);
 
         const newUser = {
@@ -67,3 +69,21 @@ export function initiateEmailSignIn(
       callback(error); // Failure
     });
 }
+
+export const createUserProfile = async (user: any) => {
+  if (!firestore) return;
+  
+  try {
+    const userRef = doc(firestore, 'users', user.uid);
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      createdAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+  }
+};

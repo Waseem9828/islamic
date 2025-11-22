@@ -4,25 +4,23 @@ import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirebase } from '@/firebase/provider'; 
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
-import { Loader2, Upload, CheckCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import QRCode from 'qrcode.react';
 
 export default function DepositPage() {
     const { user } = useUser();
-    const { functions, firestore, storage } = useFirebase();
+    const { firestore, functions } = useFirebase(); // Use the hook
     const [amount, setAmount] = useState('');
     const [transactionId, setTransactionId] = useState('');
-    const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
     const [upiId, setUpiId] = useState('');
-    const [payeeName, setPayeeName] = useState('Ludo Wizard'); // Default name
+    const [payeeName, setPayeeName] = useState('Ludo Wizard');
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -51,10 +49,10 @@ export default function DepositPage() {
         return httpsCallable(functions, 'requestDeposit');
     }, [functions]);
 
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !storage) {
+        
+        if (!user) {
             toast.error('You must be logged in to make a deposit.');
             return;
         }
@@ -66,50 +64,47 @@ export default function DepositPage() {
 
         const depositAmount = parseFloat(amount);
         if (isNaN(depositAmount) || depositAmount <= 0) {
-            toast.error('Please enter a valid amount.');
+            toast.error('Please enter a valid amount greater than 0.');
             return;
         }
-        if (!transactionId || transactionId.trim().length < 12) {
-            toast.error('Please enter the valid 12-digit transaction ID.');
-            return;
-        }
-        if (!screenshotFile) {
-            toast.error('Please upload a screenshot of the transaction.');
+
+        if (!transactionId || transactionId.trim().length !== 12) {
+            toast.error('Please enter a valid 12-digit transaction ID.');
             return;
         }
 
         setIsSubmitting(true);
+        
         try {
-             // 1. Upload screenshot
-            const screenshotRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}_${screenshotFile.name}`);
-            await uploadBytes(screenshotRef, screenshotFile);
-            const screenshotUrl = await getDownloadURL(screenshotRef);
-
-            // 2. Call the cloud function with all data
+            // Call cloud function without screenshot
             const result = await requestDepositFunction({ 
                 amount: depositAmount, 
                 transactionId: transactionId.trim(),
-                screenshotUrl: screenshotUrl,
             });
+
             const data = (result.data as any)?.result;
-            
-            toast.success('Deposit request submitted', {
+
+            toast.success('Deposit request submitted successfully!', {
                 description: data?.message || 'Your request is under review and will be processed shortly.',
             });
-            
+
+            // Reset form
             setAmount('');
             setTransactionId('');
-            setScreenshotFile(null);
+
         } catch (error: any) {
-            console.error("Error submitting deposit request:", error);
+            console.error("Detailed submission error:", error);
+            
+            const errorMessage = error.message || 'An unknown error occurred.';
+            
             toast.error('Submission failed', {
-                description: error.message || 'An unknown error occurred.',
+                description: errorMessage,
             });
         } finally {
             setIsSubmitting(false);
         }
     };
-    
+
     const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=LudoDeposit`;
 
     return (
@@ -121,7 +116,9 @@ export default function DepositPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {isLoadingSettings ? (
-                         <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                         <div className="flex justify-center items-center h-48">
+                             <Loader2 className="h-8 w-8 animate-spin" />
+                         </div>
                     ) : (
                         <div className="space-y-4 text-center p-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">1. Enter amount & scan QR or use UPI ID</p>
@@ -129,16 +126,19 @@ export default function DepositPage() {
                                {upiId && parseFloat(amount) > 0 ? (
                                     <QRCode value={upiLink} size={192} />
                                 ) : (
-                                    <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-center text-sm text-gray-500">Enter an amount to generate QR code</div>
+                                    <div className="w-48 h-48 bg-gray-200 flex items-center justify-center text-center text-sm text-gray-500">
+                                        Enter an amount to generate QR code
+                                    </div>
                                 )}
                             </div>
-                            <p className="font-mono text-lg font-semibold">{upiId}</p>
+                            <p className="font-mono text-lg font-semibold break-all">{upiId || 'UPI ID not configured'}</p>
+                            <p className="text-sm text-muted-foreground">Payee: {payeeName}</p>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="amount">Amount to Deposit</Label>
+                            <Label htmlFor="amount">Amount to Deposit (₹)</Label>
                             <Input 
                                 id="amount" 
                                 type="number" 
@@ -146,45 +146,33 @@ export default function DepositPage() {
                                 value={amount} 
                                 onChange={(e) => setAmount(e.target.value)} 
                                 required 
+                                min="1"
+                                step="1"
                             />
                         </div>
+                        
                         <div className="space-y-2">
-                            <Label htmlFor="transactionId">2. Transaction ID / UTR</Label>
+                            <Label htmlFor="transactionId">2. Transaction ID / UTR (12 digits)</Label>
                             <Input 
                                 id="transactionId" 
                                 type="text" 
                                 placeholder="Enter the 12-digit transaction ID" 
                                 value={transactionId} 
-                                onChange={(e) => setTransactionId(e.target.value)} 
+                                onChange={(e) => setTransactionId(e.target.value.replace(/\D/g, '').slice(0, 12))} 
                                 required 
                                 minLength={12}
                                 maxLength={12}
+                                pattern="[0-9]{12}"
                             />
                         </div>
 
-                         <div className="space-y-2">
-                            <Label htmlFor="screenshot">3. Upload Screenshot</Label>
-                             <label htmlFor="screenshot" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
-                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                    {screenshotFile ? 
-                                        <CheckCircle className="w-10 h-10 mb-3 text-green-500" /> :
-                                        <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
-                                    }
-                                    {screenshotFile ? 
-                                        <p className="font-semibold text-sm text-green-600 truncate max-w-xs">{screenshotFile.name}</p> :
-                                        <>
-                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
-                                            <p className="text-xs text-muted-foreground">PNG, JPG or GIF</p>
-                                        </>
-                                    }
-                                </div>
-                                <Input id="screenshot" type="file" className="hidden" onChange={(e) => setScreenshotFile(e.target.files?.[0] || null)} accept="image/*" />
-                            </label>
-                        </div>
-
-                        <Button type="submit" className="w-full" disabled={isSubmitting || isLoadingSettings}>
+                        <Button 
+                            type="submit" 
+                            className="w-full" 
+                            disabled={isSubmitting || isLoadingSettings || !amount || !transactionId}
+                        >
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {isSubmitting ? 'Submitting...' : '4. Submit for Verification'}
+                            {isSubmitting ? 'Submitting...' : '3. Submit for Verification'}
                         </Button>
                     </form>
                 </CardContent>
