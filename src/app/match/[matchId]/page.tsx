@@ -1,18 +1,18 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useUser, useFirebase } from '@/firebase/provider';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { toast } from 'sonner';
-import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy } from 'lucide-react';
-import { Label } from '@/components/ui/label';
+import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
 
 interface Player {
   uid: string;
@@ -35,8 +35,35 @@ interface MatchData {
   playerInfo: { [uid: string]: { name: string; photoURL?: string; isReady?: boolean } };
 }
 
+const PlayerSlot = ({ player, isCreator }: { player: Player | null, isCreator: boolean }) => {
+    if (!player) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg h-40">
+                <UserPlus className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Empty Slot</span>
+            </div>
+        )
+    }
+    
+    return (
+         <div className={cn("relative flex flex-col items-center justify-center gap-2 p-4 border rounded-lg h-40 transition-all", player.isReady ? 'border-green-500 bg-green-500/10' : 'border-border')}>
+            {isCreator && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-500" title="Match Creator" />}
+            <Avatar className="h-16 w-16 border-2">
+                <AvatarImage src={player.photoURL} alt={player.name} />
+                <AvatarFallback>{player.name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+            <p className="font-semibold text-center truncate w-full">{player.name}</p>
+            {player.isReady ? 
+                <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs"><CheckCircle className="mr-1 h-3 w-3"/>Ready</Badge> : 
+                <Badge variant="outline" className='text-xs'>Not Ready</Badge>
+            }
+        </div>
+    )
+}
+
 export default function MatchLobbyPage() {
   const { matchId } = useParams();
+  const router = useRouter();
   const { user } = useUser();
   const { firestore } = useFirebase();
   const [match, setMatch] = useState<MatchData | null>(null);
@@ -53,6 +80,7 @@ export default function MatchLobbyPage() {
       } else {
         setError('Match not found.');
         toast.error('Match not found');
+        router.push('/matchmaking');
       }
       setLoading(false);
     }, (err) => {
@@ -63,7 +91,7 @@ export default function MatchLobbyPage() {
     });
 
     return () => unsubscribe();
-  }, [matchId, firestore]);
+  }, [matchId, firestore, router]);
 
   const handleJoinLeave = async (action: 'join' | 'leave') => {
     if (!user || !match || !firestore) return;
@@ -72,6 +100,10 @@ export default function MatchLobbyPage() {
 
     try {
         if (action === 'join') {
+             if (match.players.length >= match.maxPlayers) {
+                toast.error("Match is full.");
+                return;
+            }
             await updateDoc(matchRef, {
                 players: arrayUnion(user.uid),
                 [`playerInfo.${user.uid}`]: playerInfoPayload
@@ -80,7 +112,7 @@ export default function MatchLobbyPage() {
         } else {
             await updateDoc(matchRef, {
                 players: arrayRemove(user.uid),
-                [`playerInfo.${user.uid}`]: undefined // Firestore way to remove a map key
+                [`playerInfo.${user.uid}`]: undefined
             });
             toast.info('You left the match.');
         }
@@ -96,17 +128,10 @@ export default function MatchLobbyPage() {
     const currentReadyStatus = match.playerInfo[user.uid]?.isReady || false;
     try {
       await updateDoc(matchRef, { [`playerInfo.${user.uid}.isReady`]: !currentReadyStatus });
-      toast.success(`You are now ${!currentReadyStatus ? 'Ready' : 'Not Ready'}`);
     } catch (error) {
       console.error("Error updating ready status:", error);
-      toast.error("Couldn\'t update status.");
+      toast.error("Couldn't update status.");
     }
-  };
-
-  const handleOpenLudoKing = () => {
-    if (!match) return;
-    // This uses a deep link to open Ludo King with the room code
-    window.location.href = `ludoking://?room_code=${match.id}`;
   };
 
   const handleCopyCode = () => {
@@ -117,109 +142,106 @@ export default function MatchLobbyPage() {
 
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
-  const allPlayersReady = match && match.players.length > 1 && match.players.every(p => match.playerInfo[p]?.isReady);
+  const readyPlayerCount = match ? match.players.filter(p => match.playerInfo[p]?.isReady).length : 0;
+  const canStart = readyPlayerCount >= 2;
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><Hourglass className="animate-spin h-8 w-8" /></div>;
-  if (error) return <div className="flex justify-center items-center h-screen text-red-500">Error: {error}</div>;
-  if (!match) return <div className="flex justify-center items-center h-screen">Match not found.</div>;
+  if (loading) return <div className="flex justify-center items-center h-[80vh]"><Hourglass className="animate-spin h-8 w-8 text-primary" /></div>;
+  if (error) return <div className="flex justify-center items-center h-[80vh] text-red-500">Error: {error}</div>;
+  if (!match) return <div className="flex justify-center items-center h-[80vh]">Match not found.</div>;
 
-  const playersList: Player[] = match.players.map(uid => ({
-      uid,
-      name: match.playerInfo[uid]?.name || 'Unknown Player',
-      photoURL: match.playerInfo[uid]?.photoURL,
-      isReady: match.playerInfo[uid]?.isReady || false,
-  }));
+  const playersList: (Player | null)[] = Array.from({ length: match.maxPlayers }, (_, i) => {
+      const uid = match.players[i];
+      if (!uid) return null;
+      return {
+          uid,
+          name: match.playerInfo[uid]?.name || 'Unknown',
+          photoURL: match.playerInfo[uid]?.photoURL,
+          isReady: match.playerInfo[uid]?.isReady || false,
+      }
+  });
+  
+  const totalPot = match.entry * match.players.length;
 
   return (
-    <div className="container mx-auto max-w-3xl py-8">
-      <Card className="border-t-4 border-primary">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-2xl font-bold flex items-center"><Swords className="mr-2" />{match.matchTitle}</CardTitle>
-            <Badge variant={match.privacy === 'public' ? 'secondary' : 'destructive'}>{match.privacy}</Badge>
-          </div>
-          <CardDescription>Created by: <span className="font-semibold text-foreground">{match.creatorName}</span></CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                <div className="p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">Entry Fee</p><p className="font-bold text-lg flex items-center justify-center"><IndianRupee className="h-4 w-4 mr-1"/>{match.entry}</p></div>
-                <div className="p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">Max Players</p><p className="font-bold text-lg flex items-center justify-center"><Users className="h-4 w-4 mr-1"/>{match.maxPlayers}</p></div>
-                <div className="p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">Time Limit</p><p className="font-bold text-lg flex items-center justify-center"><Clock className="h-4 w-4 mr-1"/>{match.timeLimit}</p></div>
-                <div className="p-3 bg-muted rounded-lg"><p className="text-sm text-muted-foreground">Status</p><p className="font-bold text-lg">{match.status}</p></div>
-            </div>
+    <div className="p-4 max-w-lg mx-auto pb-28"> 
+      <div className="text-center mb-4">
+        <h1 className="text-2xl font-bold">{match.matchTitle}</h1>
+        <p className="text-sm text-muted-foreground">
+            Created by <span className="font-semibold text-primary">{match.creatorName}</span>
+        </p>
+        <div className="mt-2 text-xl font-bold text-green-600">
+            Total Prize: ₹{totalPot}
+        </div>
+         <Badge variant="secondary" className="mt-2">Entry: ₹{match.entry}</Badge>
+      </div>
 
-            {isUserInMatch && (
-              <Card className="bg-green-500/10 border-green-500/30">
-                  <CardHeader>
-                      <CardTitle className="text-lg flex items-center"><Gamepad2 className="mr-2 text-green-700"/>Start Playing!</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                       <div className="text-center space-y-1">
-                            <Label className="text-muted-foreground">Room Code</Label>
-                            <div className="p-3 bg-muted rounded-lg border-2 border-dashed flex justify-between items-center">
-                                <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
-                                <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
-                            </div>
-                        </div>
-                      <Button onClick={handleOpenLudoKing} className="w-full bg-green-600 hover:bg-green-700">
-                          Play on Ludo King
-                      </Button>
-                      <p className="text-xs text-muted-foreground text-center">This will open the Ludo King app. Make sure you have it installed.</p>
-                  </CardContent>
-              </Card>
-            )}
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        {playersList.map((player, index) => (
+            <PlayerSlot key={player?.uid || index} player={player} isCreator={player?.uid === match.createdBy} />
+        ))}
+      </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Players ({match.players.length}/{match.maxPlayers})</h3>
-            <Progress value={(match.players.length / match.maxPlayers) * 100} className="mb-4" />
-            <div className="space-y-3">
-              {playersList.map((player) => (
-                <div key={player.uid} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center">
-                    <Avatar className="h-10 w-10 mr-3">
-                      <AvatarImage src={player.photoURL} alt={player.name} />
-                      <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <p className="font-semibold flex items-center">
-                            {player.name} 
-                            {match.createdBy === player.uid && <Crown className="ml-2 h-4 w-4 text-yellow-500" title="Match Creator"/>}
-                        </p>
-                        <p className="text-xs text-muted-foreground">@{player.uid.substring(0, 6)}</p>
-                    </div>
-                  </div>
-                  {player.isReady ? 
-                    <Badge className="bg-green-500 text-white"><CheckCircle className="mr-1 h-3 w-3"/>Ready</Badge> : 
-                    <Badge variant="outline">Not Ready</Badge>}
+       {isUserInMatch && (
+        <Card className="mb-4 bg-muted/50">
+            <CardHeader className='p-3'>
+                <CardTitle className="text-base">Ludo King Room Code</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+                <div className="p-3 bg-background rounded-lg border-2 border-dashed flex justify-between items-center">
+                    <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
+                    <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
                 </div>
-              ))}
-            </div>
-          </div>
+            </CardContent>
+        </Card>
+      )}
 
-          <div className="flex flex-col sm:flex-row gap-2">
+      {isUserInMatch && match.status === 'waiting' && <Alert className="mb-4">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+              When all players are ready, the creator can start the match.
+          </AlertDescription>
+      </Alert>}
+      
+       {match.status === 'cancelled' && <Alert variant="destructive">
+          <X className="h-4 w-4" />
+          <AlertDescription>
+              This match has been cancelled.
+          </AlertDescription>
+      </Alert>}
+
+
+      {/* Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-sm border-t md:static md:bg-transparent md:p-0 md:border-0">
+          <div className="max-w-lg mx-auto grid grid-cols-2 gap-2">
             {!isUserInMatch ? (
-              <Button onClick={() => handleJoinLeave('join')} className="w-full"><LogIn className="mr-2 h-4 w-4"/>Join Match</Button>
-            ) : (
-              <>
-                <Button onClick={handleReadyToggle} className="w-full" variant={match.playerInfo[user!.uid]?.isReady ? 'secondary' : 'default'}>
-                    {match.playerInfo[user!.uid]?.isReady ? 'Set as Not Ready' : <><CheckCircle className="mr-2 h-4 w-4"/>Set as Ready</>}
+                <Button size="lg" onClick={() => handleJoinLeave('join')} className="col-span-2 text-base h-12" disabled={match.players.length >= match.maxPlayers || match.status !== 'waiting'}>
+                    <LogIn className="mr-2 h-5 w-5"/>Join Match
                 </Button>
-                <Button onClick={() => handleJoinLeave('leave')} variant="destructive" className="w-full"><LogOut className="mr-2 h-4 w-4"/>Leave Match</Button>
-              </>
+            ) : (
+                 <>
+                    {isCreator && (
+                        <Button size="lg" onClick={() => {}} disabled={!canStart} className="text-base h-12 bg-green-600 hover:bg-green-700">
+                           <Play className="mr-2 h-5 w-5"/> Start Match
+                        </Button>
+                    )}
+                    
+                    <Button size="lg" onClick={handleReadyToggle} className={cn("text-base h-12", isCreator ? '' : 'col-span-2')} variant={match.playerInfo[user!.uid]?.isReady ? 'secondary' : 'default'}>
+                        <CheckCircle className="mr-2 h-5 w-5"/>{match.playerInfo[user!.uid]?.isReady ? 'Set Not Ready' : 'Set Ready'}
+                    </Button>
+
+                     {/* The leave button only shows if the user is not the creator, or if they are the creator but no one else has joined */}
+                    {(!isCreator || (isCreator && match.players.length === 1)) && (
+                         <Button size="lg" variant="destructive" onClick={() => handleJoinLeave('leave')} className="col-span-2 text-base h-12">
+                             <LogOut className="mr-2 h-5 w-5"/>
+                             {isCreator ? 'Cancel Match' : 'Leave Match'}
+                         </Button>
+                    )}
+                </>
             )}
-          </div>
-          
-          {isCreator && (
-            <Card className="bg-blue-900/10 border-blue-500/30">
-                <CardHeader><CardTitle className="text-lg flex items-center"><ShieldCheck className="mr-2"/>Creator Controls</CardTitle></CardHeader>
-                <CardContent>
-                    <Button disabled={!allPlayersReady} className="w-full bg-green-600 hover:bg-green-700">Start Match</Button>
-                    <p className="text-xs text-muted-foreground mt-2">Match can start when at least 2 players are ready.</p>
-                </CardContent>
-            </Card>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
+
+    
