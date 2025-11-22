@@ -78,7 +78,11 @@ export default function MatchLobbyPage() {
     const matchRef = doc(firestore, 'matches', matchId as string);
     const unsubscribe = onSnapshot(matchRef, (docSnap) => {
       if (docSnap.exists()) {
-        setMatch({ id: docSnap.id, ...docSnap.data() } as MatchData);
+        const matchData = { id: docSnap.id, ...docSnap.data() } as MatchData;
+        setMatch(matchData);
+         if (matchData.status === 'inprogress' && user && matchData.players.includes(user.uid)) {
+            handleLudoKingRedirect(matchData.id);
+        }
       } else {
         setError('Match not found.');
         toast.error('Match not found');
@@ -93,7 +97,7 @@ export default function MatchLobbyPage() {
     });
 
     return () => unsubscribe();
-  }, [matchId, firestore, router]);
+  }, [matchId, firestore, router, user]);
 
   const handleJoinLeave = async (action: 'join' | 'leave') => {
     if (!user || !match || !firestore) return;
@@ -112,11 +116,17 @@ export default function MatchLobbyPage() {
             });
             toast.success('Joined the match!');
         } else {
-            await updateDoc(matchRef, {
-                players: arrayRemove(user.uid),
-                [`playerInfo.${user.uid}`]: undefined
-            });
-            toast.info('You left the match.');
+            // If creator leaves, cancel the match
+            if (isCreator && match.players.length === 1) {
+                 await updateDoc(matchRef, { status: "cancelled" });
+                 toast.info('You left and the match was cancelled.');
+            } else {
+                await updateDoc(matchRef, {
+                    players: arrayRemove(user.uid),
+                    [`playerInfo.${user.uid}`]: undefined
+                });
+                toast.info('You left the match.');
+            }
         }
     } catch (err) {
         console.error(`Error ${action}ing match:`, err);
@@ -135,10 +145,21 @@ export default function MatchLobbyPage() {
       toast.error("Couldn't update status.");
     }
   };
+
+    const handleStartMatch = async () => {
+        if (!user || !match || !firestore || !isCreator) return;
+        const matchRef = doc(firestore, 'matches', match.id);
+        try {
+            await updateDoc(matchRef, { status: 'inprogress' });
+            handleLudoKingRedirect(match.id);
+        } catch (error) {
+            console.error("Error starting match:", error);
+            toast.error("Couldn't start the match.");
+        }
+    };
   
-  const handleLudoKingRedirect = () => {
-    if (!match) return;
-    const ludoKingURL = `ludoking://?join=${match.id}`;
+  const handleLudoKingRedirect = (code: string) => {
+    const ludoKingURL = `ludoking://?join=${code}`;
     window.location.href = ludoKingURL;
     toast.info("Redirecting to Ludo King...");
   };
@@ -152,7 +173,8 @@ export default function MatchLobbyPage() {
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
   const readyPlayerCount = match ? match.players.filter(p => match.playerInfo[p]?.isReady).length : 0;
-  const canStart = isCreator && readyPlayerCount >= 2;
+  const allPlayersReady = match ? readyPlayerCount === match.players.length : false;
+  const canStart = isCreator && match && match.players.length >= 2 && allPlayersReady;
 
   if (loading) return <div className="flex justify-center items-center h-[80vh]"><Hourglass className="animate-spin h-8 w-8 text-primary" /></div>;
   if (error) return <div className="flex justify-center items-center h-[80vh] text-red-500">Error: {error}</div>;
@@ -172,7 +194,7 @@ export default function MatchLobbyPage() {
   const totalPot = match.entry * match.players.length;
 
   return (
-    <div className="p-4 max-w-lg mx-auto flex flex-col h-screen"> 
+    <div className="p-4 max-w-lg mx-auto flex flex-col h-screen pb-20 md:pb-4"> 
       <div className="flex-grow overflow-y-auto">
         <div className="text-center mb-4">
             <h1 className="text-2xl font-bold">{match.matchTitle}</h1>
@@ -207,7 +229,7 @@ export default function MatchLobbyPage() {
                         <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
                         <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
                     </div>
-                    <Button onClick={handleLudoKingRedirect} className='h-auto bg-green-600 hover:bg-green-700 flex-col gap-1 px-4'>
+                    <Button onClick={() => handleLudoKingRedirect(match.id)} className='h-auto bg-green-600 hover:bg-green-700 flex-col gap-1 px-4'>
                         <Gamepad2 className="h-6 w-6"/>
                         <span className="text-xs">Play</span>
                     </Button>
@@ -239,9 +261,10 @@ export default function MatchLobbyPage() {
                     <LogIn className="mr-2 h-5 w-5"/>Join Match
                 </Button>
             ) : (
+                match.status === 'waiting' ? (
                  <>
                     {isCreator && (
-                        <Button size="lg" onClick={handleLudoKingRedirect} disabled={!canStart} className="text-base h-12 bg-green-600 hover:bg-green-700">
+                        <Button size="lg" onClick={handleStartMatch} disabled={!canStart} className="text-base h-12 bg-green-600 hover:bg-green-700">
                            <Play className="mr-2 h-5 w-5"/> Start Match
                         </Button>
                     )}
@@ -251,12 +274,17 @@ export default function MatchLobbyPage() {
                     </Button>
 
                      {(!isCreator || (isCreator && match.players.length === 1)) && (
-                         <Button size="lg" variant="destructive" onClick={() => handleJoinLeave('leave')} className="col-span-2 text-base h-12">
+                         <Button size="lg" variant="destructive" onClick={() => handleJoinLeave('leave')} className={cn(isCreator ? 'col-span-2' : '')}>
                              <LogOut className="mr-2 h-5 w-5"/>
                              {isCreator ? 'Cancel Match' : 'Leave Match'}
                          </Button>
                     )}
                 </>
+                ) : (
+                    <Button size="lg" onClick={() => router.push(`/result/${match.id}`)} className="col-span-2 text-base h-12">
+                        Submit Result
+                    </Button>
+                )
             )}
         </div>
       </div>
