@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from 'sonner';
 import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 interface Player {
   uid: string;
