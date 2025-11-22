@@ -40,7 +40,7 @@ const onCall = (handler) => {
 
       try {
         // The client SDK wraps data in a `data` object.
-        const { data } = req.body;
+        const data = req.body.data;
 
         // Recreate the context object that onCall functions expect.
         // The client SDK sends the auth token in the Authorization header.
@@ -290,3 +290,5 @@ exports.processWithdrawal = onCall(async (data, context) => {
         }
     });
 });
+
+    
