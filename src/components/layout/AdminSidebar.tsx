@@ -58,22 +58,24 @@ const AdminSidebarMenuContent = () => {
 }
 
 const AdminSidebar = () => {
-    return (
-        <>
-            {/* Mobile Sidebar */}
+    const { isMobile } = useSidebar();
+    
+    if(isMobile) {
+        return (
             <Sidebar side="left" collapsible="offcanvas" className="md:hidden">
                 <SidebarContent>
                     <AdminSidebarMenuContent />
                 </SidebarContent>
             </Sidebar>
+        )
+    }
 
-            {/* Desktop Sidebar */}
-            <Sidebar collapsible="icon" className="hidden md:flex bg-muted/30">
-                <SidebarContent>
-                    <AdminSidebarMenuContent />
-                </SidebarContent>
-            </Sidebar>
-        </>
+    return (
+        <Sidebar collapsible="icon" className="hidden md:flex bg-muted/30">
+            <SidebarContent>
+                <AdminSidebarMenuContent />
+            </SidebarContent>
+        </Sidebar>
     );
 };
 

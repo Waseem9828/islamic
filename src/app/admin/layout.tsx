@@ -11,12 +11,14 @@ export default function AdminLayout({
 }) {
   return (
     <SidebarProvider>
-        <div className="min-h-screen bg-muted/20">
-        <AdminSidebar />
-        <div className="transition-all duration-200 ease-in-out md:pl-14 group-data-[state=expanded]:md:pl-64">
-            <AdminHeader />
-            <main>{children}</main>
-        </div>
+        <div className="min-h-screen bg-muted/20 flex">
+            <AdminSidebar />
+            <div className="flex-1 flex flex-col transition-all duration-200 ease-in-out md:ml-14 group-data-[state=expanded]:md:ml-64">
+                <AdminHeader />
+                <main className="flex-1">
+                    {children}
+                </main>
+            </div>
         </div>
     </SidebarProvider>
   );
