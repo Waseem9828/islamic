@@ -5,7 +5,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks, Trophy } from 'lucide-react';
+import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks, Trophy, History } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 
 
@@ -13,6 +13,7 @@ const adminFeatures = [
     { title: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
     { title: 'Users', icon: Users, path: '/admin/users' },
     { title: 'Matches', icon: Trophy, path: '/admin/matches' },
+    { title: 'Transactions', icon: History, path: '/admin/transactions' },
     { title: 'Deposits', icon: IndianRupee, path: '/admin/deposit-requests' },
     { title: 'Withdrawals', icon: ListChecks, path: '/admin/withdrawals' },
     { title: 'App Rules', icon: Settings, path: '/admin/settings' },
