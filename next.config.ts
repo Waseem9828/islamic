@@ -9,6 +9,17 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  devIndicators: {
+    buildActivity: true,
+    buildActivityPosition: 'bottom-right',
+  },
+  experimental: {
+    // This allows the development server to accept requests from the
+    // Firebase Studio environment, fixing cross-origin issues.
+    allowedDevOrigins: [
+      'https://*.cloudworkstations.dev',
+    ],
+  },
   images: {
     remotePatterns: [
       {
