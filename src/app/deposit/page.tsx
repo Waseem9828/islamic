@@ -11,10 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Upload } from 'lucide-react';
 
 export default function DepositPage() {
+    const { toast } = useToast();
     const { user, isUserLoading } = useUser();
     const { functions, firestore } = useFirebase();
     const router = useRouter();
@@ -52,7 +53,7 @@ export default function DepositPage() {
             setIsLoadingSettings(false);
         };
         fetchPaymentSettings();
-    }, [firestore]);
+    }, [firestore, toast]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
