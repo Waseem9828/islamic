@@ -27,14 +27,18 @@ service cloud.firestore {
 
     // USERS
     match /users/{userId} {
-      // A user can read or write their own profile data. Admins can too.
-      allow read, write: if isOwner(userId) || isAdmin();
+      // Allow signed-in users to read any user profile for leaderboards, etc.
+      allow read: if isSignedIn();
+      // A user can only write to their own profile.
+      allow write: if isOwner(userId);
     }
 
     // WALLETS
     match /wallets/{userId} {
-      // A user can read their own wallet, and admins can manage it.
-      allow read, write: if isOwner(userId) || isAdmin();
+      // Allow signed-in users to read wallets for leaderboard functionality.
+      allow read: if isSignedIn();
+      // A user can only modify their own wallet through functions, so client-side write is restricted.
+      allow write: if isOwner(userId) || isAdmin();
     }
 
     // DEPOSIT REQUESTS
