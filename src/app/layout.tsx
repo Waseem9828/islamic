@@ -13,7 +13,6 @@ export default function RootLayout({
       <head>
         <title>Premium Numbers</title>
         <meta name="description" content="Your premium number prediction service" />
-        <link rel="manifest" href="/manifest.json" />
       </head>
       <body>
         <ClientLayout>{children}</ClientLayout>
