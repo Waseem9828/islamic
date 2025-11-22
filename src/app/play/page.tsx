@@ -29,12 +29,17 @@ export default function PlayPage() {
     const [maxPlayers, setMaxPlayers] = useState('2');
     const [privacy, setPrivacy] = useState('public');
     const [timeLimit, setTimeLimit] = useState('15');
-    const [matchId, setMatchId] = useState(generateRoomCode());
+    const [matchId, setMatchId] = useState('');
 
     const [wallet, setWallet] = useState<{ depositBalance: number, winningBalance: number, bonusBalance: number } | null>(null);
     const [isLoadingWallet, setIsLoadingWallet] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [isMatchCreated, setIsMatchCreated] = useState(false);
+    
+    useEffect(() => {
+        // Generate room code only on the client side after hydration
+        setMatchId(generateRoomCode());
+    }, []);
 
     const totalBalance = useMemo(() => {
         if (!wallet) return 0;
