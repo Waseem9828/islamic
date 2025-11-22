@@ -36,16 +36,20 @@ export default function MatchmakingHomePage() {
 
   const walletDocRef = useMemo(() => firestore && user ? doc(firestore, 'wallets', user.uid) : null, [firestore, user]);
   const { data: wallet, isLoading: isWalletLoading } = useDoc(walletDocRef);
-  const walletBalance = wallet?.balance ?? 0;
+  const totalBalance = useMemo(() => {
+    if (!wallet) return 0;
+    // @ts-ignore
+    return (wallet.depositBalance || 0) + (wallet.winningBalance || 0) + (wallet.bonusBalance || 0);
+  }, [wallet]);
 
   const handleFilterChange = (key: string, value: any) => setFilters(prev => ({ ...prev, [key]: value }));
 
   const matchesQuery = useMemo(() => {
-    if (firestore && user) {
-      return query(collection(firestore, 'matches'));
+    if (firestore) {
+      return query(collection(firestore, 'matches'), where('status', '!=', 'completed'));
     }
     return null;
-  }, [firestore, user]);
+  }, [firestore]);
   const { data: allMatches, isLoading: isLoadingMatches } = useCollection(matchesQuery);
 
   const filteredMatches = useMemo(() => {
@@ -55,14 +59,14 @@ export default function MatchmakingHomePage() {
         const searchInput = searchQuery.toLowerCase();
         const isSearchMatch = match.id.toLowerCase().includes(searchInput) || match.creatorName?.toLowerCase().includes(searchInput) || match.matchTitle?.toLowerCase().includes(searchInput);
         const isInFeeRange = match.entry >= filters.feeRange[0] && match.entry <= filters.feeRange[1];
-        const isPlayerCountMatch = filters.playerCount === 'all' || match.players?.length.toString() === filters.playerCount;
+        const isPlayerCountMatch = filters.playerCount === 'all' || match.maxPlayers.toString() === filters.playerCount;
         return isSearchMatch && isInFeeRange && isPlayerCountMatch;
     });
 
-    const openMatches = filtered.filter((m: any) => m.status === 'Waiting for Players' && !(user && m.players.includes(user.uid)));
-    const myActiveMatches = user ? filtered.filter((m: any) => (m.status === 'Waiting for Players' || m.status === 'Ready to Start') && m.players.includes(user.uid)) : [];
-    const ongoingMatches = filtered.filter((m: any) => m.status === 'In Progress');
-    const cancelledMatches = filtered.filter((m: any) => m.status === 'Cancelled');
+    const openMatches = filtered.filter((m: any) => m.status === 'waiting' && !(user && m.players.includes(user.uid)));
+    const myActiveMatches = user ? filtered.filter((m: any) => (m.status === 'waiting' || m.status === 'inprogress') && m.players.includes(user.uid)) : [];
+    const ongoingMatches = filtered.filter((m: any) => m.status === 'inprogress' && !(user && m.players.includes(user.uid)));
+    const cancelledMatches = filtered.filter((m: any) => m.status === 'cancelled');
     
     return { openMatches, myActiveMatches, ongoingMatches, cancelledMatches };
 
@@ -73,17 +77,18 @@ export default function MatchmakingHomePage() {
   const handleCreateMatch = () => router.push('/play');
   const handleViewLobby = (matchId: string) => router.push(`/match/${matchId}`);
   const handleSubmitResult = (matchId: string) => router.push(`/result/${matchId}`);
-  const handleJoinClick = (match: any) => { if (walletBalance < match.entry) { toast.error("Insufficient Balance"); return; } setSelectedMatch(match); setIsJoinConfirmOpen(true); };
+  const handleJoinClick = (match: any) => { if (totalBalance < match.entry) { toast.error("Insufficient Balance"); return; } setSelectedMatch(match); setIsJoinConfirmOpen(true); };
   const handleConfirmJoin = () => { if (selectedMatch) { handleViewLobby(selectedMatch.id) } setIsJoinConfirmOpen(false); };
   
   const StatusBadge = ({ status }: { status: string }) => {
-    const config = {
-      'Waiting for Players': { class: 'text-yellow-600 border-yellow-500/50 bg-yellow-500/10', icon: <span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span></span> },
-      'Ready to Start': { class: 'text-blue-600 border-blue-500/50 bg-blue-500/10', icon: <Dot className="mr-1 h-4 w-4 text-blue-500"/> },
-      'In Progress': { class: 'text-orange-600 border-orange-500/50 bg-orange-500/10', icon: <span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span></span> },
-      'Cancelled': { class: 'text-red-600 border-red-500/50 bg-red-500/10', icon: <XCircle className="mr-1 h-3 w-3" /> },
-    }[status] || { class: '' };
-    return <Badge variant="outline" className={`font-semibold text-xs px-2 py-0.5 ${config.class}`}>{config.icon}{status}</Badge>;
+    const config: {[key: string]: {class: string, icon: React.ReactNode}} = {
+      'waiting': { class: 'text-yellow-600 border-yellow-500/50 bg-yellow-500/10', icon: <span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span></span> },
+      'inprogress': { class: 'text-orange-600 border-orange-500/50 bg-orange-500/10', icon: <span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span></span> },
+      'cancelled': { class: 'text-red-600 border-red-500/50 bg-red-500/10', icon: <XCircle className="mr-1 h-3 w-3" /> },
+      'pending_verification': { class: 'text-blue-600 border-blue-500/50 bg-blue-500/10', icon: <Dot className="mr-1 h-4 w-4 text-blue-500"/> }
+    };
+    const statusConfig = config[status] || { class: '' };
+    return <Badge variant="outline" className={`font-semibold text-xs px-2 py-0.5 ${statusConfig.class}`}>{statusConfig.icon}{status.replace(/_/g, ' ')}</Badge>;
   }
 
   const MatchCard = ({ match, button, borderColor, cardClassName }: any) => (
@@ -123,7 +128,12 @@ export default function MatchmakingHomePage() {
 
     switch (type) {
         case 'my':
-            button = (match: any) => <Button size="sm" className="w-full text-xs h-8" onClick={() => handleViewLobby(match.id)}>View Lobby</Button>;
+            button = (match: any) => {
+              if (match.status === 'inprogress') {
+                return <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => handleSubmitResult(match.id)}>Submit Result</Button>
+              }
+              return <Button size="sm" className="w-full text-xs h-8" onClick={() => handleViewLobby(match.id)}>View Lobby</Button>;
+            }
             borderColor = "border-blue-500/30 border-2";
             break;
         case 'open':
@@ -131,7 +141,7 @@ export default function MatchmakingHomePage() {
             borderColor = "border-green-500/30 border-2";
             break;
         case 'ongoing':
-            button = (match: any) => <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => handleSubmitResult(match.id)}>Submit Result</Button>;
+            button = (match: any) => <Button size="sm" variant="outline" disabled className="w-full text-xs h-8">In Progress</Button>;
             borderColor = "border-orange-500/30 border-2";
             break;
         case 'cancelled':
@@ -167,7 +177,7 @@ export default function MatchmakingHomePage() {
             <CollapsibleContent className="absolute z-10 top-full right-0 mt-2 w-full max-w-xs bg-card border shadow-lg rounded-lg p-4 space-y-4">
                 <div className="space-y-2">
                     <Label>Entry Fee: ₹{filters.feeRange[0]} - ₹{filters.feeRange[1]}</Label>
-                    <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={1000} step={10} />
+                    <Slider value={filters.feeRange} onValueChange={(val) => handleFilterChange('feeRange', val)} min={10} max={5000} step={10} />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -176,13 +186,13 @@ export default function MatchmakingHomePage() {
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="2">2</SelectItem>
-                                <SelectItem value="4">4</SelectItem>
+                                <SelectItem value="2">2 Players</SelectItem>
+                                <SelectItem value="4">4 Players</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
-                <Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 1000], playerCount: 'all', status: 'all' })}>Reset</Button>
+                <Button variant="secondary" size="sm" onClick={() => setFilters({ feeRange: [10, 5000], playerCount: 'all', status: 'all' })}>Reset</Button>
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -201,7 +211,7 @@ export default function MatchmakingHomePage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Join Match Confirmation</AlertDialogTitle>
             </AlertDialogHeader>
-            <AlertDialogDescription id="alert-dialog-description">You are about to join <span className="font-bold">{selectedMatch?.room}</span>.</AlertDialogDescription>
+            <AlertDialogDescription id="alert-dialog-description">You are about to join <span className="font-bold">{selectedMatch?.matchTitle || selectedMatch?.id}</span>.</AlertDialogDescription>
             <div className="space-y-4 py-4">
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <span className="text-muted-foreground">Entry Fee</span>
@@ -209,19 +219,19 @@ export default function MatchmakingHomePage() {
               </div>
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <span className="text-muted-foreground flex items-center"><Wallet className="mr-2 h-4 w-4"/> Your Wallet</span>
-                <span className="font-semibold">₹{walletBalance}</span>
+                <span className="font-semibold">₹{totalBalance.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-destructive/10 text-destructive-foreground border-l-4 border-destructive rounded-lg">
                 <span className="text-sm font-semibold flex items-center"><AlertTriangle className="mr-2 h-4 w-4"/> After Join</span>
-                <span className="font-bold">₹{walletBalance - (selectedMatch?.entry || 0)}</span>
+                <span className="font-bold">₹{(totalBalance - (selectedMatch?.entry || 0)).toFixed(2)}</span>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground bg-gray-100 p-3 rounded-lg space-y-1">
-              <h4 className="font-semibold text-gray-800 flex items-center"><Info className="mr-2 h-4 w-4"/>Terms:</h4>
+            <div className="text-xs text-muted-foreground bg-gray-100 dark:bg-gray-800 p-3 rounded-lg space-y-1">
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center"><Info className="mr-2 h-4 w-4"/>Terms:</h4>
               <ul className="list-disc list-inside">
-                <li>Entry fee will be deducted immediately.</li>
-                <li>A full refund is issued if the match is canceled.</li>
-                <li>Adhere to fair play rules.</li>
+                <li>Entry fee will be deducted immediately from your combined balances.</li>
+                <li>Refunds for cancellations may be subject to fees as per app rules.</li>
+                <li>Adhere to fair play rules. Cheating will result in a ban.</li>
               </ul>
             </div>
             <AlertDialogFooter>
