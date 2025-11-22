@@ -2,7 +2,7 @@
 
 import './globals.css';
 import ClientLayout from '@/components/layout/ClientLayout';
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,

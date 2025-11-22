@@ -1,82 +1,93 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks, Trophy, History, HardDrive } from 'lucide-react';
-import { useSidebar } from '@/components/ui/sidebar';
+import { Home, Users, IndianRupee, Settings, LayoutDashboard, ListChecks, Trophy, History, HardDrive, ArrowLeft, Menu, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
-
-const adminFeatures = [
-    { title: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
-    { title: 'Users', icon: Users, path: '/admin/users' },
-    { title: 'Matches', icon: Trophy, path: '/admin/matches' },
-    { title: 'Transactions', icon: History, path: '/admin/transactions' },
-    { title: 'Deposits', icon: IndianRupee, path: '/admin/deposit-requests' },
-    { title: 'Withdrawals', icon: ListChecks, path: '/admin/withdrawals' },
-    { title: 'App Rules', icon: Settings, path: '/admin/settings' },
-    { title: 'Payments', icon: Settings, path: '/admin/payment-settings' },
-    { title: 'Storage', icon: HardDrive, path: '/admin/storage' },
+const navItems = [
+  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/deposits', icon: IndianRupee, label: 'Deposits' },
+  { href: '/admin/withdrawals', icon: IndianRupee, label: 'Withdrawals' },
+  { href: '/admin/match-winnings', icon: Trophy, label: 'Match Winnings' },
+  { href: '/admin/rewards', icon: ListChecks, label: 'Rewards' },
+  { href: '/admin/transactions', icon: History, label: 'Transactions' },
+  { href: '/admin/storage', icon: HardDrive, label: 'Storage' },
+  { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
-const AdminSidebarMenuContent = () => {
-    const pathname = usePathname();
-    return (
-        <>
-            <SidebarHeader>
-                <h2 className="text-lg font-semibold text-center group-data-[collapsible=icon]:hidden">
-                    Admin
-                </h2>
-            </SidebarHeader>
-            <SidebarMenu className="flex-1 overflow-y-auto">
-                    {adminFeatures.map((feature) => {
-                    const isActive = pathname === feature.path;
-                    return (
-                        <SidebarMenuItem key={feature.title}>
-                            <SidebarMenuButton asChild tooltip={feature.title} isActive={isActive}>
-                                <Link href={feature.path}>
-                                    <feature.icon />
-                                    <span>{feature.title}</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    )
-                })}
-            </SidebarMenu>
-            <SidebarMenu className="mt-auto">
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Back to App">
-                            <Link href="/">
-                            <ArrowLeft />
-                            <span>Back to App</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </>
-    )
-}
-
-const AdminSidebar = () => {
-  const { isMobile } = useSidebar();
-  const [collapsibleMode, setCollapsibleMode] = React.useState<'icon' | 'offcanvas'>('icon');
-
-  React.useEffect(() => {
-    setCollapsibleMode(isMobile ? 'offcanvas' : 'icon');
-  }, [isMobile]);
+const SidebarLink = ({ item, onClick }: { item: typeof navItems[0], onClick: () => void }) => {
+  const pathname = usePathname();
+  const isActive = pathname === item.href;
 
   return (
-    <Sidebar
-      collapsible={collapsibleMode}
-      className="bg-muted/30"
-      side="left"
-    >
-      <SidebarContent>
-        <AdminSidebarMenuContent />
-      </SidebarContent>
-    </Sidebar>
+    <Link href={item.href} legacyBehavior passHref>
+      <a
+        onClick={onClick} // Close sidebar on click on mobile
+        className={`
+          flex items-center p-3 rounded-lg transition-colors
+          text-gray-200 hover:bg-gray-700 hover:text-white
+          ${isActive ? 'bg-primary text-white' : ''}
+        `}
+      >
+        <item.icon className="w-5 h-5 mr-4" />
+        <span className="truncate">{item.label}</span>
+      </a>
+    </Link>
   );
 };
 
-export default AdminSidebar;
+export const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (isOpen: boolean) => void; }) => {
+  const closeSidebar = () => setIsOpen(false);
+
+  return (
+    <>
+      {/* Overlay for mobile */}
+      <div
+        className={`fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden ${isOpen ? 'block' : 'hidden'}`}
+        onClick={closeSidebar}
+      ></div>
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 w-64 h-full bg-gray-800 text-white z-40
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:translate-x-0 md:w-20 md:hover:w-64 md:transition-all md:duration-300
+          group
+        `}
+      >
+        <div className="flex flex-col h-full">
+          <header className="flex items-center justify-between p-4 h-16 border-b border-gray-700 md:justify-center">
+            <Link href="/admin" passHref legacyBehavior>
+              <a className="flex items-center gap-2 text-xl font-bold text-white">
+                <Trophy className="text-primary"/>
+                <span className="md:hidden md:group-hover:inline">Admin</span>
+              </a>
+            </Link>
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={closeSidebar}>
+                <X className="w-6 h-6" />
+            </Button>
+          </header>
+
+          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+            {navItems.map(item => (
+              <SidebarLink key={item.href} item={item} onClick={closeSidebar} />
+            ))}
+          </nav>
+
+          <footer className="p-2 border-t border-gray-700">
+             <Link href="/" legacyBehavior passHref>
+                <a className="flex items-center p-3 rounded-lg text-gray-200 hover:bg-gray-700 hover:text-white">
+                    <ArrowLeft className="w-5 h-5 mr-4" />
+                    <span className="truncate">Back to App</span>
+                </a>
+            </Link>
+          </footer>
+        </div>
+      </aside>
+    </>
+  );
+};
