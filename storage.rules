@@ -4,7 +4,6 @@ service firebase.storage {
   match /b/{bucket}/o {
     // Deposit Screenshots:
     // Users can only upload files to a folder matching their own user ID.
-    // The uploaded filename can be anything.
     // They can also read their own uploaded files.
     // This prevents one user from seeing or overwriting another user's screenshots.
     match /deposit-screenshots/{userId}/{allPaths=**} {
@@ -21,5 +20,3 @@ service firebase.storage {
     }
   }
 }
-
-    

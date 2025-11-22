@@ -7,9 +7,10 @@ import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, Copy, Banknote, User } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Copy, Banknote, User, Image as ImageIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 interface Request {
   id: string;
@@ -17,6 +18,7 @@ interface Request {
   transactionId: string;
   userId: string;
   requestedAt: { toDate: () => Date };
+  screenshotUrl: string;
 }
 
 const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; onProcess: (id: string, approve: boolean) => void; isSubmitting: boolean }) => {
@@ -42,7 +44,7 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
     <Card className="p-4 grid grid-cols-1 md:grid-cols-3 items-center gap-4">
         <div className="md:col-span-2 space-y-2">
              <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
-             <div className='text-sm text-muted-foreground flex items-center gap-2'>
+             <div className='text-sm text-muted-foreground flex items-center gap-2 flex-wrap'>
                 <p className="flex items-center gap-1">
                     <User className="h-3 w-3"/> <span className='font-mono'>{request.userId}</span>
                 </p>
@@ -50,6 +52,9 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: Request; o
                     ID: <span className="font-mono">{request.transactionId}</span>
                     <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
                 </p>
+                 <Link href={request.screenshotUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline">
+                    <ImageIcon className="h-3 w-3"/> View Screenshot
+                </Link>
              </div>
              <p className="text-xs text-muted-foreground">{timeAgo}</p>
         </div>

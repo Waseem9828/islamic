@@ -79,12 +79,13 @@ const onCall = (handler) => {
 // --- Deposit Functions ---
 exports.requestDeposit = onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
-    const { amount, transactionId } = data;
+    const { amount, transactionId, screenshotUrl } = data;
     if (!amount || typeof amount !== 'number' || amount <= 0) throw new functions.https.HttpsError('invalid-argument', 'Valid amount required.');
     if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length < 12) throw new functions.https.HttpsError('invalid-argument', 'Valid 12-digit Transaction ID required.');
-    
+    if (!screenshotUrl || typeof screenshotUrl !== 'string') throw new functions.https.HttpsError('invalid-argument', 'Screenshot is required.');
+
     await db.collection("depositRequests").add({
-        userId: context.auth.uid, amount, transactionId: transactionId.trim(), status: 'pending', requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+        userId: context.auth.uid, amount, transactionId: transactionId.trim(), status: 'pending', requestedAt: admin.firestore.FieldValue.serverTimestamp(), screenshotUrl: screenshotUrl
     });
     return { status: "success", message: "Deposit request submitted." };
 });

@@ -4,19 +4,21 @@ import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirebase } from '@/firebase/provider'; 
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, CheckCircle } from 'lucide-react';
 import QRCode from 'qrcode.react';
 
 export default function DepositPage() {
     const { user } = useUser();
-    const { functions, firestore } = useFirebase();
+    const { functions, firestore, storage } = useFirebase();
     const [amount, setAmount] = useState('');
     const [transactionId, setTransactionId] = useState('');
+    const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
     const [upiId, setUpiId] = useState('');
@@ -52,7 +54,7 @@ export default function DepositPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user) {
+        if (!user || !storage) {
             toast.error('You must be logged in to make a deposit.');
             return;
         }
@@ -71,16 +73,33 @@ export default function DepositPage() {
             toast.error('Please enter the valid 12-digit transaction ID.');
             return;
         }
+        if (!screenshotFile) {
+            toast.error('Please upload a screenshot of the transaction.');
+            return;
+        }
 
         setIsSubmitting(true);
         try {
-            const result = await requestDepositFunction({ amount: depositAmount, transactionId: transactionId.trim() });
+             // 1. Upload screenshot
+            const screenshotRef = ref(storage, `deposit-screenshots/${user.uid}/${Date.now()}_${screenshotFile.name}`);
+            await uploadBytes(screenshotRef, screenshotFile);
+            const screenshotUrl = await getDownloadURL(screenshotRef);
+
+            // 2. Call the cloud function with all data
+            const result = await requestDepositFunction({ 
+                amount: depositAmount, 
+                transactionId: transactionId.trim(),
+                screenshotUrl: screenshotUrl,
+            });
             const data = (result.data as any)?.result;
+            
             toast.success('Deposit request submitted', {
                 description: data?.message || 'Your request is under review and will be processed shortly.',
             });
+            
             setAmount('');
             setTransactionId('');
+            setScreenshotFile(null);
         } catch (error: any) {
             console.error("Error submitting deposit request:", error);
             toast.error('Submission failed', {
@@ -142,9 +161,30 @@ export default function DepositPage() {
                                 maxLength={12}
                             />
                         </div>
+
+                         <div className="space-y-2">
+                            <Label htmlFor="screenshot">3. Upload Screenshot</Label>
+                             <label htmlFor="screenshot" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    {screenshotFile ? 
+                                        <CheckCircle className="w-10 h-10 mb-3 text-green-500" /> :
+                                        <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
+                                    }
+                                    {screenshotFile ? 
+                                        <p className="font-semibold text-sm text-green-600 truncate max-w-xs">{screenshotFile.name}</p> :
+                                        <>
+                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p>
+                                            <p className="text-xs text-muted-foreground">PNG, JPG or GIF</p>
+                                        </>
+                                    }
+                                </div>
+                                <Input id="screenshot" type="file" className="hidden" onChange={(e) => setScreenshotFile(e.target.files?.[0] || null)} accept="image/*" />
+                            </label>
+                        </div>
+
                         <Button type="submit" className="w-full" disabled={isSubmitting || isLoadingSettings}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {isSubmitting ? 'Submitting...' : '3. Submit for Verification'}
+                            {isSubmitting ? 'Submitting...' : '4. Submit for Verification'}
                         </Button>
                     </form>
                 </CardContent>

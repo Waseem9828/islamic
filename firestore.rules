@@ -41,10 +41,12 @@ service cloud.firestore {
     match /depositRequests/{requestId} {
       // Allow creation only if the user is signed in and the data is structured correctly.
       allow create: if isSignedIn() && isOwner(request.resource.data.userId)
-                      && request.resource.data.keys().hasOnly(['userId', 'amount', 'transactionId', 'status', 'requestedAt'])
+                      && request.resource.data.keys().hasOnly(['userId', 'amount', 'transactionId', 'status', 'requestedAt', 'screenshotUrl'])
                       && request.resource.data.amount > 0
                       && request.resource.data.transactionId is string
                       && request.resource.data.transactionId.size() >= 12
+                      && request.resource.data.screenshotUrl is string
+                      && request.resource.data.screenshotUrl.matches('https://firebasestorage.googleapis.com/.*')
                       && request.resource.data.status == 'pending';
       // Only admins can read or update (approve/reject) deposit requests.
       allow read, update: if isAdmin();
