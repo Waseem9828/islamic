@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Loader2, Trash2, HardDrive, FileText, AlertTriangle } from 'lucide-react';
-import { collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
+import { Loader2, Trash2, HardDrive, FileText, AlertTriangle, UserX } from 'lucide-react';
+import { collection, getDocs, query, where, writeBatch, updateDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
+import { deleteFileByUrl } from '@/firebase/storage';
 
 export default function ManageStoragePage() {
   const { firestore } = useFirebase();
@@ -16,90 +17,151 @@ export default function ManageStoragePage() {
   const [analysis, setAnalysis] = useState<{ totalSize: string, fileCount: number } | null>(null);
   const [files, setFiles] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isCleaning, setIsCleaning] = useState(false);
+  const [isDepositCleaning, setIsDepositCleaning] = useState(false);
+  const [isMatchWinningCleaning, setIsMatchWinningCleaning] = useState(false);
+  const [isProfileCleaning, setIsProfileCleaning] = useState(false);
 
   const handleAnalyze = async () => {
-    if (!bucketName) {
-      toast.error('Please enter your Google Cloud Storage bucket name.');
-      return;
-    }
-    setIsLoading(true);
-    setAnalysis(null);
-    setFiles([]);
-    try {
-      // This is a placeholder. In a real scenario, you would have a backend endpoint to run this command.
-      // For now, we'll simulate the output.
-      // const response = await runGsutilCommand(`du -sh gs://${bucketName}`);
-      // const fileList = await runGsutilCommand(`ls gs://${bucketName}`);
-      toast.info('Simulating storage analysis...');
-      setTimeout(() => {
-          setAnalysis({ totalSize: '1.2 GB', fileCount: 1234 });
-          setFiles([
-              `gs://${bucketName}/deposits/deposit_abc123.jpg`,
-              `gs://${bucketName}/deposits/deposit_def456.png`,
-              `gs://${bucketName}/other/some_other_file.pdf`,
-          ]);
-          setIsLoading(false);
-      }, 2000)
-    } catch (error: any) {
-      toast.error('Analysis Failed', { description: error.message });
-      setIsLoading(false);
-    }
+    toast.info('This feature is a placeholder. No real analysis is performed.');
+    // In a real app, you might have a backend function that uses GSUtil or a cloud API.
   };
-  
-  const handleDeleteFile = async (filePath: string) => {
-    if (!confirm(`Are you sure you want to delete this file: ${filePath}? This action cannot be undone.`)) return;
-
-    setIsDeleting(true);
-    try {
-        // This is a placeholder for the actual delete operation
-        toast.info(`Simulating deletion of ${filePath}...`);
-        setTimeout(() => {
-            setFiles(prevFiles => prevFiles.filter(f => f !== filePath));
-            toast.success('File deleted successfully!');
-            setIsDeleting(false);
-        }, 1000);
-    } catch (error: any) {
-        toast.error('Delete Failed', { description: error.message });
-        setIsDeleting(false);
-    }
-  }
 
   const handleCleanupSuccessfulDeposits = async () => {
     if (!firestore) return;
-    if (!confirm('Are you sure you want to delete ALL screenshots from successful deposits? This is a permanent action.')) return;
+    if (!confirm('Are you sure you want to delete ALL screenshots from successful deposits? This is permanent.')) return;
 
-    setIsCleaning(true);
+    setIsDepositCleaning(true);
+    const toastId = toast.loading('Starting cleanup of deposit screenshots...');
     try {
         const q = query(collection(firestore, 'depositRequests'), where('status', '==', 'approved'));
         const snapshot = await getDocs(q);
         
         if (snapshot.empty) {
-            toast.info("No successful deposits found to clean up.");
-            setIsCleaning(false);
+            toast.info("No successful deposits found to clean up.", { id: toastId });
+            setIsDepositCleaning(false);
             return;
         }
 
-        // In a real scenario, you'd get the file paths and delete them from storage.
-        // For now, we just count them and simulate.
-        const count = snapshot.size;
-        toast.info(`Simulating the deletion of ${count} deposit screenshots...`);
+        toast.loading(`Found ${snapshot.size} approved deposits. Deleting files...`, { id: toastId });
 
-        // You could also update the documents to remove the screenshotURL
+        let deletedCount = 0;
         const batch = writeBatch(firestore);
-        snapshot.docs.forEach(doc => {
-            // Here you could update the document, e.g., set screenshotURL to null
-        });
-        // await batch.commit();
 
-        setTimeout(() => {
-            toast.success(`Successfully cleaned up ${count} deposit files.`);
-            setIsCleaning(false);
-        }, 2500);
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            if (data.screenshotURL && data.screenshotURL !== 'deleted') {
+                try {
+                    await deleteFileByUrl(data.screenshotURL);
+                    batch.update(doc.ref, { screenshotURL: 'deleted' });
+                    deletedCount++;
+                } catch (error: any) {
+                    console.error(`Failed to delete file: ${data.screenshotURL}`, error);
+                    toast.error(`Failed to delete a file for deposit ${doc.id}. Skipping.`);
+                }
+            }
+        }
+
+        if (deletedCount > 0) {
+            await batch.commit();
+            toast.success(`Successfully cleaned up and deleted ${deletedCount} deposit screenshots.`, { id: toastId });
+        } else {
+            toast.info('No deposit screenshots needed to be deleted.', { id: toastId });
+        }
+    } catch (error: any) {
+        toast.error('Deposit cleanup failed', { id: toastId, description: error.message });
+    } finally {
+        setIsDepositCleaning(false);
+    }
+  };
+
+  const handleCleanupMatchWinnings = async () => {
+    if (!firestore) return;
+    if (!confirm('Are you sure you want to delete ALL screenshots from successful match winnings? This is permanent.')) return;
+
+    setIsMatchWinningCleaning(true);
+    const toastId = toast.loading('Starting cleanup of match winning screenshots...');
+    try {
+        const q = query(collection(firestore, 'matchWinnings'), where('status', '==', 'approved'));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+            toast.info("No approved match winnings found.", { id: toastId });
+            return;
+        }
+
+        let deletedCount = 0;
+        const batch = writeBatch(firestore);
+
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            if (data.screenshotUrl && data.screenshotUrl !== 'deleted') {
+                try {
+                    await deleteFileByUrl(data.screenshotUrl);
+                    batch.update(doc.ref, { screenshotUrl: 'deleted' });
+                    deletedCount++;
+                } catch (error: any) {
+                    console.error(`Failed to delete file: ${data.screenshotUrl}`, error);
+                    toast.error(`Failed to delete file for match ${doc.id}. Skipping.`);
+                }
+            }
+        }
+        
+        if (deletedCount > 0) {
+            await batch.commit();
+            toast.success(`Successfully cleaned up and deleted ${deletedCount} match winning screenshots.`, { id: toastId });
+        } else {
+            toast.info('No match winning screenshots needed to be deleted.', { id: toastId });
+        }
+    } catch (error: any) {
+        toast.error('Match winning cleanup failed', { id: toastId, description: error.message });
+    } finally {
+        setIsMatchWinningCleaning(false);
+    }
+  };
+
+  const handleCleanupOldProfilePictures = async () => {
+    if (!firestore) return;
+    if (!confirm('Are you sure you want to delete ALL user profile pictures? This does not delete default avatars. This is permanent.')) return;
+
+    setIsProfileCleaning(true);
+    const toastId = toast.loading('Starting cleanup of user profile pictures...');
+    try {
+        const usersSnapshot = await getDocs(collection(firestore, 'users'));
+        
+        if (usersSnapshot.empty) {
+            toast.info("No users found.", { id: toastId });
+            return;
+        }
+
+        let deletedCount = 0;
+        const batch = writeBatch(firestore);
+
+        for (const userDoc of usersSnapshot.docs) {
+            const userData = userDoc.data();
+            // Check if photoURL exists and is a non-default, non-deleted URL
+            if (userData.photoURL && !userData.photoURL.includes('googleusercontent') && !userData.photoURL.includes('robohash') && userData.photoURL !== 'deleted') {
+                try {
+                    await deleteFileByUrl(userData.photoURL);
+                    batch.update(userDoc.ref, { photoURL: 'deleted' });
+                    deletedCount++;
+                } catch (error: any) {
+                    console.error(`Failed to delete profile picture for user ${userDoc.id}:`, error);
+                    toast.error(`Failed to delete photo for user ${userDoc.id}. It might have been already deleted.`);
+                }
+            }
+        }
+
+        if (deletedCount > 0) {
+            await batch.commit();
+            toast.success(`Successfully deleted ${deletedCount} old user profile pictures.`, { id: toastId });
+        } else {
+            toast.info('No old profile pictures found to delete.', { id: toastId });
+        }
 
     } catch (error: any) {
-        toast.error('Cleanup Failed', { description: error.message });
-        setIsCleaning(false);
+        toast.error('Profile picture cleanup failed', { id: toastId, description: error.message });
+    } finally {
+        setIsProfileCleaning(false);
     }
   };
 
@@ -108,67 +170,35 @@ export default function ManageStoragePage() {
         <Card>
             <CardHeader>
               <CardTitle className="flex items-center"><HardDrive className="mr-2"/>Storage Bucket Management</CardTitle>
-              <CardDescription>Analyze your Google Cloud Storage usage and clean up unnecessary files.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-2">
-                    <Input 
-                        placeholder="Enter your storage bucket name (e.g., my-app.appspot.com)" 
-                        value={bucketName} 
-                        onChange={e => setBucketName(e.target.value)} 
-                    />
-                    <Button onClick={handleAnalyze} disabled={isLoading} className="w-full sm:w-auto">
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                        Analyze Bucket
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-
-        {analysis && (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Analysis Result</CardTitle>
-                    <CardDescription>Summary of your storage usage.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 bg-muted rounded-lg">Total Storage Used: <span className="font-bold">{analysis.totalSize}</span></div>
-                    <div className="p-4 bg-muted rounded-lg">Total Files: <span className="font-bold">{analysis.fileCount}</span></div>
-                </CardContent>
-            </Card>
-        )}
-
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><AlertTriangle className="mr-2 text-red-500"/>Cleanup Zone</CardTitle>
-                <CardDescription>Here you can perform dangerous actions like bulk-deleting files. Please be careful.</CardDescription>
+              <CardDescription>Analyze storage and clean up unnecessary files. Actions here are permanent.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button variant="destructive" onClick={handleCleanupSuccessfulDeposits} disabled={isCleaning || !firestore}>
-                    {isCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
-                    Delete All Successful Deposit Screenshots
+                 <Button onClick={handleAnalyze} disabled={true} className="w-full sm:w-auto">
+                    Analyze Bucket (Not Implemented)
                 </Button>
             </CardContent>
         </Card>
 
-        {files.length > 0 && (
-            <Card>
-                <CardHeader>
-                    <CardTitle>File Browser</CardTitle>
-                    <CardDescription>A list of files found in your bucket. You can delete them one by one.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    {files.map(file => (
-                        <div key={file} className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
-                            <span className="font-mono flex items-center"><FileText className="h-4 w-4 mr-2"/>{file}</span>
-                            <Button size="sm" variant="destructive" onClick={() => handleDeleteFile(file)} disabled={isDeleting}>
-                                <Trash2 className="h-4 w-4"/>
-                            </Button>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-        )}
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><AlertTriangle className="mr-2 text-red-500"/>Cleanup Zone</CardTitle>
+                <CardDescription>Bulk-delete files from your storage. Please be careful, these actions cannot be undone.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Button variant="destructive" onClick={handleCleanupSuccessfulDeposits} disabled={isDepositCleaning || !firestore}>
+                    {isDepositCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
+                    Clean Deposit Screenshots
+                </Button>
+                <Button variant="destructive" onClick={handleCleanupMatchWinnings} disabled={isMatchWinningCleaning || !firestore}>
+                    {isMatchWinningCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
+                    Clean Match Winning Screenshots
+                </Button>
+                 <Button variant="destructive" onClick={handleCleanupOldProfilePictures} disabled={isProfileCleaning || !firestore}>
+                    {isProfileCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserX className="mr-2 h-4 w-4"/>}
+                    Clean Old Profile Pictures
+                </Button>
+            </CardContent>
+        </Card>
     </div>
   );
 }

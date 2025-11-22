@@ -2,8 +2,7 @@
 
 import './globals.css';
 import ClientLayout from '@/components/layout/ClientLayout';
-import BottomNavbar from '@/components/BottomNavbar';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
   children,
@@ -18,8 +17,7 @@ export default function RootLayout({
       </head>
       <body>
         <ClientLayout>
-          <div className="pb-16">{children}</div>
-          <BottomNavbar />
+          {children}
         </ClientLayout>
         <Toaster />
       </body>
