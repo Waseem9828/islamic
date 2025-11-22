@@ -117,7 +117,7 @@ export default function ManageUsersPage() {
                         <AvatarFallback>{user.email?.[0].toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="font-semibold flex items-center">{user.displayName || user.email} {user.isAdmin && <Badge variant="destructive" className="ml-2 flex items-center gap-1"><ShieldCheck className="h-3 w-3"/>Admin</Badge>}</p>
+                        <div className="font-semibold flex items-center">{user.displayName || user.email} {user.isAdmin && <Badge variant="destructive" className="ml-2 flex items-center gap-1"><ShieldCheck className="h-3 w-3"/>Admin</Badge>}</div>
                         <p className="text-sm text-muted-foreground font-mono">{user.id}</p>
                     </div>
                   </div>
