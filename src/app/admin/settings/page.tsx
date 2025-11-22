@@ -1,18 +1,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { firestore } from '@/firebase/config';
+import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Loader2, Settings } from 'lucide-react';
 
-const settingsRef = doc(firestore, 'settings', 'rules');
-
 export default function SettingsPage() {
+  const { firestore } = useFirebase();
   const [settings, setSettings] = useState({
     adminCommissionRate: 0.1,
     cancellationFee: 5,
@@ -22,8 +21,17 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const settingsRef = useMemo(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'settings', 'rules');
+  }, [firestore]);
+
   useEffect(() => {
     const fetchSettings = async () => {
+      if (!settingsRef) {
+        setIsLoading(false);
+        return;
+      };
       try {
         const docSnap = await getDoc(settingsRef);
         if (docSnap.exists()) {
@@ -37,9 +45,13 @@ export default function SettingsPage() {
       }
     };
     fetchSettings();
-  }, []);
+  }, [settingsRef]);
 
   const handleSave = async () => {
+    if (!settingsRef) {
+        toast.error('Firestore is not available.');
+        return;
+    }
     setIsSubmitting(true);
     try {
       await setDoc(settingsRef, settings, { merge: true });
