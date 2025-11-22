@@ -7,13 +7,14 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Bell, Shield, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon } from 'lucide-react';
-import { useUser, useFirebase } from '@/firebase/provider';
+import { useUser, useFirebase, errorEmitter } from '@/firebase/provider';
 import { signOut, updateProfile } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FirestorePermissionError, SecurityRuleContext } from '@/firebase/errors';
 
 export function ProfileForm() {
   const router = useRouter();
@@ -27,11 +28,11 @@ export function ProfileForm() {
   const [avatarSrc, setAvatarSrc] = useState('');
 
   useEffect(() => {
-    if (user) {
+    if (user && firestore) {
       setAvatarSrc(user.photoURL || `https://avatar.vercel.sh/${user.email}.png`);
       setDisplayName(user.displayName || '');
 
-      const userDocRef = doc(firestore!, "users", user.uid);
+      const userDocRef = doc(firestore, "users", user.uid);
       getDoc(userDocRef).then(docSnap => {
         if (docSnap.exists()) {
           setUpiId(docSnap.data().upiId || '');
@@ -87,27 +88,39 @@ export function ProfileForm() {
     if (!user || !firestore || !auth.currentUser) return;
 
     setIsSaving(true);
+    
+    // This part remains synchronous and can show immediate feedback
     try {
-      // Update Firebase Auth profile
-      if (auth.currentUser.displayName !== displayName) {
-        await updateProfile(auth.currentUser, { displayName });
-      }
+        if (auth.currentUser.displayName !== displayName) {
+            await updateProfile(auth.currentUser, { displayName });
+        }
+        toast.success("Profile saved successfully!");
+    } catch (authError) {
+        console.error("Error updating auth profile:", authError);
+        toast.error("Failed to update display name.");
+        setIsSaving(false);
+        return;
+    }
 
-      // Update Firestore document
-      const userDocRef = doc(firestore, "users", user.uid);
-      await updateDoc(userDocRef, {
+    const userDocRef = doc(firestore, "users", user.uid);
+    const updatedData = {
         displayName: displayName,
         upiId: upiId,
+    };
+
+    // This is the non-blocking Firestore update.
+    updateDoc(userDocRef, updatedData)
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: updatedData
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSaving(false);
       });
-
-      toast.success("Profile saved successfully!");
-
-    } catch (error) {
-      console.error("Error saving profile:", error);
-      toast.error("Failed to save profile.");
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   if (isUserLoading || !user) {
