@@ -5,15 +5,17 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks } from 'lucide-react';
+import { Users, IndianRupee, Settings, LayoutDashboard, ArrowLeft, ListChecks, Trophy } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar';
 
 
 const adminFeatures = [
     { title: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
     { title: 'Users', icon: Users, path: '/admin/users' },
+    { title: 'Matches', icon: Trophy, path: '/admin/matches' },
     { title: 'Deposits', icon: IndianRupee, path: '/admin/deposit-requests' },
-    { title: 'Withdrawals', icon: ListChecks, path: '/admin/withdrawal-requests' },
+    { title: 'Withdrawals', icon: ListChecks, path: '/admin/withdrawals' },
+    { title: 'App Rules', icon: Settings, path: '/admin/settings' },
     { title: 'Payments', icon: Settings, path: '/admin/payment-settings' },
 ];
 
@@ -26,7 +28,7 @@ const AdminSidebarMenuContent = () => {
                     Admin
                 </h2>
             </SidebarHeader>
-            <SidebarMenu>
+            <SidebarMenu className="flex-1 overflow-y-auto">
                     {adminFeatures.map((feature) => {
                     const isActive = pathname === feature.path;
                     return (
@@ -56,27 +58,23 @@ const AdminSidebarMenuContent = () => {
 }
 
 const AdminSidebar = () => {
-    const { isMobile } = useSidebar();
-
-    if (isMobile) {
-        return (
-             <Sidebar side="left" collapsible="offcanvas" className="md:hidden">
+    return (
+        <>
+            {/* Mobile Sidebar */}
+            <Sidebar side="left" collapsible="offcanvas" className="md:hidden">
                 <SidebarContent>
                     <AdminSidebarMenuContent />
                 </SidebarContent>
             </Sidebar>
-        )
-    }
 
-    return (
-        <Sidebar collapsible="icon" className="hidden md:flex bg-muted/30">
-            <SidebarContent>
-               <AdminSidebarMenuContent />
-            </SidebarContent>
-        </Sidebar>
+            {/* Desktop Sidebar */}
+            <Sidebar collapsible="icon" className="hidden md:flex bg-muted/30">
+                <SidebarContent>
+                    <AdminSidebarMenuContent />
+                </SidebarContent>
+            </Sidebar>
+        </>
     );
 };
 
 export default AdminSidebar;
-
-    

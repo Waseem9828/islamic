@@ -11,9 +11,9 @@ export default function AdminLayout({
 }) {
   return (
     <SidebarProvider>
-        <div className="min-h-screen bg-muted/30">
+        <div className="min-h-screen bg-muted/20">
         <AdminSidebar />
-        <div className="md:pl-12 group-data-[collapsible=icon]:md:pl-[3rem] transition-all duration-200 ease-in-out">
+        <div className="transition-all duration-200 ease-in-out md:pl-14 group-data-[state=expanded]:md:pl-64">
             <AdminHeader />
             <main>{children}</main>
         </div>
