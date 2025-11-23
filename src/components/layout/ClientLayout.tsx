@@ -10,11 +10,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  // Check if the current route is an admin route
+  const isAdminRoute = pathname.startsWith('/admin');
+
   // Routes where the main layout (header, bottom nav) should be hidden
   const noLayoutRoutes = ['/login', '/signup', '/'];
 
-  // If the current path is one of the no-layout routes, just render the children
-  if (noLayoutRoutes.includes(pathname)) {
+  // If the current path is one of the no-layout routes or an admin route, just render the children
+  if (noLayoutRoutes.includes(pathname) || isAdminRoute) {
     return <>{children}</>;
   }
 

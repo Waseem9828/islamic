@@ -19,12 +19,44 @@ const getAppRules = async () => {
     return { ...defaultRules, ...rulesDoc.data() };
 };
 
-
+const onCall = (handler) => {
+    return functions.https.onCall(async (data, context) => {
+        // Your custom logic here, e.g., authentication, logging
+        if (!context.auth) {
+            // Optionally handle unauthenticated requests
         }
-      }
+        try {
+            return await handler(data, context);
+        } catch (error) {
+            // Log and re-throw the error
+            console.error("Unhandled error in onCall:", error);
+            if (error instanceof functions.https.HttpsError) {
+                throw error;
+            }
+            throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+        }
     });
-  });
 };
+
+const ensureIsAdmin = async (context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Admin-only function.");
+    }
+    const adminDoc = await db.collection("roles_admin").doc(context.auth.uid).get();
+    if (!adminDoc.exists) {
+        throw new functions.https.HttpsError("permission-denied", "Admin-only function.");
+    }
+};
+
+exports.checkAdminStatus = onCall(async (data, context) => {
+    if (!context.auth) {
+        return { isAdmin: false };
+    }
+    const { uid } = context.auth;
+    const adminDoc = await db.collection("roles_admin").doc(uid).get();
+    return { isAdmin: adminDoc.exists };
+});
+
 
 // --- Deposit Functions ---
 exports.requestDeposit = onCall(async (data, context) => {

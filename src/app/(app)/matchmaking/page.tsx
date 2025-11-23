@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Gamepad2, Users, Flame, ChevronRight, Wallet, AlertTriangle, Info, SlidersHorizontal, Loader2, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCollection, useDoc, useFirebase, useUser } from '@/firebase';
