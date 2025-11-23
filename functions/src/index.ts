@@ -15,36 +15,29 @@ const regionalFunctions = functions.region("us-east1");
 // --- Helpers ---
 const ensureIsAdmin = async (context: functions.https.CallableContext) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Admin-only function.");
+        throw new functions.https.HttpsError("unauthenticated", "Authentication is required to perform this action.");
     }
     const adminDoc = await db.collection("roles_admin").doc(context.auth.uid).get();
     if (!adminDoc.exists) {
-        throw new functions.https.HttpsError("permission-denied", "Admin-only function.");
+        throw new functions.https.HttpsError("permission-denied", "You must be an admin to perform this action.");
     }
 };
 
 export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
-    console.log("--- checkAdminStatus: Start ---");
+    // If there's no auth context, the user is not logged in, so they can't be an admin.
     if (!context.auth) {
-        console.log('checkAdminStatus: Unauthenticated user.');
         return { isAdmin: false };
     }
 
     const uid = context.auth.uid;
-    console.log(`checkAdminStatus: Authenticated user with UID: ${uid}`);
-
     try {
-        console.log(`checkAdminStatus: Accessing Firestore for roles_admin collection...`);
         const adminDocRef = db.collection("roles_admin").doc(uid);
         const adminDoc = await adminDocRef.get();
-        console.log(`checkAdminStatus: Firestore query completed.`);
-
-        const isAdmin = adminDoc.exists;
-        console.log(`checkAdminStatus for UID ${uid}: ${isAdmin ? 'Admin' : 'Not an Admin'}`);
-        return { isAdmin };
+        return { isAdmin: adminDoc.exists };
     } catch (error) {
-        console.error(`Error checking admin status for UID ${uid}:`, error);
-        throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
+        console.error(`Error in checkAdminStatus for UID ${uid}:`, error);
+        // Instead of crashing, throw a specific HttpsError.
+        throw new functions.https.HttpsError("unknown", "An error occurred while checking admin status.");
     }
 });
 
