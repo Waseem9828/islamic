@@ -24,7 +24,6 @@ const ensureIsAdmin = async (context: functions.https.CallableContext) => {
 };
 
 export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
-    // If there's no auth context, the user is not logged in, so they can't be an admin.
     if (!context.auth) {
         return { isAdmin: false };
     }
@@ -36,7 +35,6 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
         return { isAdmin: adminDoc.exists };
     } catch (error) {
         console.error(`Error in checkAdminStatus for UID ${uid}:`, error);
-        // Instead of crashing, throw a specific HttpsError.
         throw new functions.https.HttpsError("unknown", "An error occurred while checking admin status.");
     }
 });
