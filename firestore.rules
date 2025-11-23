@@ -7,10 +7,8 @@ service cloud.firestore {
     //  Helper Functions
     // =====================================================================
     function isAdmin() {
-      // User is an admin if their UID is in the roles_admin collection
-      // or if their UID is the hardcoded super-admin UID.
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
-             || request.auth.uid == "Mh28D81npYYDfC3z8mslVIPFu5H3";
+      // User is an admin if their UID is in the roles_admin collection.
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
     function isOwner(userId) {
@@ -71,6 +69,7 @@ service cloud.firestore {
 
     // roles_admin: Admins can list/write. Any auth'd user can check for existence.
     match /roles_admin/{userId} {
+      // Allow a user to check their own role, or allow any logged-in user to perform a check (for Cloud Functions).
       allow get: if request.auth != null;
       allow list, create, update, delete: if isAdmin();
     }
