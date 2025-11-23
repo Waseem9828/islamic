@@ -2,16 +2,16 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gamepad2, Home, Trophy, User, Wallet } from "lucide-react";
+import { Gamepad2, Home, Trophy, User, Wallet, History } from "lucide-react";
 
 const BottomNavbar = () => {
   const pathname = usePathname();
 
   const navItems = [
     { href: "/matchmaking", label: "Play", icon: Home },
-    { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/leaderboard", label: "Ranks", icon: Trophy },
     { href: "/wallet", label: "Wallet", icon: Wallet },
-    { href: "/play", label: "Create Match", icon: Gamepad2 },
+    { href: "/match-history", label: "History", icon: History },
   ];
 
   return (

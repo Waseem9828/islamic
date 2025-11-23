@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowDownLeft, ArrowUpRight, Banknote } from 'lucide-react';
+import { format } from 'date-fns';
 
 // Helper to format currency
 const formatCurrency = (amount: number) => {
@@ -20,7 +21,7 @@ const formatCurrency = (amount: number) => {
 // Helper to format date
 const formatDate = (timestamp: any) => {
   if (!timestamp) return 'N/A';
-  return new Date(timestamp.seconds * 1000).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  return format(new Date(timestamp.seconds * 1000), 'PPp');
 };
 
 export function TransactionsHistory() {
@@ -33,61 +34,49 @@ export function TransactionsHistory() {
     return query(
       collection(firestore, 'transactions'),
       where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      orderBy('timestamp', 'desc')
     );
   }, [user, firestore]);
 
   // Use the useCollection hook to fetch the data
-  const { data: transactions, loading } = useCollection(transactionsQuery);
-
-  // Calculate total deposits and withdrawals
-  const { totalDeposits, totalWithdrawals } = useMemo(() => {
-    if (!transactions) return { totalDeposits: 0, totalWithdrawals: 0 };
-
-    return transactions.reduce((acc, trans) => {
-        if (trans.status !== 'approved') return acc; // Only count approved transactions
-
-        if (trans.type === 'deposit') {
-            acc.totalDeposits += trans.amount;
-        } else if (trans.type === 'withdrawal') {
-            acc.totalWithdrawals += trans.amount;
-        }
-        return acc;
-    }, { totalDeposits: 0, totalWithdrawals: 0 });
-
-  }, [transactions]);
+  const { data: transactions, isLoading } = useCollection(transactionsQuery);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
-        return <Badge variant="success">Approved</Badge>;
+      case 'completed':
+      case 'success':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
       case 'pending':
         return <Badge variant="secondary">Pending</Badge>;
       case 'rejected':
-        return <Badge variant="destructive">Rejected</Badge>;
+      case 'cancelled':
+        return <Badge variant="destructive">Failed</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
   };
+  
+    const getReasonText = (reason: string) => {
+        const reasonMap: {[key: string]: string} = {
+            'deposit': 'Deposit',
+            'withdrawal_request': 'Withdrawal',
+            'match_creation': 'Match Entry',
+            'match_join': 'Match Entry',
+            'match_win': 'Match Winnings',
+            'match_cancellation_refund': 'Match Refund',
+            'bonus': 'Bonus Credit',
+        }
+        return reasonMap[reason] || reason.replace(/_/g, ' ');
+    }
 
   return (
     <Card className="mt-8">
       <CardHeader>
-        <CardTitle className="flex items-center"><Banknote className="mr-2"/>Transaction History</CardTitle>
+        <CardTitle className="flex items-center"><Banknote className="mr-2"/>Recent Transactions</CardTitle>
       </CardHeader>
       <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Deposits</p>
-                  <p className="text-2xl font-bold text-green-600">{formatCurrency(totalDeposits)}</p>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Withdrawals</p>
-                  <p className="text-2xl font-bold text-red-600">{formatCurrency(totalWithdrawals)}</p>
-              </div>
-          </div>
-
-        {loading ? (
+        {isLoading ? (
             <div className="space-y-2">
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
@@ -97,22 +86,22 @@ export function TransactionsHistory() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Type</TableHead>
+                <TableHead>Details</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map(tx => (
+              {transactions.slice(0, 5).map(tx => (
                 <TableRow key={tx.id}>
                   <TableCell className="font-medium capitalize flex items-center">
-                    {tx.type === 'deposit' ? <ArrowDownLeft className="h-4 w-4 mr-2 text-green-500"/> : <ArrowUpRight className="h-4 w-4 mr-2 text-red-500"/>}
-                    {tx.type}
+                    {tx.type === 'credit' ? <ArrowDownLeft className="h-4 w-4 mr-2 text-green-500"/> : <ArrowUpRight className="h-4 w-4 mr-2 text-red-500"/>}
+                    {getReasonText(tx.reason)}
                   </TableCell>
-                  <TableCell>{formatCurrency(tx.amount)}</TableCell>
+                  <TableCell className={`font-semibold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(tx.amount)}</TableCell>
                   <TableCell>{getStatusBadge(tx.status)}</TableCell>
-                  <TableCell className="text-right">{formatDate(tx.createdAt)}</TableCell>
+                  <TableCell className="text-right text-xs">{formatDate(tx.timestamp)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -122,9 +111,9 @@ export function TransactionsHistory() {
         )}
       </CardContent>
       {
-        !loading && transactions && transactions.length > 5 && (
-            <CardFooter className="text-center text-muted-foreground text-sm">
-                <p>Showing last {transactions.length} transactions.</p>
+        !isLoading && transactions && transactions.length > 5 && (
+            <CardFooter className="text-center text-muted-foreground text-sm justify-center">
+                <p>Showing last 5 transactions. <a href="/transactions" className='text-primary hover:underline'>View All</a></p>
             </CardFooter>
         )
       }

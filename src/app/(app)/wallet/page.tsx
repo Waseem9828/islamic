@@ -9,8 +9,8 @@ import { useDocumentData } from 'react-firebase-hooks/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, Loader2 } from 'lucide-react';
-import { TransactionsHistory } from './transactions-history'; // Import the new component
+import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, Loader2, History } from 'lucide-react';
+import AllTransactionsPage from '../transactions/page'; // Import the new component
 
 const WalletStatCard = ({ title, value, icon: Icon, isLoading, className = '' }: { title: string, value: number, icon: React.ElementType, isLoading: boolean, className?: string }) => (
     <div className={`p-4 rounded-lg flex items-center justify-between ${className}`}>
@@ -86,7 +86,7 @@ export default function WalletPage() {
             </Card>
 
             {/* Replace the old transaction history with the new component */}
-            <TransactionsHistory />
+            <AllTransactionsPage />
         </div>
     );
 }
