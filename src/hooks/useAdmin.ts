@@ -1,11 +1,9 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useFirebase, useUser } from '@/firebase';
-
-// Hardcoded super-admin UID from your security rules
-const SUPER_ADMIN_UID = 'Mh28D81npYYDfC3z8mslVIPFu5H3';
 
 interface AdminStatus {
   isAdmin: boolean;
@@ -13,58 +11,49 @@ interface AdminStatus {
 }
 
 /**
- * @description Custom hook to check if the current user is an admin.
- * An admin is defined as a user whose UID is in the 'roles_admin' collection
- * or who matches the hardcoded SUPER_ADMIN_UID.
+ * @description Custom hook to check if the current user is an admin by calling a Cloud Function.
  * @returns {isAdmin: boolean, isAdminLoading: boolean}
  */
 export const useAdmin = (): AdminStatus => {
-  const { firestore } = useFirebase();
+  const { functions } = useFirebase();
   const { user, isUserLoading } = useUser();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(true);
 
   useEffect(() => {
-    // If user is still loading, we can't check for admin status yet.
+    // Don't do anything until Firebase auth state is resolved.
     if (isUserLoading) {
-      setIsAdminLoading(true);
       return;
     }
 
-    // If there is no user, they can't be an admin.
+    // If there's no user, they can't be an admin.
     if (!user) {
       setIsAdmin(false);
       setIsAdminLoading(false);
       return;
     }
 
-    // Check if the user is the hardcoded super-admin.
-    if (user.uid === SUPER_ADMIN_UID) {
-        setIsAdmin(true);
+    // If we have a user and functions are available, call the Cloud Function.
+    if (user && functions) {
+      const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
+      checkAdmin()
+        .then((result) => {
+          const isAdminResult = (result.data as { isAdmin: boolean }).isAdmin;
+          setIsAdmin(isAdminResult);
+        })
+        .catch((error) => {
+          console.error('Error calling checkAdminStatus function:', error);
+          setIsAdmin(false);
+        })
+        .finally(() => {
+          setIsAdminLoading(false);
+        });
+    } else {
+        // If functions aren't ready for some reason, assume not admin.
+        setIsAdmin(false);
         setIsAdminLoading(false);
-        return;
     }
-
-    // Check if the user's UID is in the 'roles_admin' collection.
-    const checkAdminStatus = async () => {
-      if (!firestore) {
-        setIsAdmin(false);
-        setIsAdminLoading(false);
-        return;
-      }
-      try {
-        const adminRoleDoc = await getDoc(doc(firestore, 'roles_admin', user.uid));
-        setIsAdmin(adminRoleDoc.exists());
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setIsAdminLoading(false);
-      }
-    };
-
-    checkAdminStatus();
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, functions]);
 
   return { isAdmin, isAdminLoading };
 };
