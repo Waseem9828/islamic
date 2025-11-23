@@ -239,7 +239,7 @@ export default function MatchmakingPage() {
             <TabsContent value="inprogress">{renderMatchList(inProgressMatches, 'inprogress')}</TabsContent>
         </Tabs>
 
-        <div className="fixed bottom-4 right-4 sm:hidden">
+        <div className="fixed bottom-20 right-4 sm:hidden">
             <Button size="lg" className="rounded-full h-16 w-16 shadow-lg" onClick={handleCreateMatch}><Star className="h-7 w-7"/></Button>
         </div>
         
