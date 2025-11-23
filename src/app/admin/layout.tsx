@@ -18,11 +18,11 @@ const LoadingScreen = () => (
 );
 
 const AccessDenied = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <div className="bg-white p-12 rounded-lg shadow-lg text-center">
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow-lg text-center">
             <h1 className="text-4xl font-bold text-red-500 mb-4">Access Denied</h1>
-            <p className="text-lg text-gray-700">You do not have permission to view this page.</p>
-            <p className="text-sm text-gray-500 mt-2">Please contact an administrator if you believe this is an error.</p>
+            <p className="text-lg text-gray-700 dark:text-gray-200">You do not have permission to view this page.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Please contact an administrator if you believe this is an error.</p>
         </div>
     </div>
 );
@@ -52,7 +52,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     if (isAdmin) {
                         setAuthStatus('allowed');
                     } else {
-                        console.warn('User is not an admin. Denying access.');
                         setAuthStatus('denied');
                     }
                 } catch (error) {
@@ -61,7 +60,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }
             } else {
                 // User is not logged in, redirect them to the login page
-                console.log('User is not authenticated. Redirecting to login.');
                 router.push(`/login?redirect=${pathname}`);
             }
         });
@@ -83,10 +81,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // If authorized, render the full admin layout
     if (authStatus === 'allowed') {
         return (
-            <div className="min-h-screen bg-background">
+            <div className="min-h-screen bg-muted/40">
                 <AdminSidebar />
-                {/* Apply padding to the left of the main content to account for the sidebar width */}
-                <main className="pl-64">
+                <main className="md:pl-64">
                     {children}
                 </main>
             </div>
