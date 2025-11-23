@@ -8,9 +8,9 @@ if (admin.apps.length === 0) {
 }
 
 const db = admin.firestore();
-
 // Define the function region to match the Firestore database.
 const regionalFunctions = functions.region("us-east1");
+
 
 // --- Helpers ---
 const ensureIsAdmin = async (context: functions.https.CallableContext) => {
@@ -63,9 +63,9 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         ] = await Promise.all([
             db.collection("users").get(),
             db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
-            db.collection("deposits").where("status", "==", "pending").get(),
-            db.collection("withdrawals").where("status", "==", "pending").get(),
-            db.collection("appConfig").doc("finances").get()
+            db.collection("depositRequests").where("status", "==", "pending").get(),
+            db.collection("withdrawalRequests").where("status", "==", "pending").get(),
+            db.collection("settings").doc("finances").get()
         ]);
 
         const totalUsers = usersSnapshot.size;
