@@ -1,77 +1,37 @@
 'use client';
 
-import { Sidebar, SidebarProvider, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { Home, Landmark, User, Swords, Trophy } from 'lucide-react';
-import { FirebaseClientProvider } from '@/firebase/client-provider'; // Fixed import name
+import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { Header } from '@/components/layout/Header';
+import { MobileSidebar } from '@/components/layout/MobileSidebar';
+import { BottomNav } from '@/components/layout/BottomNav';
 
-export default function ClientLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Routes where the main layout (header, bottom nav) should be hidden
+  const noLayoutRoutes = ['/login', '/signup', '/'];
+
+  // If the current path is one of the no-layout routes, just render the children
+  if (noLayoutRoutes.includes(pathname)) {
+    return <>{children}</>;
+  }
+
+  // Otherwise, render the full client layout
   return (
-    <FirebaseClientProvider> {/* Use the correct component name */}
-      <SidebarProvider>
-        <div className="flex h-screen bg-background">
-          <Sidebar>
-            <SidebarContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/">
-                      <Home className="h-4 w-4" />
-                      <span>Home</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/deposit">
-                      <Landmark className="h-4 w-4" />
-                      <span>Deposit</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/withdraw">
-                      <Landmark className="h-4 w-4" />
-                      <span>Withdraw</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/profile">
-                      <User className="h-4 w-4" />
-                      <span>Profile</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/games">
-                      <Swords className="h-4 w-4" />
-                      <span>Games</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a href="/leaderboard">
-                      <Trophy className="h-4 w-4" />
-                      <span>Leaderboard</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarContent>
-          </Sidebar>
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
-        </div>
-      </SidebarProvider>
-    </FirebaseClientProvider>
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <Header onMenuClick={() => setSidebarOpen(true)} />
+      <MobileSidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
+
+      {/* Add padding to the bottom of the content to avoid overlap with BottomNav */}
+      <div className="h-16 md:hidden" /> 
+
+      <BottomNav />
+    </div>
   );
 }

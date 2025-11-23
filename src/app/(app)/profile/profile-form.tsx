@@ -14,12 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { uploadFile } from '@/firebase/storage';
 import { Separator } from '@/components/ui/separator';
+import { useAdmin } from '@/hooks/useAdmin'; // Import the useAdmin hook
 
 export function ProfileForm() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
-  const { auth, firestore } = useFirebase(); // Correctly use the hook
-  
+  const { auth, firestore } = useFirebase();
+  const { isAdmin, isAdminLoading } = useAdmin(); // Use the admin hook
+
   const [displayName, setDisplayName] = useState('');
   const [upiId, setUpiId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -56,7 +58,7 @@ export function ProfileForm() {
       toast.error("Failed to log out.");
     }
   };
-  
+
   const handlePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!user || !auth?.currentUser || !firestore) return;
     const file = event.target.files?.[0];
@@ -65,13 +67,14 @@ export function ProfileForm() {
     setIsUploading(true);
 
     try {
-      const downloadURL = await uploadFile(file, user.uid, 'profile-pictures');
+      // Correctly call uploadFile with folder and file name (user.uid)
+      const downloadURL = await uploadFile(file, 'avatars', user.uid);
 
       await updateProfile(auth.currentUser, { photoURL: downloadURL });
-      
+
       const userDocRef = doc(firestore, "users", user.uid);
       await updateDoc(userDocRef, { photoURL: downloadURL });
-      
+
       setAvatarSrc(downloadURL);
       toast.success("Profile picture updated!");
     } catch (error: any) {
@@ -86,12 +89,12 @@ export function ProfileForm() {
     if (!user || !firestore || !auth?.currentUser) return;
 
     setIsSaving(true);
-    
+
     try {
         if (auth.currentUser.displayName !== displayName) {
             await updateProfile(auth.currentUser, { displayName });
         }
-        
+
         const userDocRef = doc(firestore, "users", user.uid);
         await updateDoc(userDocRef, {
             displayName: displayName,
@@ -107,10 +110,10 @@ export function ProfileForm() {
     }
   };
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || !user || isAdminLoading) {
     return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
+
   return (
     <Card className="max-w-2xl mx-auto my-4 sm:my-8 shadow-lg">
         <CardHeader className="text-center items-center p-4 sm:p-6">
@@ -134,7 +137,7 @@ export function ProfileForm() {
             <CardTitle className="text-xl sm:text-2xl mt-3 font-bold">{displayName || user.email}</CardTitle>
             <CardDescription className="text-xs sm:text-sm font-mono bg-muted px-2 py-1 rounded-md">UID: {user.uid}</CardDescription>
         </CardHeader>
-        
+
         <CardContent className="p-4 sm:p-6">
             <div className="space-y-4 mb-6">
                 <h3 className="text-lg font-semibold flex items-center"><UserIcon className="mr-2 h-5 w-5"/>Personal Information</h3>
@@ -155,21 +158,22 @@ export function ProfileForm() {
             </div>
 
             <Separator className="my-6" />
-            
+
             <div className="space-y-2">
                 <h3 className="text-lg font-semibold">Actions</h3>
                 <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/wallet')}>
                     <div className="flex items-center"><Wallet className="mr-2 h-5 w-5" />My Wallet</div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </Button>
-                {/* Add a check for admin role if available */}
-                <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/admin')}>
-                    <div className="flex items-center"><UserCog className="mr-2 h-5 w-5" />Admin Panel</div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </Button>
+                {isAdmin && (
+                  <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/admin')}>
+                      <div className="flex items-center"><UserCog className="mr-2 h-5 w-5" />Admin Panel</div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+                )}
             </div>
         </CardContent>
-        
+
         <CardFooter className="flex flex-col gap-3 p-4 sm:p-6">
             <Button onClick={handleProfileSave} disabled={isSaving || isUploading} className="w-full py-6 text-base">
                 {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}

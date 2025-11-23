@@ -1,19 +1,32 @@
-import { getStorage, ref, deleteObject } from 'firebase/storage';
+
+import { getStorage, ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Function to delete a file from Firebase Storage using its URL
 export const deleteFileByUrl = async (url: string): Promise<void> => {
   const storage = getStorage();
-  // Create a reference to the file to delete
-  // This assumes the URL is a standard Firebase Storage URL
   const fileRef = ref(storage, url);
 
   try {
-    // Delete the file
     await deleteObject(fileRef);
     console.log('File deleted successfully');
   } catch (error) {
-    // Uh-oh, an error occurred!
     console.error('Error deleting file:', error);
-    throw error; // Re-throw the error to be handled by the caller
+    throw error;
   }
+};
+
+// Function to upload a file to Firebase Storage
+export const uploadFile = async (file: File, folder: string, fileName: string): Promise<string> => {
+    const storage = getStorage();
+    const path = `${folder}/${fileName}`;
+    const storageRef = ref(storage, path);
+
+    try {
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
+    } catch (error) {
+        console.error("Error uploading file:", error);
+        throw error;
+    }
 };

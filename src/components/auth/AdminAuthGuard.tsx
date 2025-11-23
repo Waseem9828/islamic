@@ -1,51 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAdmin } from '@/hooks/useAdmin';
+import { useUser } from '@/firebase';
+import { Loader2 } from 'lucide-react';
 
 export default function AdminAuthGuard({ children }: { children: React.ReactNode }) {
-  const { auth } = useFirebase();
+  const { isAdmin, isAdminLoading } = useAdmin();
+  const { isUserLoading } = useUser();
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) {
-      // Firebase might not be initialized yet
+    const isAuthenticating = isAdminLoading || isUserLoading;
+    if (isAuthenticating) {
+      // Wait for the admin and user status to be determined
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const idTokenResult = await user.getIdTokenResult();
-          if (idTokenResult.claims.admin) {
-            setIsAdmin(true);
-          } else {
-            // User is logged in but not an admin
-            router.push('/'); // Redirect to home page or a not-authorized page
-          }
-        } catch (error) {
-          console.error("Error getting user token:", error);
-          router.push('/admin/login');
-        }
-      } else {
-        // No user is logged in
-        router.push('/admin/login');
-      }
-      setLoading(false);
-    });
+    if (!isAdmin) {
+      // If not an admin, redirect to the matchmaking page
+      router.replace('/matchmaking');
+    }
+  }, [isAdmin, isAdminLoading, isUserLoading, router]);
 
-    return () => unsubscribe();
-  }, [auth, router]);
+  const isLoading = isAdminLoading || isUserLoading;
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-lg font-semibold">Loading Admin Panel...</div>
-        {/* You can add a spinner here */}
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-lg font-semibold text-muted-foreground">Verifying Admin Access...</p>
+        </div>
       </div>
     );
   }
@@ -54,6 +41,6 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
     return <>{children}</>;
   }
 
-  // This part will be briefly visible before the redirect happens
+  // Render nothing while redirecting
   return null;
 }

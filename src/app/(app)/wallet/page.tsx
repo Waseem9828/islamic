@@ -1,19 +1,16 @@
-
 'use client';
 
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
-import { collection, doc, query, where, orderBy, limit } from 'firebase/firestore';
-import { useCollectionData, useDocumentData } from 'react-firebase-hooks/firestore';
+import { doc } from 'firebase/firestore';
+import { useDocumentData } from 'react-firebase-hooks/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, Loader2, Dot } from 'lucide-react';
-import { format } from 'date-fns';
+import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, Loader2 } from 'lucide-react';
+import { TransactionsHistory } from './transactions-history'; // Import the new component
 
 const WalletStatCard = ({ title, value, icon: Icon, isLoading, className = '' }: { title: string, value: number, icon: React.ElementType, isLoading: boolean, className?: string }) => (
     <div className={`p-4 rounded-lg flex items-center justify-between ${className}`}>
@@ -25,75 +22,6 @@ const WalletStatCard = ({ title, value, icon: Icon, isLoading, className = '' }:
     </div>
 );
 
-
-const HistoryItem = ({ item }: { item: any }) => (
-    <Card className="p-3 mb-2">
-        <div className="flex justify-between items-start">
-            <div className="space-y-1">
-                <p className="font-semibold capitalize text-sm">{item.reason?.replace('_', ' ') || item.type}</p>
-                <p className={`text-lg font-bold ${item.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                    {item.type === 'credit' ? '+' : '-'}₹{item.amount.toFixed(2)}
-                </p>
-            </div>
-            <div className="text-right space-y-1">
-                <Badge variant={item.status === 'approved' || item.status === 'completed' ? 'success' : item.status === 'rejected' ? 'destructive' : 'secondary'}>{item.status}</Badge>
-                <p className="text-xs text-muted-foreground pt-1">
-                    {item.timestamp ? format(item.timestamp.toDate(), 'P') : 'N/A'}
-                </p>
-            </div>
-        </div>
-        {item.bonus > 0 && (
-            <p className="text-xs text-green-600 mt-2">+ ₹{item.bonus.toFixed(2)} bonus</p>
-        )}
-    </Card>
-);
-
-const HistoryTable = ({ history, isLoading, type }: { history: any[], isLoading: boolean, type: 'Deposit' | 'Withdrawal' | 'All' }) => {
-    if (isLoading) {
-        return <div className="space-y-2 p-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>;
-    }
-    if (history.length === 0) {
-        return <p className="text-center text-muted-foreground py-8">No {type !== 'All' && type.toLowerCase()} history.</p>;
-    }
-    
-    return (
-        <>
-            {/* Mobile View */}
-            <div className="md:hidden">
-                {history.map(item => <HistoryItem key={item.id} item={item} />)}
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden md:block">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Date</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {history.map((item) => (
-                            <TableRow key={item.id}>
-                                <TableCell className="font-medium capitalize flex items-center">{item.reason?.replace('_', ' ') || item.type} {item.bonus > 0 && <Badge variant="outline" className="ml-2 text-green-600 border-green-600">+Bonus</Badge>}</TableCell>
-                                <TableCell className={`font-semibold ${item.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                                   {item.type === 'credit' ? '+' : '-'}₹{item.amount.toFixed(2)}
-                                </TableCell>
-                                <TableCell><Badge variant={item.status === 'approved' || item.status === 'completed' ? 'success' : item.status === 'rejected' ? 'destructive' : 'secondary'}>{item.status}</Badge></TableCell>
-                                <TableCell className="text-right text-xs text-muted-foreground">
-                                    {item.timestamp ? format(item.timestamp.toDate(), 'PPp') : 'N/A'}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        </>
-    );
-};
-
 export default function WalletPage() {
     const { user, isUserLoading } = useUser();
     const { firestore } = useFirebase();
@@ -101,14 +29,6 @@ export default function WalletPage() {
 
     const walletRef = useMemo(() => user ? doc(firestore!, 'wallets', user.uid) : null, [user, firestore]);
     const [walletData, isWalletLoading] = useDocumentData(walletRef);
-    
-    const transactionsQuery = useMemo(() => user ? query(
-        collection(firestore!, 'transactions'),
-        where('userId', '==', user.uid),
-        orderBy('timestamp', 'desc'),
-        limit(50)
-    ) : null, [user, firestore]);
-    const [transactions, isHistoryLoading] = useCollectionData(transactionsQuery);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -165,15 +85,8 @@ export default function WalletPage() {
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader className="px-4 py-4 sm:px-6">
-                    <CardTitle>Transaction History</CardTitle>
-                    <CardDescription>A record of your recent financial activities.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-2 sm:p-4">
-                    <HistoryTable history={transactions || []} isLoading={isHistoryLoading} type="All" />
-                </CardContent>
-            </Card>
+            {/* Replace the old transaction history with the new component */}
+            <TransactionsHistory />
         </div>
     );
 }

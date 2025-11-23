@@ -6,16 +6,15 @@ import { useFirebase, useUser } from '@/firebase';
 import { uploadFile } from '@/firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Upload } from 'lucide-react';
 
 export default function DepositPage() {
-    const { toast } = useToast();
     const { user, isUserLoading } = useUser();
     const { functions, firestore } = useFirebase();
     const router = useRouter();
@@ -48,7 +47,7 @@ export default function DepositPage() {
                 }
             } catch (error) {
                 console.error("Error fetching payment settings:", error);
-                toast({ title: "Error", description: "Could not load payment details.", variant: "destructive" });
+                toast.error("Error", { description: "Could not load payment details." });
             }
             setIsLoadingSettings(false);
         };
@@ -59,7 +58,7 @@ export default function DepositPage() {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             if (!file.type.startsWith('image/')) {
-                toast({ title: "Invalid File", description: "Please upload an image file.", variant: "destructive" });
+                toast.error("Invalid File", { description: "Please upload an image file." });
                 return;
             }
             setScreenshot(file);
@@ -72,7 +71,7 @@ export default function DepositPage() {
         if (!user || !functions) return;
 
         if (!amount || !transactionId || !screenshot) {
-            toast({ title: "Missing Fields", description: "Please fill out all fields and upload a screenshot.", variant: "destructive" });
+            toast.error("Missing Fields", { description: "Please fill out all fields and upload a screenshot." });
             return;
         }
 
@@ -81,7 +80,7 @@ export default function DepositPage() {
         try {
             // 1. Upload the screenshot
             setSubmitStep('Uploading screenshot...');
-            const downloadURL = await uploadFile(screenshot, user.uid, 'deposits');
+            const downloadURL = await uploadFile(screenshot, `deposits/${user.uid}`, transactionId);
 
             // 2. Call the cloud function with the URL
             setSubmitStep('Submitting request...');
@@ -92,13 +91,13 @@ export default function DepositPage() {
                 screenshotUrl: downloadURL,
             });
 
-            toast({ title: "Success", description: "Your deposit request has been submitted for verification." });
+            toast.success("Success", { description: "Your deposit request has been submitted for verification." });
             router.push('/wallet');
 
         } catch (error: any) {
             console.error("Deposit request failed:", error);
             const errorMessage = error.message || "An unexpected error occurred.";
-            toast({ title: "Submission Failed", description: errorMessage, variant: "destructive" });
+            toast.error("Submission Failed", { description: errorMessage });
         } finally {
             setIsSubmitting(false);
             setSubmitStep('');

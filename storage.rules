@@ -2,9 +2,33 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    // A function to check if the user is an admin.
+    function isAdmin() {
+      // Check if the user has an admin role in Firestore.
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    // Rules for deposit screenshots
     match /deposits/{userId}/{fileName} {
+      // Allow write access if the user is the owner of the folder or is an admin.
+      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Allow read access if the user is the owner or an admin.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Rules for user avatars
+    match /avatars/{userId}/{imageName} {
+      // Allow anyone to read avatars, as they are public profile pictures.
+      allow read: if true;
+      // Allow a user to write (create, update, delete) to their own avatar folder.
+      // - The user must be authenticated.
+      // - The user's UID must match the folder they are trying to write to.
       allow write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Fallback rule to deny all other access.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

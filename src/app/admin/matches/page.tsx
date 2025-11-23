@@ -157,66 +157,66 @@ export default function ManageMatchesPage() {
         return <p className="text-center text-muted-foreground py-6 col-span-full">No matches in this category.</p>
       }
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matches.map(match => (
-              <MatchCard key={match.id} match={match}>
-                  { (match.status === 'waiting' || match.status === 'inprogress') && (
-                     <div className="space-y-2">
-                        <Select 
-                            onValueChange={(value) => setSelectedWinner(prev => ({...prev, [match.id]: value}))}
-                            value={selectedWinner[match.id] || ''}
-                        >
-                            <SelectTrigger className="h-9">
-                                <SelectValue placeholder="Select Winner" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {match.playersInfo.map((player: any) => (
-                                    <SelectItem key={player.id} value={player.id}>
-                                        <div className="flex items-center gap-2">
-                                            <Avatar className="h-5 w-5">
-                                                <AvatarImage src={player.photoURL || `https://avatar.vercel.sh/${player.email}.png`} />
-                                                <AvatarFallback>{player.displayName?.[0] || 'U'}</AvatarFallback>
-                                            </Avatar>
-                                            <span>{player.displayName || player.email}</span>
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                         <div className="flex gap-2">
-                            <Button onClick={() => handleDeclareWinner(match.id)} disabled={isSubmitting[match.id] || !selectedWinner[match.id]} className='w-full' size="sm">
-                                {isSubmitting[match.id] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Crown className="mr-2 h-4 w-4"/>}
-                                Declare
-                            </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm" disabled={isSubmitting[`cancel-${match.id}`]} className="w-full">
-                                        {isSubmitting[`cancel-${match.id}`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
-                                        Cancel
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will cancel the match and refund the entry fee to all players. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Back</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleCancelMatch(match.id)}>Confirm</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                             <Link href={`/match/${match.id}`} passHref>
-                                <Button variant="outline" size="sm" className="w-full"><Eye className="mr-2 h-4 w-4"/> View</Button>
-                            </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {matches.map(match => (
+                  <MatchCard key={match.id} match={match}>
+                      { (match.status === 'waiting' || match.status === 'inprogress') && (
+                         <div className="space-y-2">
+                            <Select 
+                                onValueChange={(value) => setSelectedWinner(prev => ({...prev, [match.id]: value}))}
+                                value={selectedWinner[match.id] || ''}
+                            >
+                                <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Select Winner" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {match.playersInfo.map((player: any) => (
+                                        <SelectItem key={player.id} value={player.id}>
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-5 w-5">
+                                                    <AvatarImage src={player.photoURL || `https://avatar.vercel.sh/${player.email}.png`} />
+                                                    <AvatarFallback>{player.displayName?.[0] || 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <span>{player.displayName || player.email}</span>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                             <div className="flex gap-2">
+                                <Button onClick={() => handleDeclareWinner(match.id)} disabled={isSubmitting[match.id] || !selectedWinner[match.id]} className='w-full' size="sm">
+                                    {isSubmitting[match.id] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Crown className="mr-2 h-4 w-4"/>}
+                                    Declare
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="sm" disabled={isSubmitting[`cancel-${match.id}`]} className="w-full">
+                                            {isSubmitting[`cancel-${match.id}`] ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4"/>}
+                                            Cancel
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will cancel the match and refund the entry fee to all players. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Back</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleCancelMatch(match.id)}>Confirm</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                 <Link href={`/match/${match.id}`}>
+                                    <Button variant="outline" size="sm" className="w-full"><Eye className="mr-2 h-4 w-4"/> View</Button>
+                                </Link>
+                            </div>
                         </div>
-                    </div>
-                  )}
-              </MatchCard>
-          ))}
-        </div>
+                      )}
+                  </MatchCard>
+              ))}
+          </div>
       );
   }
 
