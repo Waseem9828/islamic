@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 
 export function LoginForm() {
     const [email, setEmail] = useState('');
@@ -46,16 +48,16 @@ export function LoginForm() {
                     if (isAdmin) {
                         router.push('/admin/dashboard');
                     } else {
-                        router.push('/dashboard');
+                        router.push('/matchmaking');
                     }
                 } catch (adminCheckError) {
                     console.error("Admin check failed:", adminCheckError);
                     // Default to user dashboard if admin check fails
-                    router.push('/dashboard');
+                    router.push('/matchmaking');
                 }
             } else {
                  // This case should ideally not be reached if signInWithEmailAndPassword succeeds
-                 router.push('/dashboard');
+                 router.push('/matchmaking');
             }
 
         } catch (error: any) {
@@ -81,56 +83,57 @@ export function LoginForm() {
     };
 
     return (
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold">Login</h1>
-            <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
-            </p>
-          </div>
-          <form onSubmit={handleSignIn} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-              </div>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
+        <Card className="w-full max-w-md mx-4">
+            <CardHeader className="text-center">
+                <CardTitle className="text-3xl font-bold">Welcome Back</CardTitle>
+                <CardDescription>Enter your email below to login to your account.</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSignIn}>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="m@example.com"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center">
+                            <Label htmlFor="password">Password</Label>
+                        </div>
+                        <Input
+                            id="password"
+                            type="password"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </div>
 
-            {error && (
-                <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
-            )}
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
-        </div>
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+                <CardFooter className="flex flex-col gap-4">
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
+                    </Button>
+                    <div className="text-center text-sm">
+                        Don&apos;t have an account?{" "}
+                        <Link href="/signup" className="underline font-semibold">
+                            Sign up
+                        </Link>
+                    </div>
+                </CardFooter>
+            </form>
+        </Card>
       );
 }

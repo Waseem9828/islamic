@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { FirebaseError } from 'firebase/app';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function SignUpForm() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,8 @@ export function SignUpForm() {
   const router = useRouter();
   const { auth, firestore } = useFirebase();
 
-  const handleSignUp = async () => {
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!auth || !firestore) {
       toast.error('Auth service is not available. Please try again later.');
       return;
@@ -39,6 +41,7 @@ export function SignUpForm() {
         photoURL: user.photoURL || '',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        status: 'active',
       });
       
       const walletDocRef = doc(firestore, 'wallets', user.uid);
@@ -53,7 +56,13 @@ export function SignUpForm() {
       router.push('/matchmaking'); // Redirect to the matchmaking page
     } catch (error) {
       if (error instanceof FirebaseError) {
-        toast.error(error.message);
+        let message = error.message;
+        if(error.code === 'auth/email-already-in-use'){
+          message = 'This email is already registered. Please login instead.'
+        } else if (error.code === 'auth/weak-password') {
+          message = 'Password should be at least 6 characters.'
+        }
+        toast.error(message);
       } else {
         toast.error('An unknown error occurred.');
       }
@@ -63,52 +72,51 @@ export function SignUpForm() {
   };
 
   return (
-    <div className="mx-auto grid w-[350px] gap-6">
-      <div className="grid gap-2 text-center">
-        <h1 className="text-3xl font-bold">Sign Up</h1>
-        <p className="text-balance text-muted-foreground">
-          Enter your email below to create an account
-        </p>
-      </div>
-      <div className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="m@example.com"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isLoading}
-          />
-        </div>
-        <div className="grid gap-2">
-          <div className="flex items-center">
-            <Label htmlFor="password">Password</Label>
+     <Card className="w-full max-w-md mx-4">
+      <CardHeader className="text-center">
+        <CardTitle className="text-3xl font-bold">Create an Account</CardTitle>
+        <CardDescription>
+          Enter your email below to begin your journey.
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSignUp}>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="m@example.com"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+            />
           </div>
-          <Input 
-            id="password" 
-            type="password" 
-            required 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading}
-          />
-        </div>
-        <Button type="button" className="w-full" onClick={handleSignUp} disabled={isLoading}>
-          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Sign Up'}
-        </Button>
-        <Button variant="outline" className="w-full" disabled={isLoading}>
-          Sign Up with Google
-        </Button>
-      </div>
-      <div className="mt-4 text-center text-sm">
-        Already have an account?{' '}
-        <Link href="/login" className="underline">
-          Login
-        </Link>
-      </div>
-    </div>
+          <div className="grid gap-2">
+            <Label htmlFor="password">Password</Label>
+            <Input 
+              id="password" 
+              type="password" 
+              required 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Create Account'}
+            </Button>
+            <div className="text-center text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="underline font-semibold">
+                Login
+              </Link>
+            </div>
+        </CardFooter>
+      </form>
+    </Card>
   );
 }
