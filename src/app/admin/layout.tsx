@@ -3,9 +3,9 @@
 
 import { useAdmin } from '@/hooks/useAdmin';
 import { useRouter } from 'next/navigation';
-import { AdminSidebar } from "@/components/admin/sidebar";
+import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // --- UI Components for Different States ---
 
@@ -21,6 +21,8 @@ const LoadingScreen = () => (
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { isAdmin, isAdminLoading } = useAdmin();
     const router = useRouter();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
 
     useEffect(() => {
         // Wait until loading is complete before making a decision
@@ -49,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     
     return (
         <div className="min-h-screen bg-muted/40">
-            <AdminSidebar />
+            <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             <main className="md:pl-64">
                 {children}
             </main>

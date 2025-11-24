@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 
 interface AdminStatus {
   isAdmin: boolean;
@@ -15,8 +15,7 @@ interface AdminStatus {
  * @returns {isAdmin: boolean, isAdminLoading: boolean}
  */
 export const useAdmin = (): AdminStatus => {
-  const { functions } = useFirebase();
-  const { user, isUserLoading } = useUser();
+  const { functions, user, isUserLoading } = useFirebase();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminLoading, setIsAdminLoading] = useState(true);
 
