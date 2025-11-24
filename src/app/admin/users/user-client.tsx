@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDoc, doc as firestoreDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase';
 import { toast } from 'sonner';
@@ -52,7 +53,7 @@ export const UserClient = ({ initialUsers }: UserClientProps) => {
         const unsubscribe = onSnapshot(q, async (querySnapshot) => {
             const usersData: User[] = [];
             const adminRoles = new Map<string, boolean>();
-            const adminSnapshot = await collection(firestore, 'roles_admin').get();
+            const adminSnapshot = await getDocs(collection(firestore, 'roles_admin'));
             adminSnapshot.forEach(doc => adminRoles.set(doc.id, true));
 
             querySnapshot.forEach(doc => {
@@ -69,7 +70,7 @@ export const UserClient = ({ initialUsers }: UserClientProps) => {
             setUsers(usersData);
         });
         return () => unsubscribe();
-    }, [firestore]);
+    }, [firestore, setUsers]);
 
     // Handle user status change (suspend/activate)
     const handleUpdateStatus = async (uid: string, status: 'active' | 'suspended') => {
