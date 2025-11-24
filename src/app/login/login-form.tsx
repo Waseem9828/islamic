@@ -73,6 +73,9 @@ export function LoginForm() {
                 case 'auth/invalid-email':
                     errorMessage = "The email address is not valid.";
                     break;
+                 case 'auth/invalid-credential':
+                    errorMessage = "Invalid credentials. Please check your email and password.";
+                    break;
                 default:
                     errorMessage = error.message;
                     break;
