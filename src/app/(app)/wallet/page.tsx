@@ -10,6 +10,7 @@ import { useCollectionData } from 'react-firebase-hooks/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, Loader2, History } from 'lucide-react';
 import { format } from 'date-fns';
@@ -29,10 +30,10 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
 };
 
-// Helper to format date
+// Helper to format date and time
 const formatDate = (timestamp: any) => {
   if (!timestamp) return 'N/A';
-  return format(timestamp.toDate(), "PP");
+  return format(timestamp.toDate(), "PPp"); // e.g., Jun 20, 2024, 5:30 PM
 };
 
 const getReasonText = (reason: string) => {
@@ -47,6 +48,22 @@ const getReasonText = (reason: string) => {
     }
     return reasonMap[reason] || reason.replace(/_/g, ' ');
 }
+
+const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+      case 'success':
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Completed</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>;
+      case 'rejected':
+      case 'cancelled':
+        return <Badge variant="destructive">Failed</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+};
 
 export default function WalletPage() {
     const { user, isUserLoading } = useUser();
@@ -134,17 +151,20 @@ export default function WalletPage() {
                         </div>
                     )}
                     {!isTransactionsLoading && transactions && transactions.length > 0 && (
-                        <div className="space-y-4">
+                        <div className="space-y-2">
                             {transactions.map((tx: any) => (
-                                <div key={tx.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50">
+                                <div key={tx.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 border-b last:border-b-0">
                                     <div className={`flex items-center justify-center h-10 w-10 rounded-full ${tx.type === 'credit' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                                         {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5 text-green-600 dark:text-green-400"/> : <ArrowUpRight className="h-5 w-5 text-red-600 dark:text-red-400"/>}
                                     </div>
                                     <div className="flex-grow">
-                                        <p className="font-semibold capitalize">{getReasonText(tx.reason)}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold capitalize">{getReasonText(tx.reason)}</p>
+                                            {getStatusBadge(tx.status)}
+                                        </div>
                                         <p className="text-sm text-muted-foreground">{formatDate(tx.timestamp)}</p>
                                     </div>
-                                    <p className={`font-bold text-lg ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                                    <p className={`font-bold text-lg text-right ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
                                         {tx.type === 'credit' ? '+' : '-'}
                                         {formatCurrency(tx.amount)}
                                     </p>
@@ -167,3 +187,5 @@ export default function WalletPage() {
         </div>
     );
 }
+
+    
