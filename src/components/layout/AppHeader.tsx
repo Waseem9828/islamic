@@ -3,7 +3,7 @@
 
 import { useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { Bell, Menu, Wallet } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
@@ -19,7 +19,7 @@ const AppHeader = () => {
     const walletDocRef = firestore && user ? doc(firestore, 'wallets', user.uid) : null;
     const { data: wallet } = useDoc(walletDocRef);
 
-    const totalBalance = wallet ? wallet.depositBalance + wallet.winningBalance : 0;
+    const totalBalance = wallet ? (wallet.depositBalance || 0) + (wallet.winningBalance || 0) + (wallet.bonusBalance || 0) : 0;
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -31,6 +31,12 @@ const AppHeader = () => {
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="sm:max-w-xs">
+                    <SheetHeader>
+                        <SheetTitle>Menu</SheetTitle>
+                        <SheetDescription>
+                            Navigate through the application sections.
+                        </SheetDescription>
+                    </SheetHeader>
                     {/* Add your mobile navigation links here */}
                 </SheetContent>
             </Sheet>
