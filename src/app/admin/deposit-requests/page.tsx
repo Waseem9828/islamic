@@ -54,7 +54,7 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
     updateDate();
     const interval = setInterval(updateDate, 60000);
     return () => clearInterval(interval);
-  }, [request.requestedAt]);
+  }, [request.requestedAt, setTimeAgo]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
