@@ -3,13 +3,7 @@ import { Providers } from './providers';
 import ClientLayout from '@/components/layout/ClientLayout';
 import { Toaster } from 'sonner';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { Poppins } from 'next/font/google';
 
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-poppins',
-});
 
 export default function RootLayout({
   children,
@@ -19,13 +13,18 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>Premium Numbers</title>
+        <title>Islamic Random Selector</title>
         <meta
           name="description"
-          content="Your premium number prediction service"
+          content="A fair and random number selector with an Islamic theme."
         />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.cdnfonts.com/css/jameel-noori-nastaleeq" rel="stylesheet" />
+
       </head>
-      <body className={poppins.variable}>
+      <body className='font-roboto'>
         <Providers>
           <SidebarProvider>
             <ClientLayout>{children}</ClientLayout>
