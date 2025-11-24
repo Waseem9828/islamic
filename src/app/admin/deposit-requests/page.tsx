@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -35,7 +36,7 @@ interface Request {
   transactionId: string;
   userId: string;
   requestedAt: { toDate: () => Date };
-  screenshotUrl?: string; // Corrected from screenshotURL to screenshotUrl
+  screenshotUrl?: string; 
 }
 
 // Combine Request with User information

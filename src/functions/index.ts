@@ -61,12 +61,13 @@ exports.checkAdminStatus = onCall(async (data, context) => {
 // --- Deposit Functions ---
 exports.requestDeposit = onCall(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
-    const { amount, transactionId } = data;
+    const { amount, transactionId, screenshotUrl } = data;
     if (!amount || typeof amount !== 'number' || amount <= 0) throw new functions.https.HttpsError('invalid-argument', 'Valid amount required.');
     if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length < 12) throw new functions.https.HttpsError('invalid-argument', 'Valid 12-digit Transaction ID required.');
+    if (!screenshotUrl) throw new functions.https.HttpsError('invalid-argument', 'Screenshot is required.');
 
     await db.collection("depositRequests").add({
-        userId: context.auth.uid, amount, transactionId: transactionId.trim(), status: 'pending', requestedAt: admin.firestore.FieldValue.serverTimestamp()
+        userId: context.auth.uid, amount, transactionId: transactionId.trim(), screenshotUrl, status: 'pending', requestedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     return { status: "success", message: "Deposit request submitted." };
 });
@@ -74,40 +75,78 @@ exports.requestDeposit = onCall(async (data, context) => {
 exports.processDeposit = onCall(async (data, context) => {
     await ensureIsAdmin(context);
     const { requestId, approve } = data;
-    if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Request ID required.');
+    if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Request ID is required.');
 
     const requestRef = db.collection('depositRequests').doc(requestId);
-    return db.runTransaction(async (t) => {
-        const requestDoc = await t.get(requestRef);
-        if (!requestDoc.exists) throw new functions.https.HttpsError('not-found', 'Request not found.');
-        if (requestDoc.data().status !== 'pending') throw new functions.https.HttpsError('failed-precondition', 'Request already processed.');
+    const requestDoc = await requestRef.get();
 
-        if (approve) {
-            const { userId, amount } = requestDoc.data();
+    if (!requestDoc.exists) {
+        throw new functions.https.HttpsError('not-found', 'Deposit request not found.');
+    }
+    if (requestDoc.data().status !== 'pending') {
+        throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
+    }
+
+    const { userId, amount } = requestDoc.data();
+
+    if (approve) {
+        // --- Database Transaction ---
+        await db.runTransaction(async (t) => {
             const rules = await getAppRules();
-            const bonusAmount = amount * rules.depositBonusRate;
+            const bonusAmount = amount * (rules.depositBonusRate || 0);
+
             const walletRef = db.collection('wallets').doc(userId);
             const walletDoc = await t.get(walletRef);
 
             if (!walletDoc.exists) {
-                t.set(walletRef, { depositBalance: amount, bonusBalance: bonusAmount, winningBalance: 0 });
+                t.set(walletRef, {
+                    depositBalance: amount,
+                    bonusBalance: bonusAmount,
+                    winningBalance: 0,
+                    lifetimeBonus: bonusAmount
+                });
             } else {
                 t.update(walletRef, {
                     depositBalance: admin.firestore.FieldValue.increment(amount),
                     bonusBalance: admin.firestore.FieldValue.increment(bonusAmount),
+                    lifetimeBonus: admin.firestore.FieldValue.increment(bonusAmount),
                 });
             }
-            t.update(requestRef, { status: 'approved', processedAt: admin.firestore.FieldValue.serverTimestamp() });
-            t.set(db.collection('transactions').doc(), {
-                userId, type: 'credit', amount, reason: 'deposit', status: 'completed', depositId: requestId, bonus: bonusAmount, timestamp: admin.firestore.FieldValue.serverTimestamp(),
+
+            t.update(requestRef, {
+                status: 'approved',
+                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedBy: context.auth.uid
             });
-            return { status: 'success', message: `₹${amount} (+ ₹${bonusAmount} bonus) added.` };
-        } else {
-            t.update(requestRef, { status: 'rejected', processedAt: admin.firestore.FieldValue.serverTimestamp() });
-            return { status: 'success', message: "Request rejected." };
-        }
-    });
+        });
+        // --- End Transaction ---
+
+        // Create transaction record *after* the main transaction succeeds.
+        const rules = await getAppRules();
+        const bonusAmount = amount * (rules.depositBonusRate || 0);
+        await db.collection('transactions').add({
+            userId,
+            type: 'credit',
+            amount,
+            reason: 'deposit',
+            status: 'completed',
+            depositId: requestId,
+            bonus: bonusAmount,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        
+        return { status: 'success', message: `Deposit of ₹${amount} approved.` };
+
+    } else { // If rejecting
+        await requestRef.update({
+            status: 'rejected',
+            processedAt: admin.firestore.FieldValue.serverTimestamp(),
+            processedBy: context.auth.uid
+        });
+        return { status: 'success', message: "Request rejected." };
+    }
 });
+
 
 // --- Match Functions ---
 exports.createMatch = onCall(async (data, context) => {
