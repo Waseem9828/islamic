@@ -1,77 +1,94 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAdminDashboardStats = exports.checkAdminStatus = void 0;
+exports.getWalletInfo = exports.updateUserStatus = exports.getAdminDashboardStats = exports.checkAdminStatus = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-// Safely initialize the Firebase Admin SDK, preventing re-initialization.
-if (admin.apps.length === 0) {
-    admin.initializeApp();
-}
+admin.initializeApp();
 const db = admin.firestore();
-// Define the function region to match the Firestore database.
-const regionalFunctions = functions.region("us-east1");
-// --- Helpers ---
-const ensureIsAdmin = async (context) => {
+// Callable function to check if a user is an admin
+exports.checkAdminStatus = functions
+    .region("us-east1")
+    .https.onCall(async (_, context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Admin-only function.");
-    }
-    const adminDoc = await db.collection("roles_admin").doc(context.auth.uid).get();
-    if (!adminDoc.exists) {
-        throw new functions.https.HttpsError("permission-denied", "Admin-only function.");
-    }
-};
-exports.checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
-    console.log("--- checkAdminStatus: Start ---");
-    if (!context.auth) {
-        console.log('checkAdminStatus: Unauthenticated user.');
-        return { isAdmin: false };
+        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
     const uid = context.auth.uid;
-    console.log(`checkAdminStatus: Authenticated user with UID: ${uid}`);
-    try {
-        console.log(`checkAdminStatus: Accessing Firestore for roles_admin collection...`);
-        const adminDocRef = db.collection("roles_admin").doc(uid);
-        const adminDoc = await adminDocRef.get();
-        console.log(`checkAdminStatus: Firestore query completed.`);
-        const isAdmin = adminDoc.exists;
-        console.log(`checkAdminStatus for UID ${uid}: ${isAdmin ? 'Admin' : 'Not an Admin'}`);
-        return { isAdmin };
-    }
-    catch (error) {
-        console.error(`Error checking admin status for UID ${uid}:`, error);
-        throw new functions.https.HttpsError("internal", "An unexpected error occurred.");
-    }
+    const adminDoc = await db.collection("roles_admin").doc(uid).get();
+    return { isAdmin: adminDoc.exists };
 });
-// --- Admin & Roles Functions ---
-exports.getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
-    try {
-        const [usersSnapshot, matchesSnapshot, depositsSnapshot, withdrawalsSnapshot, appConfigSnapshot] = await Promise.all([
-            db.collection("users").get(),
-            db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
-            db.collection("deposits").where("status", "==", "pending").get(),
-            db.collection("withdrawals").where("status", "==", "pending").get(),
-            db.collection("appConfig").doc("finances").get()
-        ]);
-        const totalUsers = usersSnapshot.size;
-        const activeMatches = matchesSnapshot.size;
-        const pendingDeposits = depositsSnapshot.size;
-        const pendingWithdrawals = withdrawalsSnapshot.size;
-        const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
-        const totalCommission = financeConfig.totalCommission;
-        const totalWinnings = financeConfig.totalWinnings;
+// Callable function to get admin dashboard stats
+exports.getAdminDashboardStats = functions
+    .region("us-east1")
+    .https.onCall(async (_, context) => {
+    // Check for admin privileges
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    }
+    const adminCheck = await exports.checkAdminStatus.run(context);
+    if (!adminCheck.isAdmin) {
+        throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
+    }
+    // Fetch stats
+    const usersSnapshot = await db.collection("users").get();
+    const depositsSnapshot = await db.collection("deposits").where("status", "==", "completed").get();
+    const withdrawalsSnapshot = await db.collection("withdrawals").where("status", "==", "completed").get();
+    const totalUsers = usersSnapshot.size;
+    const totalDeposits = depositsSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+    const totalWithdrawals = withdrawalsSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+    return {
+        totalUsers,
+        totalDeposits,
+        totalWithdrawals,
+    };
+});
+// Callable function to update a user's status
+exports.updateUserStatus = functions
+    .region("us-east1")
+    .https.onCall(async (data, context) => {
+    // Check for admin privileges
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    }
+    const adminCheck = await exports.checkAdminStatus.run(context);
+    if (!adminCheck.isAdmin) {
+        throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
+    }
+    const { uid, status } = data;
+    if (!uid || !['active', 'suspended'].includes(status)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid UID or status provided.');
+    }
+    await admin.firestore().collection('users').doc(uid).update({ status });
+    return { success: true };
+});
+// New callable function to get wallet info for a specific user
+exports.getWalletInfo = functions
+    .region("us-east1")
+    .https.onCall(async (data, context) => {
+    // Check for admin privileges
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    }
+    const adminCheck = await exports.checkAdminStatus.run(context);
+    if (!adminCheck.isAdmin) {
+        throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
+    }
+    const { uid } = data;
+    if (!uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid UID provided.');
+    }
+    const walletDoc = await admin.firestore().collection('wallets').doc(uid).get();
+    if (!walletDoc.exists) {
         return {
-            totalUsers,
-            activeMatches,
-            pendingDeposits,
-            pendingWithdrawals,
-            totalCommission,
-            totalWinnings,
+            depositBalance: 0,
+            winningBalance: 0,
+            bonusBalance: 0,
         };
     }
-    catch (error) {
-        console.error("Error aggregating dashboard stats:", error);
-        throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.");
-    }
+    const walletData = walletDoc.data();
+    return {
+        depositBalance: (walletData === null || walletData === void 0 ? void 0 : walletData.depositBalance) || 0,
+        winningBalance: (walletData === null || walletData === void 0 ? void 0 : walletData.winningBalance) || 0,
+        bonusBalance: (walletData === null || walletData === void 0 ? void 0 : walletData.bonusBalance) || 0,
+    };
 });
 //# sourceMappingURL=index.js.map

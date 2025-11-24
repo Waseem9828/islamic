@@ -2,176 +2,132 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
-// Safely initialize the Firebase Admin SDK, preventing re-initialization.
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
+admin.initializeApp();
 
 const db = admin.firestore();
-// Define the function region to match the Firestore database.
-const regionalFunctions = functions.region("us-east1");
 
-
-// --- Helpers ---
-const ensureIsAdmin = async (context: functions.https.CallableContext) => {
+// Callable function to check if a user is an admin
+export const checkAdminStatus = functions
+  .region("us-east1")
+  .https.onCall(async (_, context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "Authentication is required to perform this action.");
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "The function must be called while authenticated.",
+      );
     }
-    const adminDoc = await db.collection("roles_admin").doc(context.auth.uid).get();
-    if (!adminDoc.exists) {
-        throw new functions.https.HttpsError("permission-denied", "You must be an admin to perform this action.");
-    }
-};
-
-export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
-    // If there's no auth context, the user is not logged in, so they can't be an admin.
-    if (!context.auth) {
-        // This is not an error, just a status check.
-        return { isAdmin: false };
-    }
-
     const uid = context.auth.uid;
-    try {
-        const adminDocRef = db.collection("roles_admin").doc(uid);
-        const adminDoc = await adminDocRef.get();
-        // The result is simply whether the document for this user exists in the admin collection.
-        return { isAdmin: adminDoc.exists };
-    } catch (error) {
-        console.error(`Error in checkAdminStatus for UID ${uid}:`, error);
-        // Instead of crashing and returning 'internal', throw a specific HttpsError
-        // so the client can handle it gracefully.
-        throw new functions.https.HttpsError("unknown", "An error occurred while checking admin status.");
+    const adminDoc = await db.collection("roles_admin").doc(uid).get();
+    return { isAdmin: adminDoc.exists };
+  });
+
+// Callable function to get admin dashboard stats
+export const getAdminDashboardStats = functions
+  .region("us-east1")
+  .https.onCall(async (_, context) => {
+    // Check for admin privileges
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication required.",
+      );
     }
-});
+    const adminCheck = await checkAdminStatus.run(context);
+    if (!adminCheck.isAdmin) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "User is not an admin.",
+      );
+    }
 
+    // Fetch stats
+    const usersSnapshot = await db.collection("users").get();
+    const depositsSnapshot = await db.collection("deposits").where("status", "==", "completed").get();
+    const withdrawalsSnapshot = await db.collection("withdrawals").where("status", "==", "completed").get();
 
-// --- Admin & Roles Functions ---
-export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
+    const totalUsers = usersSnapshot.size;
+    const totalDeposits = depositsSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
+    const totalWithdrawals = withdrawalsSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
 
-    try {
-        const [
-            usersSnapshot,
-            matchesSnapshot,
-            depositsSnapshot,
-            withdrawalsSnapshot,
-            appConfigSnapshot
-        ] = await Promise.all([
-            db.collection("users").get(),
-            db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
-            db.collection("depositRequests").where("status", "==", "pending").get(),
-            db.collection("withdrawalRequests").where("status", "==", "pending").get(),
-            db.collection("settings").doc("finances").get()
-        ]);
+    return {
+      totalUsers,
+      totalDeposits,
+      totalWithdrawals,
+    };
+  });
 
-        const totalUsers = usersSnapshot.size;
-        const activeMatches = matchesSnapshot.size;
-        const pendingDeposits = depositsSnapshot.size;
-        const pendingWithdrawals = withdrawalsSnapshot.size;
+// Callable function to update a user's status
+export const updateUserStatus = functions
+  .region("us-east1")
+  .https.onCall(async (data, context) => {
+    // Check for admin privileges
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        "unauthenticated",
+        "Authentication required.",
+      );
+    }
+     const adminCheck = await checkAdminStatus.run(context);
+    if (!adminCheck.isAdmin) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "User is not an admin.",
+      );
+    }
 
-        const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
-        const totalCommission = financeConfig.totalCommission;
-        const totalWinnings = financeConfig.totalWinnings;
-
-        return {
-            totalUsers,
-            activeMatches,
-            pendingDeposits,
-            pendingWithdrawals,
-            totalCommission,
-            totalWinnings,
-        };
-
-    } catch (error) {
-        console.error("Error aggregating dashboard stats:", error);
+    const { uid, status } = data;
+    if (!uid || !['active', 'suspended'].includes(status)) {
         throw new functions.https.HttpsError(
-            "internal",
-            "An error occurred while calculating statistics.",
+            'invalid-argument',
+            'Invalid UID or status provided.'
         );
     }
+
+    await admin.firestore().collection('users').doc(uid).update({ status });
+    return { success: true };
 });
 
-
-// --- Matches Management by Admin ---
-export const getMatches = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
-    try {
-        const matchesSnapshot = await db.collection('matches').orderBy('createdAt', 'desc').get();
-        const matches = matchesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        return { matches };
-    } catch (error) {
-        console.error("Error fetching matches:", error);
-        throw new functions.https.HttpsError("internal", "Could not fetch matches.");
-    }
-});
-
-
-export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, context) => {
-    await ensureIsAdmin(context);
-    const { matchId } = data;
-    if (typeof matchId !== 'string' || matchId.length === 0) {
-        throw new functions.https.HttpsError("invalid-argument", "Invalid Match ID provided.");
-    }
-    
-    const matchRef = db.collection("matches").doc(matchId);
-    
-    return db.runTransaction(async (t) => {
-        const matchDoc = await t.get(matchRef);
-        if (!matchDoc.exists) {
-            throw new functions.https.HttpsError("not-found", "Match not found.");
+// New callable function to get wallet info for a specific user
+export const getWalletInfo = functions
+    .region("us-east1")
+    .https.onCall(async (data, context) => {
+        // Check for admin privileges
+        if (!context.auth) {
+            throw new functions.https.HttpsError(
+                "unauthenticated",
+                "Authentication required."
+            );
         }
-        const matchData = matchDoc.data();
-
-        if (matchData?.status === 'completed' || matchData?.status === 'cancelled') {
-            throw new functions.https.HttpsError("failed-precondition", "Match is already completed or cancelled.");
+        const adminCheck = await checkAdminStatus.run(context);
+        if (!adminCheck.isAdmin) {
+            throw new functions.https.HttpsError(
+                "permission-denied",
+                "User is not an admin."
+            );
         }
 
-        // Refund entry fee for all players
-        const playerRefundPromises = matchData.players.map(async (playerId: string) => {
-            const playerWalletRef = db.collection('wallets').doc(playerId);
-            const playerTxQuery = db.collection('transactions')
-                .where('userId', '==', playerId)
-                .where('matchId', '==', matchId)
-                .where('reason', 'in', ['match_creation', 'match_join']);
-            
-            const txSnapshot = await playerTxQuery.get();
+        const { uid } = data;
+        if (!uid) {
+            throw new functions.https.HttpsError(
+                'invalid-argument',
+                'Invalid UID provided.'
+            );
+        }
 
-            if (!txSnapshot.empty) {
-                const txDoc = txSnapshot.docs[0];
-                const txData = txDoc.data();
-                const refundAmount = txData.amount;
-                
-                // Refund the amount to the user's wallet
-                t.update(playerWalletRef, {
-                    depositBalance: admin.firestore.FieldValue.increment(refundAmount)
-                });
-
-                // Create a refund transaction record
-                const refundTxRef = db.collection('transactions').doc();
-                t.set(refundTxRef, {
-                    userId: playerId,
-                    type: 'credit',
-                    amount: refundAmount,
-                    reason: 'match_cancellation_refund',
-                    status: 'completed',
-                    matchId: matchId,
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-                });
-            }
-        });
+        const walletDoc = await admin.firestore().collection('wallets').doc(uid).get();
         
-        await Promise.all(playerRefundPromises);
-        
-        // Finally, update the match status to 'cancelled'
-        t.update(matchRef, { 
-            status: 'cancelled',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        if (!walletDoc.exists) {
+            return {
+                depositBalance: 0,
+                winningBalance: 0,
+                bonusBalance: 0,
+            };
+        }
 
-        return { status: 'success', message: `Match ${matchId} has been cancelled and all players refunded.` };
+        const walletData = walletDoc.data();
+        return {
+            depositBalance: walletData?.depositBalance || 0,
+            winningBalance: walletData?.winningBalance || 0,
+            bonusBalance: walletData?.bonusBalance || 0,
+        };
     });
-});
-
