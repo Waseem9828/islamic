@@ -214,7 +214,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
 
         t.set(matchRef, {
             id: matchId.toUpperCase(),
-            matchTitle, entry, maxPlayers, privacy, timeLimit,
+            matchTitle, entryFee, maxPlayers, privacy, timeLimit,
             status: "waiting",
             createdBy: uid,
             creatorName: creatorName,
@@ -358,3 +358,6 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entry} has been refunded.` };
     });
   });
+
+
+    
