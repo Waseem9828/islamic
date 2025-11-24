@@ -2,6 +2,7 @@ import './globals.css';
 import { Providers } from './providers';
 import ClientLayout from '@/components/layout/ClientLayout';
 import { Toaster } from 'sonner';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function RootLayout({
   children,
@@ -19,7 +20,9 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>
-          <ClientLayout>{children}</ClientLayout>
+          <SidebarProvider>
+            <ClientLayout>{children}</ClientLayout>
+          </SidebarProvider>
         </Providers>
         <Toaster />
       </body>
