@@ -21,15 +21,13 @@ export const useAdmin = (): AdminStatus => {
   const [isAdminLoading, setIsAdminLoading] = useState(true);
 
   useEffect(() => {
-    // Don't do anything until Firebase auth state is resolved.
-    if (isUserLoading) {
-      return;
-    }
-
-    // If there's no user, they can't be an admin.
-    if (!user) {
-      setIsAdmin(false);
-      setIsAdminLoading(false);
+    // Don't do anything until Firebase auth state is resolved and we have a user object.
+    if (isUserLoading || !user) {
+      // if user is not logged in, they can't be an admin.
+      if (!isUserLoading && !user) {
+        setIsAdmin(false);
+        setIsAdminLoading(false);
+      }
       return;
     }
 
@@ -49,7 +47,7 @@ export const useAdmin = (): AdminStatus => {
           setIsAdminLoading(false);
         });
     } else {
-        // If functions aren't ready for some reason, assume not admin.
+        // If functions aren't ready for some reason, assume not admin and stop loading.
         setIsAdmin(false);
         setIsAdminLoading(false);
     }

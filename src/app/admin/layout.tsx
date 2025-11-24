@@ -16,16 +16,6 @@ const LoadingScreen = () => (
     </div>
 );
 
-const AccessDenied = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow-lg text-center">
-            <h1 className="text-4xl font-bold text-red-500 mb-4">Access Denied</h1>
-            <p className="text-lg text-gray-700 dark:text-gray-200">You do not have permission to view this page.</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Please contact an administrator if you believe this is an error.</p>
-        </div>
-    </div>
-);
-
 // --- Main Admin Layout Component ---
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -33,8 +23,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter();
 
     useEffect(() => {
-        if (!isAdminLoading && !isAdmin) {
-            router.push('/login');
+        // Wait until loading is complete before making a decision
+        if (isAdminLoading) {
+            return;
+        }
+        // If loading is done and the user is NOT an admin, redirect them.
+        if (!isAdmin) {
+            router.replace('/login');
         }
     }, [isAdmin, isAdminLoading, router]);
 
@@ -45,11 +40,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return <LoadingScreen />;
     }
 
+    // If authorized, render the full admin layout.
+    // If not, this will be briefly rendered before the useEffect triggers the redirect.
+    // We can return null or a loading state to prevent a flash of content.
     if (!isAdmin) {
-        return <AccessDenied />;
+        return <LoadingScreen />;
     }
-
-    // If authorized, render the full admin layout
+    
     return (
         <div className="min-h-screen bg-muted/40">
             <AdminSidebar />

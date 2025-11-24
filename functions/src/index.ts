@@ -26,6 +26,7 @@ const ensureIsAdmin = async (context: functions.https.CallableContext) => {
 export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
     // If there's no auth context, the user is not logged in, so they can't be an admin.
     if (!context.auth) {
+        // This is not an error, just a status check.
         return { isAdmin: false };
     }
 
@@ -33,10 +34,12 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
     try {
         const adminDocRef = db.collection("roles_admin").doc(uid);
         const adminDoc = await adminDocRef.get();
+        // The result is simply whether the document for this user exists in the admin collection.
         return { isAdmin: adminDoc.exists };
     } catch (error) {
         console.error(`Error in checkAdminStatus for UID ${uid}:`, error);
-        // Instead of crashing, throw a specific HttpsError.
+        // Instead of crashing and returning 'internal', throw a specific HttpsError
+        // so the client can handle it gracefully.
         throw new functions.https.HttpsError("unknown", "An error occurred while checking admin status.");
     }
 });
@@ -47,10 +50,10 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
     await ensureIsAdmin(context);
 
     try {
-        const [ 
+        const [
             usersSnapshot,
-            matchesSnapshot, 
-            depositsSnapshot, 
+            matchesSnapshot,
+            depositsSnapshot,
             withdrawalsSnapshot,
             appConfigSnapshot
         ] = await Promise.all([
@@ -127,7 +130,7 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
         }
 
         // Refund entry fee for all players
-        for (const playerId of matchData.players) {
+        const playerRefundPromises = matchData.players.map(async (playerId: string) => {
             const playerWalletRef = db.collection('wallets').doc(playerId);
             const playerTxQuery = db.collection('transactions')
                 .where('userId', '==', playerId)
@@ -143,8 +146,6 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
                 
                 // Refund the amount to the user's wallet
                 t.update(playerWalletRef, {
-                    // For simplicity, refunding to deposit balance.
-                    // A more complex system could refund to original sources.
                     depositBalance: admin.firestore.FieldValue.increment(refundAmount)
                 });
 
@@ -160,7 +161,9 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
                     timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 });
             }
-        }
+        });
+        
+        await Promise.all(playerRefundPromises);
         
         // Finally, update the match status to 'cancelled'
         t.update(matchRef, { 
@@ -171,3 +174,4 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
         return { status: 'success', message: `Match ${matchId} has been cancelled and all players refunded.` };
     });
 });
+
