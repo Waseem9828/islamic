@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -37,7 +38,12 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
 
   useEffect(() => {
     if (request.requestedAt) {
-      setTimeAgo(formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true }));
+      const updateDate = () => {
+        setTimeAgo(formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true }));
+      }
+      updateDate();
+      const interval = setInterval(updateDate, 60000);
+      return () => clearInterval(interval);
     }
   }, [request.requestedAt]);
 
