@@ -14,9 +14,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // Define the structure for a wallet
 interface Wallet {
-  balance?: number;
-  totalDeposit?: number;
-  totalWinnings?: number;
+  depositBalance?: number;
+  winningBalance?: number;
+  bonusBalance?: number;
 }
 
 // Define the structure for a user
@@ -35,7 +35,7 @@ interface Request {
   transactionId: string;
   userId: string;
   requestedAt: { toDate: () => Date };
-  screenshotURL?: string;
+  screenshotUrl?: string; // Corrected from screenshotURL to screenshotUrl
 }
 
 // Combine Request with User information
@@ -62,6 +62,7 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
 
   const userDisplayName = request.user?.displayName || request.user?.email || 'Unknown User';
   const userIdentifier = request.user?.email || request.userId;
+  const totalBalance = (request.user?.wallet?.depositBalance ?? 0) + (request.user?.wallet?.winningBalance ?? 0) + (request.user?.wallet?.bonusBalance ?? 0);
 
   return (
     <Card className="p-4 transition-all hover:shadow-md">
@@ -92,10 +93,10 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
                 </Button>
             </div>
         </div>
-        {request.screenshotURL && (
+        {request.screenshotUrl && (
             <div className='mt-4'>
                 <Button variant="outline" size="sm" asChild>
-                    <a href={request.screenshotURL} target="_blank" rel="noopener noreferrer">
+                    <a href={request.screenshotUrl} target="_blank" rel="noopener noreferrer">
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Screenshot
                     </a>
@@ -106,16 +107,20 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
           <div className="mt-4 pt-4 border-t space-y-2 text-sm text-muted-foreground">
               <h4 className="text-sm font-semibold text-primary mb-2">User Wallet</h4>
               <div className="flex justify-between items-center">
-                  <span>Wallet Balance:</span>
-                  <span className="font-mono text-base text-primary">₹{request.user.wallet.balance?.toLocaleString() ?? 'N/A'}</span>
+                  <span>Current Total Balance:</span>
+                  <span className="font-mono text-base text-primary">₹{totalBalance.toLocaleString() ?? 'N/A'}</span>
               </div>
               <div className="flex justify-between items-center">
-                  <span>Total Deposits:</span>
-                  <span className="font-mono">₹{request.user.wallet.totalDeposit?.toLocaleString() ?? 'N/A'}</span>
+                  <span>Deposit Balance:</span>
+                  <span className="font-mono">₹{request.user.wallet.depositBalance?.toLocaleString() ?? 'N/A'}</span>
+              </div>
+               <div className="flex justify-between items-center">
+                  <span>Winning Balance:</span>
+                  <span className="font-mono">₹{request.user.wallet.winningBalance?.toLocaleString() ?? 'N/A'}</span>
               </div>
               <div className="flex justify-between items-center">
-                  <span>Total Winnings:</span>
-                  <span className="font-mono">₹{request.user.wallet.totalWinnings?.toLocaleString() ?? 'N/A'}</span>
+                  <span>Bonus Balance:</span>
+                  <span className="font-mono">₹{request.user.wallet.bonusBalance?.toLocaleString() ?? 'N/A'}</span>
               </div>
           </div>
         )}
