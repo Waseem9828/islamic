@@ -3,13 +3,50 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, LogIn, Gamepad2, Wallet, ShieldCheck, Users, Trophy, Heart, Star, Facebook, Twitter, Instagram } from 'lucide-react';
+import { ArrowRight, LogIn, Gamepad2, Wallet, Users, Trophy, Heart, Star, Facebook, Twitter, Instagram } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
+import { useDoc } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
+
+interface Testimonial {
+    name: string;
+    title: string;
+    quote: string;
+    avatar: string;
+}
+
+interface FooterLink {
+    label: string;
+    href: string;
+}
+
+interface SocialLink {
+    platform: 'Facebook' | 'Twitter' | 'Instagram';
+    href: string;
+}
+
+interface LandingPageContent {
+    stats: {
+        matches: string;
+        players: string;
+        satisfaction: string;
+    };
+    testimonials: Testimonial[];
+    quickLinks: FooterLink[];
+    supportLinks: FooterLink[];
+    socialLinks: SocialLink[];
+}
+
 
 export default function LandingPage() {
   const router = useRouter();
+  const { firestore } = useFirebase();
+  const { data: content, isLoading } = useDoc<LandingPageContent>(firestore ? doc(firestore, 'landingPage', 'content') : null);
 
   const features = [
     {
@@ -29,48 +66,47 @@ export default function LandingPage() {
     },
   ];
 
-  const stats = [
-      {
-          icon: <Trophy className="h-8 w-8 text-primary"/>,
-          value: '10,000+',
-          label: 'Matches Played'
-      },
-      {
-          icon: <Users className="h-8 w-8 text-primary"/>,
-          value: '5,000+',
-          label: 'Active Players'
-      },
-      {
-          icon: <Heart className="h-8 w-8 text-primary"/>,
-          value: '98%',
-          label: 'User Satisfaction'
-      }
-  ];
+  const socialIcons: { [key: string]: React.ReactNode } = {
+    Facebook: <Facebook />,
+    Twitter: <Twitter />,
+    Instagram: <Instagram />,
+  };
+  
+  const StatsSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+        {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex flex-col items-center">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <Skeleton className="h-8 w-24 mt-2" />
+                <Skeleton className="h-4 w-32 mt-1" />
+            </div>
+        ))}
+    </div>
+  )
 
-  const testimonials = [
-      {
-          name: "Ahmed Khan",
-          title: "Enthusiast Player",
-          quote: "This is the best Ludo platform I've ever used. The wallet system is seamless and finding a match is so easy. Highly recommended!",
-          avatar: "https://avatar.vercel.sh/ahmed.png"
-      },
-      {
-          name: "Fatima Ali",
-          title: "Casual Gamer",
-          quote: "I love the clean design and how quickly I can start a game. The community is great and I've had a lot of fun playing here.",
-          avatar: "https://avatar.vercel.sh/fatima.png"
-      },
-      {
-          name: "Zayn Malik",
-          title: "Competitive Player",
-          quote: "The competition is fierce and the leaderboard keeps me motivated. It's a professional setup for serious Ludo players.",
-          avatar: "https://avatar.vercel.sh/zayn.png"
-      }
-  ];
+  const TestimonialsSkeleton = () => (
+     <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(3)].map((_, i) => (
+            <Card key={i} className="flex flex-col">
+                <CardContent className="p-6 flex-grow">
+                    <div className="flex items-center mb-4">
+                        <Skeleton className="h-12 w-12 rounded-full mr-4" />
+                        <div>
+                            <Skeleton className="h-5 w-24" />
+                            <Skeleton className="h-4 w-16 mt-1" />
+                        </div>
+                    </div>
+                    <Skeleton className="h-4 w-full mt-2" />
+                    <Skeleton className="h-4 w-full mt-2" />
+                    <Skeleton className="h-4 w-3/4 mt-2" />
+                </CardContent>
+            </Card>
+        ))}
+    </div>
+  )
 
   return (
     <div className="bg-background text-foreground">
-      {/* Hero Section */}
       <main className="relative isolate overflow-hidden bg-background">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(45rem_50rem_at_top,theme(colors.indigo.100),white)] dark:bg-[radial-gradient(45rem_50rem_at_top,theme(colors.indigo.900),theme(colors.background))] opacity-20"></div>
           <div className="absolute inset-y-0 right-1/2 -z-10 mr-16 w-[200%] origin-bottom-left skew-x-[-30deg] bg-background shadow-xl shadow-indigo-600/10 ring-1 ring-indigo-50 dark:bg-background dark:shadow-indigo-900/10 dark:ring-indigo-900 sm:mr-28 lg:mr-0 xl:mr-16 xl:origin-center"></div>
@@ -90,22 +126,30 @@ export default function LandingPage() {
           </div>
       </main>
 
-      {/* Stats Section */}
         <section className="py-12 bg-muted/40">
             <div className="max-w-5xl mx-auto px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                    {stats.map((stat, index) => (
-                        <div key={index} className="flex flex-col items-center">
-                            {stat.icon}
-                            <p className="text-3xl font-bold mt-2">{stat.value}</p>
-                            <p className="text-muted-foreground">{stat.label}</p>
+                {isLoading ? <StatsSkeleton /> : content && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                        <div className="flex flex-col items-center">
+                            <Trophy className="h-8 w-8 text-primary"/>
+                            <p className="text-3xl font-bold mt-2">{content.stats?.matches || '10,000+'}</p>
+                            <p className="text-muted-foreground">Matches Played</p>
                         </div>
-                    ))}
-                </div>
+                        <div className="flex flex-col items-center">
+                            <Users className="h-8 w-8 text-primary"/>
+                            <p className="text-3xl font-bold mt-2">{content.stats?.players || '5,000+'}</p>
+                            <p className="text-muted-foreground">Active Players</p>
+                        </div>
+                        <div className="flex flex-col items-center">
+                            <Heart className="h-8 w-8 text-primary"/>
+                            <p className="text-3xl font-bold mt-2">{content.stats?.satisfaction || '98%'}</p>
+                            <p className="text-muted-foreground">User Satisfaction</p>
+                        </div>
+                    </div>
+                )}
             </div>
         </section>
 
-      {/* Features Section */}
       <section id="features" className="py-20 sm:py-32">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto">
@@ -133,7 +177,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* How It Works Section */}
       <section id="how-it-works" className="py-20 sm:py-32 bg-muted/40">
         <div className="max-w-3xl mx-auto text-center px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-foreground">Get Started in Minutes</h2>
@@ -165,45 +208,41 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
       <section id="testimonials" className="py-20 sm:py-32">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto">
                 <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">What Our Players Say</h2>
                 <p className="mt-4 text-lg text-muted-foreground">We are trusted by thousands of Ludo lovers worldwide.</p>
             </div>
-            <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {testimonials.map((testimonial, index) => (
-                <Card key={index} className="flex flex-col">
-                    <CardContent className="p-6 flex-grow">
-                    <div className="flex items-center mb-4">
-                        <Avatar className="h-12 w-12 mr-4">
-                        <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
-                        <AvatarFallback>{testimonial.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                        <p className="font-semibold">{testimonial.name}</p>
-                        <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+            {isLoading ? <TestimonialsSkeleton /> : content && content.testimonials && (
+                <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                    {content.testimonials.map((testimonial, index) => (
+                    <Card key={index} className="flex flex-col">
+                        <CardContent className="p-6 flex-grow">
+                        <div className="flex items-center mb-4">
+                            <Avatar className="h-12 w-12 mr-4">
+                            <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
+                            <AvatarFallback>{testimonial.name?.charAt(0) || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                            <p className="font-semibold">{testimonial.name}</p>
+                            <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+                            </div>
                         </div>
-                    </div>
-                    <blockquote className="text-muted-foreground italic">"{testimonial.quote}"</blockquote>
-                    </CardContent>
-                    <CardHeader>
-                        <div className="flex text-yellow-400">
-                            <Star className="h-5 w-5 fill-current"/>
-                            <Star className="h-5 w-5 fill-current"/>
-                            <Star className="h-5 w-5 fill-current"/>
-                            <Star className="h-5 w-5 fill-current"/>
-                            <Star className="h-5 w-5 fill-current"/>
-                        </div>
-                    </CardHeader>
-                </Card>
-                ))}
-            </div>
+                        <blockquote className="text-muted-foreground italic">"{testimonial.quote}"</blockquote>
+                        </CardContent>
+                         <CardHeader>
+                            <div className="flex text-yellow-400">
+                                {[...Array(5)].map((_, i) => <Star key={i} className="h-5 w-5 fill-current"/>)}
+                            </div>
+                        </CardHeader>
+                    </Card>
+                    ))}
+                </div>
+            )}
         </div>
       </section>
 
-      {/* Call to Action Section */}
       <section id="cta" className="py-20 sm:py-32">
         <div className="relative isolate overflow-hidden bg-primary/90 px-6 py-24 text-center shadow-2xl sm:rounded-3xl sm:px-16">
             <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">
@@ -243,27 +282,35 @@ export default function LandingPage() {
             </div>
             <div>
                 <h4 className="font-semibold mb-4">Quick Links</h4>
-                <ul className="space-y-2">
-                    <li><Link href="/matchmaking" className="text-muted-foreground hover:text-primary">Play</Link></li>
-                    <li><Link href="/leaderboard" className="text-muted-foreground hover:text-primary">Leaderboard</Link></li>
-                    <li><Link href="/wallet" className="text-muted-foreground hover:text-primary">Wallet</Link></li>
-                </ul>
+                {isLoading ? <Skeleton className="h-20 w-32" /> : (
+                    <ul className="space-y-2">
+                        {(content?.quickLinks || []).map((link) => (
+                             <li key={link.label}><Link href={link.href} className="text-muted-foreground hover:text-primary">{link.label}</Link></li>
+                        ))}
+                    </ul>
+                )}
             </div>
              <div>
                 <h4 className="font-semibold mb-4">Support</h4>
-                <ul className="space-y-2">
-                    <li><Link href="#" className="text-muted-foreground hover:text-primary">FAQ</Link></li>
-                    <li><Link href="#" className="text-muted-foreground hover:text-primary">Contact Us</Link></li>
-                    <li><Link href="#" className="text-muted-foreground hover:text-primary">Terms of Service</Link></li>
-                </ul>
+                {isLoading ? <Skeleton className="h-20 w-32" /> : (
+                    <ul className="space-y-2">
+                         {(content?.supportLinks || []).map((link) => (
+                             <li key={link.label}><Link href={link.href} className="text-muted-foreground hover:text-primary">{link.label}</Link></li>
+                        ))}
+                    </ul>
+                )}
             </div>
              <div>
                 <h4 className="font-semibold mb-4">Follow Us</h4>
-                <div className="flex space-x-4">
-                    <Link href="#" className="text-muted-foreground hover:text-primary"><Facebook /></Link>
-                    <Link href="#" className="text-muted-foreground hover:text-primary"><Twitter /></Link>
-                    <Link href="#" className="text-muted-foreground hover:text-primary"><Instagram /></Link>
-                </div>
+                 {isLoading ? <Skeleton className="h-6 w-24" /> : (
+                    <div className="flex space-x-4">
+                        {(content?.socialLinks || []).map((link) => (
+                            <Link key={link.platform} href={link.href} className="text-muted-foreground hover:text-primary" target="_blank" rel="noopener noreferrer">
+                                {socialIcons[link.platform]}
+                            </Link>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
         <div className="mt-12 pt-8 border-t text-center text-muted-foreground text-sm">
@@ -273,4 +320,3 @@ export default function LandingPage() {
     </div>
   );
 }
-

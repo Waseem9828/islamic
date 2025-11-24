@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, IndianRupee, Settings, LayoutDashboard, ListChecks, Trophy, History, HardDrive, ArrowLeft, Menu, X, Wallet } from 'lucide-react';
+import { Home, Users, IndianRupee, Settings, LayoutDashboard, ListChecks, Trophy, History, HardDrive, ArrowLeft, Menu, X, Wallet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/withdrawals', icon: IndianRupee, label: 'Withdrawals' },
   { href: '/admin/matches', icon: Trophy, label: 'Matches' },
   { href: '/admin/transactions', icon: History, label: 'Transactions' },
+  { href: '/admin/landing-page', icon: FileText, label: 'Landing Page' },
   { href: '/admin/storage', icon: HardDrive, label: 'Storage' },
   { href: '/admin/payment-settings', icon: Wallet, label: 'Payment Settings' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
