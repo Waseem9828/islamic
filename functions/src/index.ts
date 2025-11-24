@@ -1,5 +1,4 @@
 
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -25,7 +24,6 @@ const ensureIsAdmin = async (context: functions.https.CallableContext) => {
 };
 
 export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
-    // If there's no auth context, the user is not logged in, so they can't be an admin.
     if (!context.auth) {
         return { isAdmin: false };
     }
@@ -37,7 +35,6 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
         return { isAdmin: adminDoc.exists };
     } catch (error) {
         console.error(`Error in checkAdminStatus for UID ${uid}:`, error);
-        // Instead of crashing, throw a specific HttpsError.
         throw new functions.https.HttpsError("unknown", "An error occurred while checking admin status.");
     }
 });
@@ -87,4 +84,49 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
             "An error occurred while calculating statistics.",
         );
     }
+});
+
+
+// --- Matches Management by Admin ---
+export const getMatches = regionalFunctions.https.onCall(async (_, context) => {
+    await ensureIsAdmin(context);
+    try {
+        const matchesSnapshot = await db.collection('matches').orderBy('createdAt', 'desc').get();
+        const matches = matchesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        return { matches };
+    } catch (error) {
+        console.error("Error fetching matches:", error);
+        throw new functions.https.HttpsError("internal", "Could not fetch matches.");
+    }
+});
+
+
+export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { matchId } = data;
+    if (typeof matchId !== 'string' || matchId.length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid Match ID provided.");
+    }
+    
+    // This function will be very similar to creator-led cancellation,
+    // but without the creator check. It will refund all players.
+    // For now, we will just mark it as cancelled.
+    
+    const matchRef = db.collection("matches").doc(matchId);
+    const matchDoc = await matchRef.get();
+
+    if (!matchDoc.exists) {
+        throw new functions.https.HttpsError("not-found", "Match not found.");
+    }
+    if (matchDoc.data()?.status === 'completed' || matchDoc.data()?.status === 'cancelled') {
+        throw new functions.https.HttpsError("failed-precondition", "Match is already completed or cancelled.");
+    }
+
+    // TODO: Implement refund logic here in a transaction
+    await matchRef.update({ status: 'cancelled' });
+
+    return { status: 'success', message: 'Match has been cancelled by admin.' };
 });
