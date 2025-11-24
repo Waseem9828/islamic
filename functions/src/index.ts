@@ -32,7 +32,7 @@ export const getAdminDashboardStats = functions
         "Authentication required.",
       );
     }
-    const adminCheck = await checkAdminStatus.run(context);
+    const adminCheck = await checkAdminStatus.run({}, context);
     if (!adminCheck.isAdmin) {
       throw new functions.https.HttpsError(
         "permission-denied",
@@ -67,7 +67,7 @@ export const updateUserStatus = functions
         "Authentication required.",
       );
     }
-     const adminCheck = await checkAdminStatus.run(context);
+     const adminCheck = await checkAdminStatus.run({}, context);
     if (!adminCheck.isAdmin) {
       throw new functions.https.HttpsError(
         "permission-denied",
@@ -98,7 +98,7 @@ export const getWalletInfo = functions
                 "Authentication required."
             );
         }
-        const adminCheck = await checkAdminStatus.run(context);
+        const adminCheck = await checkAdminStatus.run({}, context);
         if (!adminCheck.isAdmin) {
             throw new functions.https.HttpsError(
                 "permission-denied",

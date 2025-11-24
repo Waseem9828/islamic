@@ -20,6 +20,7 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
-const functions = getFunctions(app);
+// Specify the region for the functions
+const functions = getFunctions(app, 'us-east1');
 
 export { app, firestore, auth, storage, functions };

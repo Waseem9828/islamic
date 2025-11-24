@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useSidebar } from "@/components/ui/sidebar";
@@ -7,64 +6,87 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Bell, Menu, Wallet } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { useUser, useFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import { useDoc } from "@/firebase";
+import { useFirebase } from "@/firebase";
+import { doc, onSnapshot, DocumentData } from "firebase/firestore";
+import { useState, useEffect, useMemo } from "react";
 
 const AppHeader = () => {
     const { open, setOpen } = useSidebar();
-    const { user } = useUser();
-    const { firestore } = useFirebase();
+    const { user, firestore } = useFirebase();
+    const [wallet, setWallet] = useState<DocumentData | null>(null);
 
-    const walletDocRef = firestore && user ? doc(firestore, 'wallets', user.uid) : null;
-    const { data: wallet } = useDoc(walletDocRef);
+    useEffect(() => {
+        if (user && firestore) {
+            const walletDocRef = doc(firestore, 'wallets', user.uid);
+            const unsubscribe = onSnapshot(walletDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    setWallet(docSnap.data());
+                } else {
+                    setWallet({ depositBalance: 0, winningBalance: 0, bonusBalance: 0 });
+                }
+            }, (error) => {
+                console.error("Failed to fetch wallet in AppHeader:", error);
+                setWallet(null);
+            });
+            return () => unsubscribe();
+        }
+    }, [user, firestore]);
 
-    const totalBalance = wallet ? (wallet.depositBalance || 0) + (wallet.winningBalance || 0) + (wallet.bonusBalance || 0) : 0;
+    const totalBalance = useMemo(() => {
+        if (!wallet) return 0;
+        return (wallet.depositBalance || 0) + (wallet.winningBalance || 0) + (wallet.bonusBalance || 0);
+    }, [wallet]);
+
+    const getInitials = (name: string | null | undefined): string => {
+        if (!name) return '??';
+        const nameParts = name.split(' ').filter(Boolean);
+        if (nameParts.length === 0) return '??';
+        return nameParts.map(part => part[0]).join('').substring(0, 2).toUpperCase();
+    };
 
     return (
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-             <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger asChild>
-                    <Button size="icon" variant="outline" className="sm:hidden">
-                        <Menu className="h-5 w-5" />
-                        <span className="sr-only">Toggle Menu</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="sm:max-w-xs">
-                    <SheetHeader>
-                        <SheetTitle>Menu</SheetTitle>
-                        <SheetDescription>
-                            Navigate through the application sections.
-                        </SheetDescription>
-                    </SheetHeader>
-                    {/* Add your mobile navigation links here */}
-                </SheetContent>
-            </Sheet>
-            <div className="relative flex-1 md:grow-0">
-                {/* You can add a search bar here if you want */}
-            </div>
-            <div className="flex items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-                <Link href="/wallet" className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5" />
-                    <span className="font-semibold">₹{totalBalance.toFixed(2)}</span>
-                </Link>
-                <Button variant="outline" size="icon" className="relative">
-                    <Bell className="h-5 w-5" />
-                    <span className="sr-only">Notifications</span>
-                    <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                    </span>
+        <header className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b sticky top-0 z-40">
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} className="md:hidden">
+                    <Menu className="h-6 w-6" />
                 </Button>
-                <Link href="/profile">
-                    <Avatar className="h-9 w-9">
-                        <AvatarImage src={user?.photoURL || ''} alt="User avatar" />
-                        <AvatarFallback>{user?.displayName?.[0] || 'U'}</AvatarFallback>
-                    </Avatar>
+                <h1 className="text-xl font-semibold hidden md:block">Dashboard</h1>
+            </div>
+            <div className="flex items-center gap-4">
+                <Link href="/wallet" passHref>
+                    <Button variant="outline" className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5" />
+                        <span>₹{totalBalance.toFixed(2)}</span>
+                    </Button>
                 </Link>
+
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <Bell className="h-6 w-6" />
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent>
+                        <SheetHeader>
+                            <SheetTitle>Notifications</SheetTitle>
+                            <SheetDescription>
+                                You have no new notifications.
+                            </SheetDescription>
+                        </SheetHeader>
+                    </SheetContent>
+                </Sheet>
+
+                {user && (
+                     <Link href="/profile" passHref>
+                        <Avatar className="cursor-pointer">
+                            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'user avatar'} />
+                            <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                        </Avatar>
+                    </Link>
+                )}
             </div>
         </header>
-    )
-}
+    );
+};
 
 export default AppHeader;

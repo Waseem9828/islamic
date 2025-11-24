@@ -1,191 +1,219 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { useRouter } from 'next/navigation';
-import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon, Camera } from 'lucide-react';
-import { useUser, useFirebase } from '@/firebase/provider';
+import { useState, useEffect, useRef } from 'react';
+import { useFirebase } from '@/firebase';
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useRouter } from 'next/navigation';
+import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon, Camera } from 'lucide-react';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { uploadFile } from '@/firebase/storage';
-import { Separator } from '@/components/ui/separator';
-import { useAdmin } from '@/hooks/useAdmin'; // Import the useAdmin hook
+
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
 
 export function ProfileForm() {
-  const router = useRouter();
-  const { user, isUserLoading } = useUser();
-  const { auth, firestore } = useFirebase();
-  const { isAdmin, isAdminLoading } = useAdmin(); // Use the admin hook
+    const { auth, firestore, user } = useFirebase();
+    const router = useRouter();
+    
+    const [displayName, setDisplayName] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [error, setError] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
-  const [displayName, setDisplayName] = useState('');
-  const [upiId, setUpiId] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [avatarSrc, setAvatarSrc] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (user && firestore) {
-      setAvatarSrc(user.photoURL || `https://avatar.vercel.sh/${user.email}.png`);
-      setDisplayName(user.displayName || '');
-
-      const userDocRef = doc(firestore, "users", user.uid);
-      getDoc(userDocRef).then(docSnap => {
-        if (docSnap.exists()) {
-          setUpiId(docSnap.data().upiId || '');
+    // Effect to set initial form data once user is loaded
+    useEffect(() => {
+        if (user) {
+            setDisplayName(user.displayName || '');
+            // Fetch phone number from Firestore
+            const userDocRef = doc(firestore!, 'users', user.uid);
+            getDoc(userDocRef).then(docSnap => {
+                if (docSnap.exists()) {
+                    setPhoneNumber(docSnap.data().phoneNumber || '');
+                }
+            });
         }
-      });
-    }
-  }, [user, firestore]);
+    }, [user, firestore]);
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [isUserLoading, user, router]);
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !auth) return;
 
-  const handleLogout = async () => {
-    if (!auth) return;
-    try {
-      await signOut(auth);
-      router.push('/login');
-    } catch (error) {
-      console.error("Error signing out: ", error);
-      toast.error("Failed to log out.");
-    }
-  };
+        setIsSaving(true);
+        setError('');
+        const toastId = toast.loading('Saving profile...');
 
-  const handlePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !auth?.currentUser || !firestore) return;
-    const file = event.target.files?.[0];
-    if (!file) return;
+        try {
+            // Update Firebase Auth profile
+            await updateProfile(auth.currentUser!, { displayName });
 
-    setIsUploading(true);
+            // Update Firestore user document
+            const userDocRef = doc(firestore!, 'users', user.uid);
+            await updateDoc(userDocRef, { displayName, phoneNumber });
 
-    try {
-      // Correctly call uploadFile with folder and file name (user.uid)
-      const downloadURL = await uploadFile(file, 'avatars', user.uid);
-
-      await updateProfile(auth.currentUser, { photoURL: downloadURL });
-
-      const userDocRef = doc(firestore, "users", user.uid);
-      await updateDoc(userDocRef, { photoURL: downloadURL });
-
-      setAvatarSrc(downloadURL);
-      toast.success("Profile picture updated!");
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(error.message || "An unknown error occurred during upload.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleProfileSave = async () => {
-    if (!user || !firestore || !auth?.currentUser) return;
-
-    setIsSaving(true);
-
-    try {
-        if (auth.currentUser.displayName !== displayName) {
-            await updateProfile(auth.currentUser, { displayName });
+            toast.success('Profile updated successfully!', { id: toastId });
+        } catch (err) {
+            console.error("Profile update error:", err);
+            toast.error('Failed to update profile. Please try again.', { id: toastId });
+        } finally {
+            setIsSaving(false);
         }
+    };
+    
+    const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!user || !event.target.files || event.target.files.length === 0) return;
+        
+        const file = event.target.files[0];
+        const storage = getStorage();
+        const avatarRef = ref(storage, `avatars/${user.uid}/${file.name}`);
 
-        const userDocRef = doc(firestore, "users", user.uid);
-        await updateDoc(userDocRef, {
-            displayName: displayName,
-            upiId: upiId,
-        });
+        setIsUploading(true);
+        const toastId = toast.loading('Uploading avatar...');
 
-        toast.success("Profile saved successfully!");
-    } catch (error) {
-        console.error("Error saving profile:", error);
-        toast.error("Failed to save profile.");
-    } finally {
-        setIsSaving(false);
+        try {
+            const snapshot = await uploadBytes(avatarRef, file);
+            const photoURL = await getDownloadURL(snapshot.ref);
+
+            // Update auth profile
+            await updateProfile(user, { photoURL });
+            // Update firestore doc
+            const userDocRef = doc(firestore!, 'users', user.uid);
+            await updateDoc(userDocRef, { photoURL });
+
+            toast.success("Avatar updated!", { id: toastId });
+
+        } catch (error) {
+            console.error("Avatar upload error:", error);
+            toast.error("Failed to upload avatar.", { id: toastId });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleSignOut = async () => {
+        if (!auth) return;
+        await signOut(auth);
+        toast.success("You have been signed out.");
+        router.push('/login');
+    };
+
+    const getInitials = (name: string | null | undefined): string => {
+        if (!name) return '??';
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    };
+
+    if (!user) {
+        return <div>Loading user profile...</div>; // Or a skeleton loader
     }
-  };
 
-  if (isUserLoading || !user || isAdminLoading) {
-    return <div className="flex items-center justify-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-  }
-
-  return (
-    <Card className="max-w-2xl mx-auto my-4 sm:my-8 shadow-lg">
-        <CardHeader className="text-center items-center p-4 sm:p-6">
-            <div className="relative w-24 h-24 sm:w-28 sm:h-28">
-                <Avatar className="w-full h-full border-2 border-primary/20">
-                    <AvatarImage src={avatarSrc} alt={displayName || 'User'} />
-                    <AvatarFallback className="text-3xl">{displayName ? displayName[0].toUpperCase() : (user.email ? user.email[0].toUpperCase() : 'U')}</AvatarFallback>
-                </Avatar>
-                <label htmlFor="picture" className="absolute -bottom-2 -right-2 cursor-pointer p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-transform transform hover:scale-110">
-                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                </label>
-                <Input
-                    id="picture"
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePictureUpload}
-                    className="hidden"
-                    disabled={isUploading}
-                />
+    return (
+        <div className="grid gap-8 md:grid-cols-3">
+            {/* Left Column: Navigation & Actions */}
+            <div className="md:col-span-1">
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex flex-col items-center text-center">
+                             <div className="relative mb-4">
+                                <Avatar className="w-24 h-24 text-3xl">
+                                    <AvatarImage src={user.photoURL || undefined} />
+                                    <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                                </Avatar>
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    ref={fileInputRef} 
+                                    onChange={handleAvatarUpload}
+                                    hidden 
+                                />
+                                <Button 
+                                    size="icon" 
+                                    variant="outline"
+                                    className="absolute bottom-0 right-0 rounded-full bg-background"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
+                                >
+                                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Camera className="h-4 w-4"/>}
+                                </Button>
+                            </div>
+                            <h2 className="text-xl font-semibold">{user.displayName || 'User Name'}</h2>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                        </div>
+                        <nav className="mt-6 space-y-1">
+                            <ProfileNavItem icon={UserCog} label="Edit Profile" href="/profile" active />
+                            <ProfileNavItem icon={Wallet} label="My Wallet" href="/wallet" />
+                            <div className="pt-2 mt-2 border-t">
+                                <button 
+                                    onClick={handleSignOut}
+                                    className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                    <LogOut className="mr-3 h-5 w-5" />
+                                    <span>Sign Out</span>
+                                </button>
+                            </div>
+                        </nav>
+                    </CardContent>
+                </Card>
             </div>
-            <CardTitle className="text-xl sm:text-2xl mt-3 font-bold">{displayName || user.email}</CardTitle>
-            <CardDescription className="text-xs sm:text-sm font-mono bg-muted px-2 py-1 rounded-md">UID: {user.uid}</CardDescription>
-        </CardHeader>
 
-        <CardContent className="p-4 sm:p-6">
-            <div className="space-y-4 mb-6">
-                <h3 className="text-lg font-semibold flex items-center"><UserIcon className="mr-2 h-5 w-5"/>Personal Information</h3>
-                <div className="space-y-3">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="displayName">Display Name</Label>
-                        <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Enter your name" />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" value={user.email || ''} disabled />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="upiId">Default UPI ID</Label>
-                        <Input id="upiId" value={upiId} onChange={(e) => setUpiId(e.target.value)} placeholder="yourname@bank" />
-                    </div>
-                </div>
+            {/* Right Column: Profile Form */}
+            <div className="md:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Edit Profile</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleUpdateProfile} className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="displayName">Display Name</Label>
+                                <Input id="displayName" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Enter your full name" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email Address</Label>
+                                <Input id="email" type="email" value={user.email || ''} disabled placeholder="your@email.com" />
+                                <p className="text-xs text-muted-foreground">Email cannot be changed.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phoneNumber">Phone Number</Label>
+                                <Input id="phoneNumber" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="Enter your phone number" />
+                            </div>
+
+                            {error && (
+                                <Alert variant="destructive">
+                                    <AlertDescription>{error}</AlertDescription>
+                                </Alert>
+                            )}
+
+                            <div className="flex justify-end">
+                                <Button type="submit" disabled={isSaving || isUploading}>
+                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} 
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
             </div>
-
-            <Separator className="my-6" />
-
-            <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Actions</h3>
-                <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/wallet')}>
-                    <div className="flex items-center"><Wallet className="mr-2 h-5 w-5" />My Wallet</div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </Button>
-                {isAdmin && (
-                  <Button variant="outline" className="w-full justify-between py-6 text-base" onClick={() => router.push('/admin')}>
-                      <div className="flex items-center"><UserCog className="mr-2 h-5 w-5" />Admin Panel</div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-                )}
-            </div>
-        </CardContent>
-
-        <CardFooter className="flex flex-col gap-3 p-4 sm:p-6">
-            <Button onClick={handleProfileSave} disabled={isSaving || isUploading} className="w-full py-6 text-base">
-                {isSaving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
-                Save Changes
-            </Button>
-            <Button variant="destructive" className="w-full py-6 text-base" onClick={handleLogout}>
-              <LogOut className="mr-2 h-5 w-5" />
-              Logout
-            </Button>
-        </CardFooter>
-    </Card>
-  );
+        </div>
+    );
 }
 
-    
+// Helper component for navigation items
+function ProfileNavItem({ icon: Icon, label, href, active = false }: { icon: React.ElementType, label: string, href: string, active?: boolean }) {
+    const router = useRouter();
+    return (
+        <button 
+            onClick={() => router.push(href)} 
+            className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${active ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`}>
+            <Icon className="mr-3 h-5 w-5" />
+            <span>{label}</span>
+            <ChevronRight className="ml-auto h-5 w-5 text-muted-foreground" />
+        </button>
+    );
+}

@@ -24,7 +24,7 @@ exports.getAdminDashboardStats = functions
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
     }
-    const adminCheck = await exports.checkAdminStatus.run(context);
+    const adminCheck = await exports.checkAdminStatus.run({}, context);
     if (!adminCheck.isAdmin) {
         throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
     }
@@ -49,7 +49,7 @@ exports.updateUserStatus = functions
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
     }
-    const adminCheck = await exports.checkAdminStatus.run(context);
+    const adminCheck = await exports.checkAdminStatus.run({}, context);
     if (!adminCheck.isAdmin) {
         throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
     }
@@ -68,7 +68,7 @@ exports.getWalletInfo = functions
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
     }
-    const adminCheck = await exports.checkAdminStatus.run(context);
+    const adminCheck = await exports.checkAdminStatus.run({}, context);
     if (!adminCheck.isAdmin) {
         throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
     }
