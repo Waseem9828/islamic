@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Trophy, Settings, LogOut } from 'lucide-react';
+import { Home, Users, Trophy, Settings, LogOut, IndianRupee, History } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { useFirebase } from '@/firebase/provider'; // Corrected import path
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ const NavLink = ({ href, icon: Icon, label }: { href: string; icon: React.Elemen
 
     return (
         <Link href={href}>
-            <div className={`flex items-center p-3 my-2 text-sm font-medium rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+            <div className={`flex items-center p-3 my-1 text-sm font-medium rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
                 <Icon className="h-5 w-5" />
                 <span className="ml-3">{label}</span>
             </div>
@@ -37,15 +37,20 @@ export const AdminSidebar = () => {
     };
 
     return (
-        <aside className="fixed top-0 left-0 h-screen w-64 bg-card border-r flex flex-col z-50">
+        <aside className="fixed top-0 left-0 h-screen w-64 bg-card border-r flex-col z-50 hidden md:flex">
             <div className="flex items-center justify-center h-16 border-b">
-                <h1 className="text-xl font-bold">Admin Panel</h1>
+                <Link href="/admin">
+                    <h1 className="text-xl font-bold">Admin Panel</h1>
+                </Link>
             </div>
             <nav className="flex-1 p-4 overflow-y-auto">
                 <NavLink href="/admin" icon={Home} label="Dashboard" />
                 <NavLink href="/admin/users" icon={Users} label="Users" />
                 <NavLink href="/admin/matches" icon={Trophy} label="Matches" />
-                <NavLink href="/admin/settings" icon={Settings} label="Settings" />
+                <NavLink href="/admin/deposit-requests" icon={IndianRupee} label="Deposits" />
+                <NavLink href="/admin/withdrawals" icon={IndianRupee} label="Withdrawals" />
+                <NavLink href="/admin/transactions" icon={History} label="Transactions" />
+                <NavLink href="/admin/settings" icon={Settings} label="App Settings" />
             </nav>
             <div className="p-4 border-t">
                 <button 

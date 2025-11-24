@@ -49,9 +49,22 @@ export default function AllTransactionsPage() {
     const unsubscribe = onSnapshot(transQuery, async (snapshot) => {
         const fetchedTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         
+        const userCache = new Map<string, User>();
         const transactionsWithUsers = await Promise.all(fetchedTransactions.map(async (tx) => {
-            const userDoc = await getDoc(doc(firestore, 'users', tx.userId));
-            return { ...tx, user: userDoc.exists() ? { id: userDoc.id, ...userDoc.data() } as User : undefined };
+            if (userCache.has(tx.userId)) {
+                return { ...tx, user: userCache.get(tx.userId) };
+            }
+            try {
+                const userDoc = await getDoc(doc(firestore, 'users', tx.userId));
+                if (userDoc.exists()) {
+                    const userData = { id: userDoc.id, ...userDoc.data() } as User;
+                    userCache.set(tx.userId, userData);
+                    return { ...tx, user: userData };
+                }
+            } catch (e) {
+                console.error(`Failed to fetch user ${tx.userId}`, e);
+            }
+            return { ...tx, user: undefined };
         }));
 
         setTransactions(transactionsWithUsers);
@@ -86,39 +99,45 @@ export default function AllTransactionsPage() {
   }, [transactions, search, filters]);
 
   const uniqueReasons = useMemo(() => [...new Set(transactions.map(tx => tx.reason))], [transactions]);
+  const uniqueStatuses = useMemo(() => [...new Set(transactions.map(tx => tx.status))], [transactions]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+        case 'approved':
+        case 'success':
+        case 'completed':
+            return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Completed</Badge>;
+        case 'pending':
+            return <Badge variant="secondary">Pending</Badge>;
+        case 'rejected':
+        case 'cancelled':
+            return <Badge variant="destructive">Failed</Badge>;
+        default:
+            return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
     <div className="container mx-auto max-w-7xl py-8">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center"><History className="mr-2"/>All Transactions</CardTitle>
-          <CardDescription>A complete, real-time history of all financial activities.</CardDescription>
+          <CardDescription>A complete, real-time history of all financial activities across the platform.</CardDescription>
            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
-                <Input placeholder="Search Name, Email, User ID..." value={search} onChange={e => setSearch(e.target.value)} />
+                <Input placeholder="Search Name, Email, User ID, TXN ID..." value={search} onChange={e => setSearch(e.target.value)} className="md:col-span-2" />
                  <Select value={filters.type} onValueChange={v => handleFilterChange('type', v)}>
-                    <SelectTrigger><SelectValue/></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="credit">Credit</SelectItem>
                         <SelectItem value="debit">Debit</SelectItem>
                     </SelectContent>
                 </Select>
-                 <Select value={filters.reason} onValueChange={v => handleFilterChange('reason', v)}>
-                    <SelectTrigger><SelectValue placeholder="All Reasons" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Reasons</SelectItem>
-                        {uniqueReasons.map(r => <SelectItem key={r} value={r} className="capitalize">{r.replace(/_/g, ' ')}</SelectItem>)}
-                    </SelectContent>
-                </Select>
                  <Select value={filters.status} onValueChange={v => handleFilterChange('status', v)}>
                     <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                         <SelectItem value="success">Success</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
+                        {uniqueStatuses.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
@@ -126,7 +145,7 @@ export default function AllTransactionsPage() {
         <CardContent>
             {loading && (
                 <div className="space-y-2">
-                    {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                    {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
                 </div>
             )}
             {!loading && (
@@ -146,9 +165,9 @@ export default function AllTransactionsPage() {
                         {filteredTransactions.map(tx => (
                             <TableRow key={tx.id}>
                                 <TableCell>
-                                    <Link href={`/admin/users?search=${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={tx.user?.photoURL || `https://avatar.vercel.sh/${tx.user?.email}.png`} />
+                                    <Link href={`/admin/users?search=${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
+                                        <Avatar className="h-9 w-9 border">
+                                            <AvatarImage src={tx.user?.photoURL || undefined} />
                                             <AvatarFallback>{tx.user?.displayName?.[0] || 'U'}</AvatarFallback>
                                         </Avatar>
                                         <div>
@@ -159,22 +178,22 @@ export default function AllTransactionsPage() {
                                 </TableCell>
                                 <TableCell>
                                     {tx.type === 'credit' ? 
-                                    <span className='flex items-center text-green-600'><ArrowDownLeft className="h-4 w-4 mr-1"/>Credit</span> : 
-                                    <span className='flex items-center text-red-600'><ArrowUpRight className="h-4 w-4 mr-1"/>Debit</span>}
+                                    <span className='flex items-center text-green-600 font-medium'><ArrowDownLeft className="h-4 w-4 mr-1"/>Credit</span> : 
+                                    <span className='flex items-center text-red-600 font-medium'><ArrowUpRight className="h-4 w-4 mr-1"/>Debit</span>}
                                 </TableCell>
                                 <TableCell className={`font-semibold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>₹{tx.amount.toFixed(2)}</TableCell>
                                 <TableCell className="capitalize">{tx.reason.replace(/_/g, ' ')}</TableCell>
-                                <TableCell><Badge variant={tx.status === 'completed' || tx.status === 'approved' || tx.status === 'success' ? 'default' : tx.status === 'rejected' ? 'destructive' : 'secondary'}>{tx.status}</Badge></TableCell>
-                                <TableCell className="font-mono text-xs">
-                                    {tx.matchId ? <Link href={`/admin/matches?search=${tx.matchId}`} className="hover:underline">{tx.matchId}</Link> : 'N/A'}
+                                <TableCell>{getStatusBadge(tx.status)}</TableCell>
+                                <TableCell className="font-mono text-xs max-w-[120px] truncate">
+                                    {tx.matchId ? <Link href={`/match/${tx.matchId}`} className="hover:underline" title={tx.matchId}>Match: {tx.matchId}</Link> : tx.id}
                                 </TableCell>
-                                <TableCell className="text-right text-xs">{format(tx.timestamp.toDate(), 'PPp')}</TableCell>
+                                <TableCell className="text-right text-xs text-muted-foreground">{format(tx.timestamp.toDate(), 'PPp')}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             )}
-            {!loading && filteredTransactions.length === 0 && <p className="text-center text-muted-foreground py-8">No transactions found for the selected filters.</p>}
+            {!loading && filteredTransactions.length === 0 && <p className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg">No transactions found for the selected filters.</p>}
         </CardContent>
       </Card>
     </div>
