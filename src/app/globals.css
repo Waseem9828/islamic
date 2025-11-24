@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    --background: 210 100% 12%; /* Navy */
-    --foreground: 279 23% 85%; /* Light Lavender for text */
-    --card: 210 100% 14%; /* Slightly lighter Navy */
-    --card-foreground: 279 23% 85%;
-    --popover: 210 100% 12%;
-    --popover-foreground: 279 23% 85%;
-    --primary: 279 79% 34%; /* Purple */
-    --primary-foreground: 300 31% 94%; /* Light Lavender */
-    --secondary: 210 100% 18%; /* Darker Navy variant */
-    --secondary-foreground: 300 31% 94%;
-    --muted: 210 100% 18%;
-    --muted-foreground: 279 15% 65%;
-    --accent: 300 31% 66%; /* Lavender */
-    --accent-foreground: 210 100% 12%;
+    --background: 171 47% 94%; /* Mist Aqua */
+    --foreground: 198 100% 6%; /* Midnight Navy */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 198 100% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 198 100% 6%;
+    --primary: 191 100% 23%; /* Deep Aqua */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 181 89% 20%; /* Calm Mint */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 171 47% 88%;
+    --muted-foreground: 198 100% 16%;
+    --accent: 160 41% 68%; /* Soft Mint */
+    --accent-foreground: 198 100% 6%;
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 210 100% 22%;
-    --input: 210 100% 22%;
-    --ring: 300 31% 66%; /* Lavender */
+    --destructive-foreground: 0 0% 100%;
+    --border: 171 47% 85%;
+    --input: 171 47% 85%;
+    --ring: 181 89% 20%; /* Calm Mint for focus rings */
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 210 100% 12%; /* Navy */
-    --foreground: 279 23% 85%; /* Light Lavender for text */
-    --card: 210 100% 14%; /* Slightly lighter Navy */
-    --card-foreground: 279 23% 85%;
-    --popover: 210 100% 12%;
-    --popover-foreground: 279 23% 85%;
-    --primary: 279 79% 34%; /* Purple */
-    --primary-foreground: 300 31% 94%; /* Light Lavender */
-    --secondary: 210 100% 18%; /* Darker Navy variant */
-    --secondary-foreground: 300 31% 94%;
-    --muted: 210 100% 18%;
-    --muted-foreground: 279 15% 65%;
-    --accent: 300 31% 66%; /* Lavender */
-    --accent-foreground: 210 100% 12%;
+    --background: 198 100% 6%; /* Midnight Navy */
+    --foreground: 171 47% 85%;
+    --card: 198 100% 8%;
+    --card-foreground: 171 47% 85%;
+    --popover: 198 100% 6%;
+    --popover-foreground: 171 47% 85%;
+    --primary: 181 89% 30%; /* Lighter Calm Mint for dark mode */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 181 89% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 198 100% 12%;
+    --muted-foreground: 171 47% 75%;
+    --accent: 160 41% 68%;
+    --accent-foreground: 198 100% 6%;
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 210 100% 22%;
-    --input: 210 100% 22%;
-    --ring: 300 31% 66%; /* Lavender */
+    --destructive-foreground: 0 0% 100%;
+    --border: 198 100% 12%;
+    --input: 198 100% 12%;
+    --ring: 181 89% 30%;
   }
 }
  
