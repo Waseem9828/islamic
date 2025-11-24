@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Eye, XCircle, Crown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from 'date-fns';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
@@ -36,6 +36,7 @@ export const MatchClient = () => {
     const [globalFilter, setGlobalFilter] = useState('');
     const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
     const [actionState, setActionState] = useState<{ matchId: string | null; winnerId: string | null; type: 'win' | 'cancel' | null }>({ matchId: null, winnerId: null, type: null });
+    const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
     const fetchMatches = async () => {
         if (!functions) return;
@@ -59,6 +60,7 @@ export const MatchClient = () => {
     const handleAction = async () => {
         if (!actionState.matchId || !actionState.type || !functions) return;
         
+        setIsSubmittingAction(true);
         const { matchId, winnerId, type } = actionState;
         
         let actionFn;
@@ -68,6 +70,7 @@ export const MatchClient = () => {
         if (type === 'win') {
             if (!winnerId) {
                 toast.error("No winner selected.");
+                setIsSubmittingAction(false);
                 return;
             }
             actionFn = httpsCallable(functions, 'distributeWinnings');
@@ -77,6 +80,7 @@ export const MatchClient = () => {
             actionFn = httpsCallable(functions, 'cancelMatchByAdmin');
             successMessage = "Match cancelled!";
         } else {
+             setIsSubmittingAction(false);
             return;
         }
 
@@ -88,6 +92,7 @@ export const MatchClient = () => {
             toast.error("Action failed", { description: err.message });
         } finally {
             setActionState({ matchId: null, winnerId: null, type: null });
+            setIsSubmittingAction(false);
         }
     };
     
@@ -114,7 +119,9 @@ export const MatchClient = () => {
                     cancelled: 'destructive',
                     archived: 'outline',
                 };
-                return <Badge variant={variantMap[row.original.status] || 'secondary'}>{row.original.status}</Badge>;
+                const status = row.original.status;
+                const badgeClass = status === 'inprogress' ? 'bg-blue-500/80 text-white' : '';
+                return <Badge variant={variantMap[status] || 'secondary'} className={badgeClass}>{status}</Badge>;
             }
         },
         {
@@ -136,61 +143,76 @@ export const MatchClient = () => {
             id: 'actions',
             cell: ({ row }) => {
                 const match = row.original;
+                const isCancellable = match.status === 'waiting' || match.status === 'inprogress';
+                const isDeclareWinnerEnabled = match.status === 'inprogress';
+
                 return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => alert(`Viewing match ${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
-                            {(match.status === 'inprogress') && (
-                                <AlertDialog onOpenChange={(open) => !open && setActionState({matchId: null, winnerId: null, type: null})}>
+                    <AlertDialog onOpenChange={(open) => !open && setActionState({matchId: null, winnerId: null, type: null})}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => alert(`Viewing match ${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
+                                
+                                {isDeclareWinnerEnabled && (
                                     <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" className="w-full justify-start p-2 h-auto font-normal text-sm relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
+                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left">
                                             <Crown className="mr-2 h-4 w-4"/>Declare Winner
-                                        </Button>
+                                        </button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Declare Winner for Match {match.id}</AlertDialogTitle></AlertDialogHeader>
-                                        <AlertDialogDescription>Select a winner from the list of players. This action is irreversible and will distribute the prize pool.</AlertDialogDescription>
-                                        <div className="space-y-2">
-                                            {match.players.map(p => (
-                                                <Button key={p} variant="outline" className='w-full' onClick={() => setActionState({ matchId: match.id, winnerId: p, type: 'win'})}>
-                                                    Declare <span className="font-mono mx-2 p-1 bg-muted rounded text-xs">{p}</span> as Winner
-                                                </Button>
-                                            ))}
-                                        </div>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction disabled={!actionState.winnerId} onClick={handleAction}>Confirm</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-                            {(match.status === 'waiting' || match.status === 'inprogress') && (
-                                <AlertDialog onOpenChange={(open) => !open && setActionState({matchId: null, winnerId: null, type: null})}>
+                                )}
+                                {isCancellable && (
                                     <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" className="w-full justify-start p-2 h-auto font-normal text-sm text-red-500 hover:text-red-500 focus:text-red-500 relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
+                                         <button 
+                                            onClick={() => setActionState({ matchId: match.id, winnerId: null, type: 'cancel' })}
+                                            className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left text-red-600 focus:text-red-600"
+                                        >
                                             <XCircle className="mr-2 h-4 w-4"/>Cancel Match
-                                        </Button>
+                                        </button>
                                     </AlertDialogTrigger>
-                                     <AlertDialogContent>
-                                        <AlertDialogHeader><AlertDialogTitle>Cancel Match {match.id}?</AlertDialogTitle></AlertDialogHeader>
-                                        <AlertDialogDescription>This will refund all players' entry fees and change the match status to 'cancelled'. This action is irreversible.</AlertDialogDescription>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Back</AlertDialogCancel>
-                                            <AlertDialogAction className='bg-destructive hover:bg-destructive/90' onClick={() => { setActionState({ matchId: match.id, winnerId: null, type: 'cancel' }); handleAction(); }}>Confirm Cancellation</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <AlertDialogContent>
+                             <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    {actionState.type === 'cancel' ? `Cancel Match ${actionState.matchId}?` : `Declare Winner for Match ${match.id}`}
+                                </AlertDialogTitle>
+                            </AlertDialogHeader>
+                            {actionState.type === 'cancel' ? (
+                                <AlertDialogDescription>This will refund all players' entry fees and change the match status to 'cancelled'. This action is irreversible.</AlertDialogDescription>
+                            ) : (
+                                <>
+                                <AlertDialogDescription>Select a winner from the list of players. This action is irreversible and will distribute the prize pool.</AlertDialogDescription>
+                                <div className="space-y-2 max-h-60 overflow-y-auto">
+                                    {match.players.map(p => (
+                                        <Button key={p} variant={actionState.winnerId === p ? 'default' : 'outline'} className='w-full justify-start' onClick={() => setActionState(prev => ({ ...prev, winnerId: p, type: 'win' }))}>
+                                            <Crown className="mr-2 h-4 w-4"/> Declare <span className="font-mono mx-2 p-1 bg-muted rounded text-xs">{p}</span> as Winner
+                                        </Button>
+                                    ))}
+                                </div>
+                                </>
                             )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isSubmittingAction}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    disabled={isSubmittingAction || (actionState.type === 'win' && !actionState.winnerId)}
+                                    onClick={handleAction}
+                                    className={actionState.type === 'cancel' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                                >
+                                    {isSubmittingAction && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Confirm
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 );
             }
         }
-    ], [functions, actionState]);
+    ], [functions, actionState, isSubmittingAction]);
 
     const table = useReactTable({
         data: matches,

@@ -111,22 +111,61 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
         throw new functions.https.HttpsError("invalid-argument", "Invalid Match ID provided.");
     }
     
-    // This function will be very similar to creator-led cancellation,
-    // but without the creator check. It will refund all players.
-    // For now, we will just mark it as cancelled.
-    
     const matchRef = db.collection("matches").doc(matchId);
-    const matchDoc = await matchRef.get();
+    
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists) {
+            throw new functions.https.HttpsError("not-found", "Match not found.");
+        }
+        const matchData = matchDoc.data();
 
-    if (!matchDoc.exists) {
-        throw new functions.https.HttpsError("not-found", "Match not found.");
-    }
-    if (matchDoc.data()?.status === 'completed' || matchDoc.data()?.status === 'cancelled') {
-        throw new functions.https.HttpsError("failed-precondition", "Match is already completed or cancelled.");
-    }
+        if (matchData?.status === 'completed' || matchData?.status === 'cancelled') {
+            throw new functions.https.HttpsError("failed-precondition", "Match is already completed or cancelled.");
+        }
 
-    // TODO: Implement refund logic here in a transaction
-    await matchRef.update({ status: 'cancelled' });
+        // Refund entry fee for all players
+        for (const playerId of matchData.players) {
+            const playerWalletRef = db.collection('wallets').doc(playerId);
+            const playerTxQuery = db.collection('transactions')
+                .where('userId', '==', playerId)
+                .where('matchId', '==', matchId)
+                .where('reason', 'in', ['match_creation', 'match_join']);
+            
+            const txSnapshot = await playerTxQuery.get();
 
-    return { status: 'success', message: 'Match has been cancelled by admin.' };
+            if (!txSnapshot.empty) {
+                const txDoc = txSnapshot.docs[0];
+                const txData = txDoc.data();
+                const refundAmount = txData.amount;
+                
+                // Refund the amount to the user's wallet
+                t.update(playerWalletRef, {
+                    // For simplicity, refunding to deposit balance.
+                    // A more complex system could refund to original sources.
+                    depositBalance: admin.firestore.FieldValue.increment(refundAmount)
+                });
+
+                // Create a refund transaction record
+                const refundTxRef = db.collection('transactions').doc();
+                t.set(refundTxRef, {
+                    userId: playerId,
+                    type: 'credit',
+                    amount: refundAmount,
+                    reason: 'match_cancellation_refund',
+                    status: 'completed',
+                    matchId: matchId,
+                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                });
+            }
+        }
+        
+        // Finally, update the match status to 'cancelled'
+        t.update(matchRef, { 
+            status: 'cancelled',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        return { status: 'success', message: `Match ${matchId} has been cancelled and all players refunded.` };
+    });
 });
