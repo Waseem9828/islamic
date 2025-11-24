@@ -15,6 +15,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 // Types
 interface Match {
@@ -31,6 +32,7 @@ interface Match {
 // --- Client Component ---
 export const MatchClient = () => {
     const { functions } = useFirebase();
+    const router = useRouter();
     const [matches, setMatches] = useState<Match[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -154,7 +156,7 @@ export const MatchClient = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => alert(`Viewing match ${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/match/${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
                                 
                                 {isDeclareWinnerEnabled && (
                                     <AlertDialogTrigger asChild>
@@ -212,7 +214,7 @@ export const MatchClient = () => {
                 );
             }
         }
-    ], [functions, actionState, isSubmittingAction]);
+    ], [functions, actionState, isSubmittingAction, router]);
 
     const table = useReactTable({
         data: matches,

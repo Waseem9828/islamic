@@ -2,13 +2,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gamepad2, Home, Trophy, User, Wallet, History } from "lucide-react";
+import { Gamepad2, Home, Trophy, User, Wallet, History, Star } from "lucide-react";
 
 const BottomNavbar = () => {
   const pathname = usePathname();
 
   const navItems = [
     { href: "/matchmaking", label: "Play", icon: Home },
+    { href: "/play", label: "Create", icon: Star },
     { href: "/leaderboard", label: "Ranks", icon: Trophy },
     { href: "/wallet", label: "Wallet", icon: Wallet },
     { href: "/match-history", label: "History", icon: History },
@@ -16,7 +17,7 @@ const BottomNavbar = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
-      <div className="grid h-16 grid-cols-4">
+      <div className="grid h-16 grid-cols-5">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
