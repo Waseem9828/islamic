@@ -1,12 +1,10 @@
 
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
-import { collection, doc, query, where, orderBy, limit } from 'firebase/firestore';
-import { useDocumentData } from 'react-firebase-hooks/firestore';
-import { useCollectionData } from 'react-firebase-hooks/firestore';
+import { collection, doc, query, where, orderBy, limit, onSnapshot, DocumentData } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -70,37 +68,67 @@ export default function WalletPage() {
     const { firestore } = useFirebase();
     const router = useRouter();
 
-    const walletRef = useMemo(() => user ? doc(firestore!, 'wallets', user.uid) : null, [user, firestore]);
-    const [walletData, isWalletLoading] = useDocumentData(walletRef);
-
-    const transactionsQuery = useMemo(() => {
-        if (!user || !firestore) return null;
-        return query(
-          collection(firestore, 'transactions'),
-          where('userId', '==', user.uid),
-          orderBy('timestamp', 'desc'),
-          limit(10)
-        );
-      }, [user, firestore]);
-
-    const [transactions, isTransactionsLoading] = useCollectionData(transactionsQuery);
+    const [walletData, setWalletData] = useState<DocumentData | null>(null);
+    const [transactions, setTransactions] = useState<DocumentData[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
+        if (!user || !firestore) {
+            if (!isUserLoading) {
+                router.push('/login');
+            }
+            return;
         }
-    }, [user, isUserLoading, router]);
 
-    if (isUserLoading || !user) {
+        setIsLoading(true);
+
+        const walletRef = doc(firestore, 'wallets', user.uid);
+        const transactionsQuery = query(
+            collection(firestore, 'transactions'),
+            where('userId', '==', user.uid),
+            orderBy('timestamp', 'desc'),
+            limit(10)
+        );
+
+        const unsubWallet = onSnapshot(walletRef, (doc) => {
+            setWalletData(doc.data() ?? null);
+            // Don't stop loading until both snapshots are received
+        }, (error) => {
+            console.error("Error fetching wallet data:", error);
+            setIsLoading(false);
+        });
+
+        const unsubTransactions = onSnapshot(transactionsQuery, (snapshot) => {
+            setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            setIsLoading(false); // Stop loading after transactions are fetched
+        }, (error) => {
+            console.error("Error fetching transactions data:", error);
+            setIsLoading(false);
+        });
+
+        // Cleanup function
+        return () => {
+            unsubWallet();
+            unsubTransactions();
+        };
+
+    }, [user, firestore, isUserLoading, router]);
+
+    const walletBalances = useMemo(() => {
+        const deposit = walletData?.depositBalance || 0;
+        const bonus = walletData?.bonusBalance || 0;
+        const winning = walletData?.winningBalance || 0;
+        return {
+            deposit,
+            bonus,
+            winning,
+            total: deposit + bonus + winning,
+        };
+    }, [walletData]);
+
+    if (isUserLoading || (!walletData && isLoading)) {
         return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
-
-    const walletBalances = {
-        deposit: walletData?.depositBalance || 0,
-        bonus: walletData?.bonusBalance || 0,
-        winning: walletData?.winningBalance || 0,
-        total: (walletData?.depositBalance || 0) + (walletData?.bonusBalance || 0) + (walletData?.winningBalance || 0),
-    };
 
     return (
         <div className="container mx-auto max-w-4xl py-4 px-2 sm:px-4">
@@ -114,9 +142,9 @@ export default function WalletPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-0.5 bg-white/10">
-                   <WalletStatCard title="Deposit Balance" value={walletBalances.deposit} icon={Wallet} isLoading={isWalletLoading} className="bg-primary/80 backdrop-blur-sm" />
-                   <WalletStatCard title="Winning Balance" value={walletBalances.winning} icon={Trophy} isLoading={isWalletLoading} className="bg-primary/80 backdrop-blur-sm" />
-                   <WalletStatCard title="Bonus Balance" value={walletBalances.bonus} icon={PiggyBank} isLoading={isWalletLoading} className="bg-primary/80 backdrop-blur-sm" />
+                   <WalletStatCard title="Deposit Balance" value={walletBalances.deposit} icon={Wallet} isLoading={isLoading} className="bg-primary/80 backdrop-blur-sm" />
+                   <WalletStatCard title="Winning Balance" value={walletBalances.winning} icon={Trophy} isLoading={isLoading} className="bg-primary/80 backdrop-blur-sm" />
+                   <WalletStatCard title="Bonus Balance" value={walletBalances.bonus} icon={PiggyBank} isLoading={isLoading} className="bg-primary/80 backdrop-blur-sm" />
                 </CardContent>
             </Card>
 
@@ -126,7 +154,7 @@ export default function WalletPage() {
                         <CardTitle className="mb-2 sm:mb-0">Actions</CardTitle>
                         <div className='text-left sm:text-right'>
                             <p className='text-xs sm:text-sm text-muted-foreground'>Total Balance</p>
-                            {isWalletLoading ? <Skeleton className="h-7 w-28 mt-1" /> : <p className="text-xl sm:text-2xl font-bold">₹{walletBalances.total.toFixed(2)}</p>}
+                            {isLoading ? <Skeleton className="h-7 w-28 mt-1" /> : <p className="text-xl sm:text-2xl font-bold">₹{walletBalances.total.toFixed(2)}</p>}
                         </div>
                     </div>
                 </CardHeader>
@@ -145,12 +173,12 @@ export default function WalletPage() {
                     <CardTitle className="flex items-center"><History className="mr-2"/>Recent Transactions</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {isTransactionsLoading && (
+                    {isLoading && (
                         <div className="space-y-4">
                            {[...Array(3)].map((_,i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
                         </div>
                     )}
-                    {!isTransactionsLoading && transactions && transactions.length > 0 && (
+                    {!isLoading && transactions && transactions.length > 0 && (
                         <div className="space-y-2">
                             {transactions.map((tx: any) => (
                                 <div key={tx.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 border-b last:border-b-0">
@@ -172,7 +200,7 @@ export default function WalletPage() {
                             ))}
                         </div>
                     )}
-                     {!isTransactionsLoading && (!transactions || transactions.length === 0) && (
+                     {!isLoading && (!transactions || transactions.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">No recent transactions.</p>
                      )}
                 </CardContent>
@@ -187,5 +215,3 @@ export default function WalletPage() {
         </div>
     );
 }
-
-    
