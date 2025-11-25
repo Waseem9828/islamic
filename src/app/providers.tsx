@@ -1,7 +1,7 @@
 'use client';
 
 import { FirebaseProvider } from '@/firebase';
-import { app, auth, firestore, storage, functions } from '@/firebase/client';
+import { app, auth, firestore, storage, functions } from '@/firebase/core';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (

@@ -6,6 +6,12 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
+// Internal helper function to check for admin privileges
+const _isAdmin = async (uid: string): Promise<boolean> => {
+    const adminDoc = await db.collection("roles_admin").doc(uid).get();
+    return adminDoc.exists;
+};
+
 // Callable function to check if a user is an admin
 export const checkAdminStatus = functions
   .region("us-east1")
@@ -16,24 +22,15 @@ export const checkAdminStatus = functions
         "The function must be called while authenticated.",
       );
     }
-    const uid = context.auth.uid;
-    const adminDoc = await db.collection("roles_admin").doc(uid).get();
-    return { isAdmin: adminDoc.exists };
+    const isAdmin = await _isAdmin(context.auth.uid);
+    return { isAdmin };
   });
 
 // Callable function to get admin dashboard stats
 export const getAdminDashboardStats = functions
   .region("us-east1")
   .https.onCall(async (_, context) => {
-    // Check for admin privileges
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        "unauthenticated",
-        "Authentication required.",
-      );
-    }
-    const adminCheck = await checkAdminStatus.run({}, context);
-    if (!adminCheck.isAdmin) {
+    if (!context.auth || !(await _isAdmin(context.auth.uid))) {
       throw new functions.https.HttpsError(
         "permission-denied",
         "User is not an admin.",
@@ -60,19 +57,11 @@ export const getAdminDashboardStats = functions
 export const updateUserStatus = functions
   .region("us-east1")
   .https.onCall(async (data, context) => {
-    // Check for admin privileges
-    if (!context.auth) {
-      throw new functions.https.HttpsError(
-        "unauthenticated",
-        "Authentication required.",
-      );
-    }
-     const adminCheck = await checkAdminStatus.run({}, context);
-    if (!adminCheck.isAdmin) {
-      throw new functions.https.HttpsError(
-        "permission-denied",
-        "User is not an admin.",
-      );
+    if (!context.auth || !(await _isAdmin(context.auth.uid))) {
+        throw new functions.https.HttpsError(
+            "permission-denied",
+            "User is not an admin."
+        );
     }
 
     const { uid, status } = data;
@@ -91,15 +80,7 @@ export const updateUserStatus = functions
 export const getWalletInfo = functions
     .region("us-east1")
     .https.onCall(async (data, context) => {
-        // Check for admin privileges
-        if (!context.auth) {
-            throw new functions.https.HttpsError(
-                "unauthenticated",
-                "Authentication required."
-            );
-        }
-        const adminCheck = await checkAdminStatus.run({}, context);
-        if (!adminCheck.isAdmin) {
+        if (!context.auth || !(await _isAdmin(context.auth.uid))) {
             throw new functions.https.HttpsError(
                 "permission-denied",
                 "User is not an admin."

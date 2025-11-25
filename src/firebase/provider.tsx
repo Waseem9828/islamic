@@ -85,3 +85,24 @@ export const useFirebase = () => {
   }
   return context;
 };
+
+export const useAuth = () => {
+  const { auth } = useFirebase();
+  if (!auth) {
+    throw new Error('Auth has not been initialized.');
+  }
+  return auth;
+};
+
+export const useFirestore = () => {
+  const { firestore } = useFirebase();
+  if (!firestore) {
+    throw new Error('Firestore has not been initialized.');
+  }
+  return firestore;
+};
+
+export const useUser = () => {
+  const { user, isUserLoading, userError } = useFirebase();
+  return { user, isUserLoading, userError };
+};

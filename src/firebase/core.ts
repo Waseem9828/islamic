@@ -12,7 +12,7 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // Initialize services
 const firestore = getFirestore(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app, 'us-east1'); // Specify the correct region
 // Pass the storageBucket URL to getStorage
 const storage = getStorage(app, firebaseConfig.storageBucket);
 const auth = getAuth(app);
@@ -32,5 +32,3 @@ export const initializeFirebase = () => {
 };
 
 export const getSdks = initializeFirebase;
-
-export default app;
