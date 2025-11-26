@@ -54,9 +54,9 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // depositRequests: Users create their own. Admins can read/manage all.
+    // depositRequests: Admins can read/manage all. Users create their own.
     match /depositRequests/{requestId} {
-        allow read: if isAdmin() || isOwner(resource.data.userId);
+        allow read: if isAdmin();
         // User creates a request for themselves.
         allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
         // Admins can update or delete requests.
