@@ -1,4 +1,3 @@
-
 import { MatchClient } from './match-client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';

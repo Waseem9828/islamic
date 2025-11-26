@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { UserClient } from "./user-client";

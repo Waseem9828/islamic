@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -24,7 +23,7 @@ interface Match {
     id: string;
     matchTitle: string;
     status: 'waiting' | 'inprogress' | 'completed' | 'cancelled' | 'archived';
-    entry: number;
+    entryFee: number;
     maxPlayers: number;
     players: string[];
     createdAt: Timestamp; // Timestamp
@@ -133,9 +132,9 @@ export const MatchClient = () => {
             }
         },
         {
-            accessorKey: 'entry',
+            accessorKey: 'entryFee',
             header: 'Entry Fee',
-            cell: ({ row }) => `₹${row.original.entry}`
+            cell: ({ row }) => `₹${row.original.entryFee}`
         },
         {
             accessorKey: 'players',
@@ -265,5 +264,3 @@ export const MatchClient = () => {
         </div>
     );
 };
-
-    

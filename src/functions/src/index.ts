@@ -1,5 +1,3 @@
-
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as cors from "cors";
@@ -490,6 +488,3 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entry} has been refunded.` };
     });
   });
-
-
-    
