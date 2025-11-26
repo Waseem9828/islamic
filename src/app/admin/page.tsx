@@ -1,21 +1,33 @@
 
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+'use client';
+
+import { AdminDashboard } from './dashboard';
+import { useUser } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function AdminPage() {
-    return (
-        <div className="p-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Welcome to the Admin Panel</CardTitle>
-                    <CardDescription>
-                        This is your central hub for managing the entire application. 
-                        Use the sidebar to navigate between different sections.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p>Here, you can manage users, oversee matches, adjust application settings, and monitor the overall health of the platform. Each section is designed to give you granular control and clear insights.</p>
-                </CardContent>
-            </Card>
-        </div>
-    );
+    const { isAdmin, isUserLoading } = useUser();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isUserLoading && !isAdmin) {
+            router.push('/login');
+        }
+    }, [isAdmin, isUserLoading, router]);
+
+    if (isUserLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+    
+    if (!isAdmin) {
+        return null;
+    }
+
+    return <AdminDashboard />;
 }
