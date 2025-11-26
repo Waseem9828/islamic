@@ -61,6 +61,43 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
 });
 
 
+// --- Deposit Functions ---
+export const requestDeposit = regionalFunctions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a deposit request.");
+    }
+
+    const { amount, transactionId, screenshotUrl } = data;
+    const uid = context.auth.uid;
+
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid amount is required.");
+    }
+    if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A transaction ID is required.");
+    }
+    if (!screenshotUrl || typeof screenshotUrl !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A screenshot URL is required.");
+    }
+
+    try {
+        await db.collection("depositRequests").add({
+            userId: uid,
+            amount: amount,
+            transactionId: transactionId,
+            screenshotUrl: screenshotUrl,
+            status: 'pending',
+            requestedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        return { status: "success", message: "Deposit request submitted successfully." };
+    } catch (error) {
+        console.error("Error creating deposit request:", error);
+        throw new functions.https.HttpsError("internal", "Could not submit your deposit request at this time.");
+    }
+});
+
+
 // --- Admin & Roles Functions ---
 export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
     await ensureIsAdmin(context);
@@ -85,14 +122,12 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
         
         return {
-            data: {
-                totalUsers,
-                activeMatches,
-                pendingDeposits,
-                pendingWithdrawals,
-                totalCommission: financeConfig.totalCommission,
-                totalWinnings: financeConfig.totalWinnings,
-            }
+            totalUsers,
+            activeMatches,
+            pendingDeposits,
+            pendingWithdrawals,
+            totalCommission: financeConfig.totalCommission,
+            totalWinnings: financeConfig.totalWinnings,
         };
 
     } catch (error) {
@@ -102,7 +137,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
 });
 
 
-export const getAdminChartData = regionalFunctions.https.onRequest(async (req, res) => {
+export const getAdminChartData = regionalFunctions.onRequest(async (req, res) => {
     corsHandler(req, res, async () => {
         if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
             res.status(403).send('Unauthorized');
@@ -519,3 +554,5 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${refundAmount} has been refunded.` };
     });
   });
+
+    

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service firebase.storage {
@@ -14,6 +15,14 @@ service firebase.storage {
       allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
       // Allow read access if the user is the owner or an admin.
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // Rules for result screenshots
+    match /results/{matchId}/{userId}/{fileName} {
+      // Allow a player to upload their result screenshot.
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow admin to read the result screenshots for verification.
+      allow read: if isAdmin();
     }
 
     // Rules for user avatars
@@ -32,3 +41,5 @@ service firebase.storage {
     }
   }
 }
+
+    

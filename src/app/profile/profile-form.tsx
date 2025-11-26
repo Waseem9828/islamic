@@ -32,9 +32,9 @@ export function ProfileForm() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (user) {
+        if (user && firestore) {
             setDisplayName(user.displayName || '');
-            const userDocRef = doc(firestore!, 'users', user.uid);
+            const userDocRef = doc(firestore, 'users', user.uid);
             getDoc(userDocRef).then(docSnap => {
                 if (docSnap.exists()) {
                     setPhoneNumber(docSnap.data().phoneNumber || '');
@@ -45,7 +45,7 @@ export function ProfileForm() {
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !auth || !auth.currentUser) return;
+        if (!user || !auth || !auth.currentUser || !firestore) return;
 
         setIsSaving(true);
         setError('');
@@ -54,7 +54,7 @@ export function ProfileForm() {
         try {
             await updateProfile(auth.currentUser, { displayName });
 
-            const userDocRef = doc(firestore!, 'users', user.uid);
+            const userDocRef = doc(firestore, 'users', user.uid);
             await updateDoc(userDocRef, { displayName, phoneNumber });
 
             toast.success('Profile updated successfully!', { id: toastId });
@@ -67,7 +67,7 @@ export function ProfileForm() {
     };
     
     const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (!user || !event.target.files || event.target.files.length === 0) return;
+        if (!user || !event.target.files || event.target.files.length === 0 || !firestore) return;
         
         const file = event.target.files[0];
         const storage = getStorage();
@@ -84,7 +84,7 @@ export function ProfileForm() {
               await updateProfile(auth.currentUser, { photoURL });
             }
             
-            const userDocRef = doc(firestore!, 'users', user.uid);
+            const userDocRef = doc(firestore, 'users', user.uid);
             await updateDoc(userDocRef, { photoURL });
 
             toast.success("Avatar updated!", { id: toastId });
@@ -266,3 +266,5 @@ function ProfileNavItem({ icon: Icon, label, href, active = false }: { icon: Rea
         </button>
     );
 }
+
+    
