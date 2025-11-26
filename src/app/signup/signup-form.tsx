@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFirebase } from '@/firebase/provider';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { FirebaseError } from 'firebase/app';
@@ -44,16 +44,24 @@ export function SignUpForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Also update the user's profile display name in Auth
+      await updateProfile(user, { 
+        displayName: displayName || user.email?.split('@')[0] || 'New User',
+        photoURL: `https://avatar.vercel.sh/${user.email}.png`
+      });
+
+      // Create user document in Firestore
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, {
         email: user.email,
         displayName: displayName || user.email?.split('@')[0] || 'New User',
-        photoURL: user.photoURL || `https://avatar.vercel.sh/${user.email}.png`,
+        photoURL: `https://avatar.vercel.sh/${user.email}.png`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         status: 'active',
       });
       
+      // Create wallet document for the new user
       const walletDocRef = doc(firestore, 'wallets', user.uid);
       await setDoc(walletDocRef, {
         depositBalance: 0,
@@ -61,7 +69,7 @@ export function SignUpForm() {
         bonusBalance: 0,
       });
 
-      toast.success('Signed up successfully!');
+      toast.success('Account created successfully!');
       router.push('/matchmaking');
     } catch (error) {
       handleAuthError(error);
@@ -75,7 +83,7 @@ export function SignUpForm() {
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
-            // The onAuthStateChanged listener will handle profile creation
+            // The onAuthStateChanged listener in FirebaseProvider will handle profile creation
             router.push('/matchmaking');
         } catch (error: any) {
             handleAuthError(error);
@@ -96,7 +104,7 @@ export function SignUpForm() {
                 message = error.message;
             }
         }
-        toast.error(message);
+        toast.error('Sign-up Failed', { description: message });
     }
 
   return (

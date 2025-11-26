@@ -85,12 +85,14 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
         
         return {
-            totalUsers,
-            activeMatches,
-            pendingDeposits,
-            pendingWithdrawals,
-            totalCommission: financeConfig.totalCommission,
-            totalWinnings: financeConfig.totalWinnings,
+            data: {
+                totalUsers,
+                activeMatches,
+                pendingDeposits,
+                pendingWithdrawals,
+                totalCommission: financeConfig.totalCommission,
+                totalWinnings: financeConfig.totalWinnings,
+            }
         };
 
     } catch (error) {
@@ -493,7 +495,7 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         const txData = txSnapshot.docs[0].data();
         const breakdown = txData.breakdown || { fromDeposit: txData.amount, fromWinnings: 0, fromBonus: 0 };
         
-        const refundAmount = matchData.entryFee - rules.cancellationFee;
+        const refundAmount = matchData.entryFee; // No cancellation fee if creator cancels alone
 
         t.update(db.collection('wallets').doc(userId), {
           depositBalance: admin.firestore.FieldValue.increment(breakdown.fromDeposit),
@@ -507,19 +509,13 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         t.set(refundTxRef, {
             userId, 
             type: "credit", 
-            amount: matchData.entryFee,
+            amount: refundAmount,
             reason: "match_cancellation_refund", 
             matchId, 
             status: 'completed',
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entryFee} has been refunded.` };
+        return { status: "success", message: `Match cancelled. Your entry fee of ₹${refundAmount} has been refunded.` };
     });
   });
-
-    
-
-    
-
-    
