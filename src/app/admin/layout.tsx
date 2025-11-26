@@ -39,26 +39,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     // --- Render based on Authorization Status ---
 
+    // While we're checking user and admin status, show a loader.
     if (isAdminLoading || isUserLoading) {
         return <LoadingScreen />;
     }
 
-    // If authorized, render the full admin layout.
-    // If not, this will be briefly rendered before the useEffect triggers the redirect.
-    // We can return null or a loading state to prevent a flash of content.
-    if (!isAdmin) {
-        return <LoadingScreen />;
+    // If, after loading, the user is confirmed to be an admin, render the layout.
+    // Otherwise, render nothing (or a loader) while the redirect is in flight.
+    if (isAdmin) {
+        return (
+            <div className="min-h-screen bg-muted/40">
+                <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+                <div className="md:pl-20 group-data-[sidebar-collapsed=false]:md:pl-64 transition-all duration-300 ease-in-out">
+                    <main>
+                        {children}
+                    </main>
+                </div>
+            </div>
+        );
     }
     
-    return (
-        <div className="min-h-screen bg-muted/40">
-            <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-            <div className="md:pl-20 group-data-[sidebar-collapsed=false]:md:pl-64 transition-all duration-300 ease-in-out">
-                {/* A simple header can be added here if needed */}
-                <main>
-                    {children}
-                </main>
-            </div>
-        </div>
-    );
+    // If user is not an admin, show loading screen while redirecting.
+    return <LoadingScreen />;
 }
