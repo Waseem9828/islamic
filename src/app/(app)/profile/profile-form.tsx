@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, User as UserIcon, Camera } from 'lucide-react';
+import { ChevronRight, LogOut, UserCog, Wallet, Loader2, Save, Camera, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,10 +15,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function ProfileForm() {
-    const { auth, firestore, user } = useFirebase();
+    const { auth, firestore } = useFirebase();
+    const { user, isUserLoading } = useUser();
     const router = useRouter();
     
     const [displayName, setDisplayName] = useState('');
@@ -26,36 +27,50 @@ export function ProfileForm() {
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdminLoading, setIsAdminLoading] = useState(true);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Effect to set initial form data once user is loaded
     useEffect(() => {
-        if (user) {
-            setDisplayName(user.displayName || '');
-            // Fetch phone number from Firestore
-            const userDocRef = doc(firestore!, 'users', user.uid);
-            getDoc(userDocRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    setPhoneNumber(docSnap.data().phoneNumber || '');
-                }
-            });
+        if (isUserLoading || !user || !firestore) {
+            setIsAdminLoading(true);
+            return;
         }
-    }, [user, firestore]);
+
+        // Fetch user profile data
+        setDisplayName(user.displayName || '');
+        const userDocRef = doc(firestore, 'users', user.uid);
+        getDoc(userDocRef).then(docSnap => {
+            if (docSnap.exists()) {
+                setPhoneNumber(docSnap.data().phoneNumber || '');
+            }
+        });
+
+        // Check for admin status by querying the 'roles_admin' collection
+        const checkAdminStatus = async () => {
+            setIsAdminLoading(true);
+            const adminDocRef = doc(firestore, 'roles_admin', user.uid);
+            const adminDocSnap = await getDoc(adminDocRef);
+            setIsAdmin(adminDocSnap.exists());
+            setIsAdminLoading(false);
+        };
+
+        checkAdminStatus();
+
+    }, [user, isUserLoading, firestore]);
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user || !auth) return;
+        if (!user || !auth || !auth.currentUser) return;
 
         setIsSaving(true);
         setError('');
         const toastId = toast.loading('Saving profile...');
 
         try {
-            // Update Firebase Auth profile
-            await updateProfile(auth.currentUser!, { displayName });
+            await updateProfile(auth.currentUser, { displayName });
 
-            // Update Firestore user document
             const userDocRef = doc(firestore!, 'users', user.uid);
             await updateDoc(userDocRef, { displayName, phoneNumber });
 
@@ -82,9 +97,7 @@ export function ProfileForm() {
             const snapshot = await uploadBytes(avatarRef, file);
             const photoURL = await getDownloadURL(snapshot.ref);
 
-            // Update auth profile
             await updateProfile(user, { photoURL });
-            // Update firestore doc
             const userDocRef = doc(firestore!, 'users', user.uid);
             await updateDoc(userDocRef, { photoURL });
 
@@ -100,23 +113,36 @@ export function ProfileForm() {
 
     const handleSignOut = async () => {
         if (!auth) return;
-        await signOut(auth);
-        toast.success("You have been signed out.");
-        router.push('/login');
+        try {
+            await signOut(auth);
+            toast.success("You have been signed out.");
+            router.push('/login');
+        } catch (error) {
+            toast.error("Failed to sign out.");
+        }
     };
 
     const getInitials = (name: string | null | undefined): string => {
-        if (!name) return '??';
+        if (!name) return '';
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
+    if (isUserLoading || isAdminLoading) {
+        return <ProfileSkeleton />;
+    }
+
     if (!user) {
-        return <div>Loading user profile...</div>; // Or a skeleton loader
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+                 <p className="text-xl mb-4">You are not logged in.</p>
+                 <Button onClick={() => router.push('/login')}>Go to Login</Button>
+            </div>
+        );
     }
 
     return (
         <div className="grid gap-8 md:grid-cols-3">
-            {/* Left Column: Navigation & Actions */}
+            {/* Left Column */}
             <div className="md:col-span-1">
                 <Card>
                     <CardContent className="p-4">
@@ -126,20 +152,8 @@ export function ProfileForm() {
                                     <AvatarImage src={user.photoURL || undefined} />
                                     <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                                 </Avatar>
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    ref={fileInputRef} 
-                                    onChange={handleAvatarUpload}
-                                    hidden 
-                                />
-                                <Button 
-                                    size="icon" 
-                                    variant="outline"
-                                    className="absolute bottom-0 right-0 rounded-full bg-background"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isUploading}
-                                >
+                                <input type="file" accept="image/*" ref={fileInputRef} onChange={handleAvatarUpload} hidden />
+                                <Button size="icon" variant="outline" className="absolute bottom-0 right-0 rounded-full bg-background" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Camera className="h-4 w-4"/>}
                                 </Button>
                             </div>
@@ -147,12 +161,11 @@ export function ProfileForm() {
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                         <nav className="mt-6 space-y-1">
+                            {isAdmin && <ProfileNavItem icon={Shield} label="Admin Dashboard" href="/admin/dashboard" />}
                             <ProfileNavItem icon={UserCog} label="Edit Profile" href="/profile" active />
                             <ProfileNavItem icon={Wallet} label="My Wallet" href="/wallet" />
                             <div className="pt-2 mt-2 border-t">
-                                <button 
-                                    onClick={handleSignOut}
-                                    className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-md text-red-500 hover:bg-red-500/10">
+                                <button onClick={handleSignOut} className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-md text-red-500 hover:bg-red-500/10">
                                     <LogOut className="mr-3 h-5 w-5" />
                                     <span>Sign Out</span>
                                 </button>
@@ -162,7 +175,7 @@ export function ProfileForm() {
                 </Card>
             </div>
 
-            {/* Right Column: Profile Form */}
+            {/* Right Column */}
             <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
@@ -204,7 +217,57 @@ export function ProfileForm() {
     );
 }
 
-// Helper component for navigation items
+// Skeleton Loader Component
+function ProfileSkeleton() {
+    return (
+        <div className="grid gap-8 md:grid-cols-3">
+            <div className="md:col-span-1">
+                <Card>
+                    <CardContent className="p-4">
+                        <div className="flex flex-col items-center text-center">
+                            <Skeleton className="w-24 h-24 rounded-full mb-4" />
+                            <Skeleton className="h-6 w-32 mb-2" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                        <div className="mt-6 space-y-2">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                             <div className="pt-2 mt-2 border-t">
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="md:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-7 w-48" />
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                        <div className="flex justify-end">
+                            <Skeleton className="h-10 w-32" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+
 function ProfileNavItem({ icon: Icon, label, href, active = false }: { icon: React.ElementType, label: string, href: string, active?: boolean }) {
     const router = useRouter();
     return (

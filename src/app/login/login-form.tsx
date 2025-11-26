@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { useFirebase } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
 import { useRouter } from 'next/navigation';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,7 @@ export function LoginForm() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     
-    const { auth, functions } = useFirebase();
+    const { auth } = useFirebase();
     const router = useRouter();
 
     const handleSignIn = async (e: React.FormEvent) => {
@@ -28,7 +27,7 @@ export function LoginForm() {
         setIsLoading(true);
         setError('');
 
-        if (!auth || !functions) {
+        if (!auth) {
             setError("Firebase is not initialized. Please try again later.");
             setIsLoading(false);
             return;
@@ -39,25 +38,19 @@ export function LoginForm() {
             const user = userCredential.user;
 
             if (user) {
-                // Check for admin status after successful login
-                const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
-                try {
-                    const result = await checkAdmin();
-                    const isAdmin = (result.data as { isAdmin: boolean }).isAdmin;
-                    
-                    if (isAdmin) {
-                        router.push('/admin/dashboard');
-                    } else {
-                        router.push('/matchmaking');
-                    }
-                } catch (adminCheckError) {
-                    console.error("Admin check failed:", adminCheckError);
-                    // Default to user dashboard if admin check fails
-                    router.push('/matchmaking');
+                // Force a token refresh to get the latest custom claims
+                await user.getIdToken(true);
+                const idTokenResult = await user.getIdTokenResult();
+
+                // Check for the admin custom claim directly on the token
+                if (idTokenResult.claims.admin) {
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    window.location.href = '/matchmaking';
                 }
             } else {
                  // This case should ideally not be reached if signInWithEmailAndPassword succeeds
-                 router.push('/matchmaking');
+                 window.location.href = '/matchmaking';
             }
 
         } catch (error: any) {
@@ -130,7 +123,7 @@ export function LoginForm() {
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
                     </Button>
                     <div className="text-center text-sm">
-                        Don&apos;t have an account?{" "}
+                        Don't have an account?{" "}
                         <Link href="/signup" className="underline font-semibold">
                             Sign up
                         </Link>

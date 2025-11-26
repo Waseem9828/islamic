@@ -1,46 +1,44 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdmin } from '@/hooks/useAdmin';
 import { useUser } from '@/firebase';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-export default function AdminAuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin, isAdminLoading } = useAdmin();
-  const { isUserLoading } = useUser();
+interface AdminAuthGuardProps {
+  children: React.ReactNode;
+}
+
+export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    const isAuthenticating = isAdminLoading || isUserLoading;
-    if (isAuthenticating) {
-      // Wait for the admin and user status to be determined
+    // Don't make any decisions while the user state is still loading.
+    if (isUserLoading) {
       return;
     }
 
-    if (!isAdmin) {
-      // If not an admin, redirect to the matchmaking page
-      router.replace('/matchmaking');
+    // Once loading is complete, check for admin status.
+    // If the user object doesn't exist or the 'admin' flag is not true, redirect.
+    if (!user || !user.admin) {
+      toast.error('You do not have permission to access this page.');
+      router.replace('/');
     }
-  }, [isAdmin, isAdminLoading, isUserLoading, router]);
+  }, [isUserLoading, user, router]);
 
-  const isLoading = isAdminLoading || isUserLoading;
-
-  if (isLoading) {
+  // Conditions to show the loader:
+  // 1. The user/admin status is still being determined.
+  // 2. The user is not an admin, and we are waiting for the redirect to happen.
+  if (isUserLoading || !user || !user.admin) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="text-lg font-semibold text-muted-foreground">Verifying Admin Access...</p>
-        </div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (isAdmin) {
-    return <>{children}</>;
-  }
-
-  // Render nothing while redirecting
-  return null;
+  // If loading is complete and the user is a verified admin, render the protected page.
+  return <>{children}</>;
 }

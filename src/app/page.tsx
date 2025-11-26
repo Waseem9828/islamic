@@ -7,11 +7,9 @@ import { ArrowRight, LogIn, Gamepad2, Wallet, Users, Trophy, Heart, Star, Facebo
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
-import { useDoc } from '@/firebase';
+import { useDoc, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { useFirebase } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useState } from 'react';
 
 interface Testimonial {
     name: string;
@@ -320,3 +318,7 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    
+
+    

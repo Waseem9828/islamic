@@ -2,40 +2,36 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
-import { collection, doc, query, where, orderBy, limit, onSnapshot, DocumentData } from 'firebase/firestore';
+import { useUser, useFirebase } from '@/firebase';
+import { collection, doc, query, where, orderBy, limit, onSnapshot, DocumentData, Timestamp } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, Loader2, History } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, History } from 'lucide-react';
 import { format } from 'date-fns';
 
 // Main component for the Wallet Page
 export default function WalletPage() {
-  const { firestore, user, isUserLoading } = useFirebase();
+  const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
 
   const [wallet, setWallet] = useState<DocumentData | null>(null);
   const [transactions, setTransactions] = useState<DocumentData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || !firestore) {
+        setIsDataLoading(true);
+        return;
+    }
     if (!user) {
-      router.push('/login');
-      return;
+        setIsDataLoading(false);
+        return;
     }
 
-    if (!firestore) {
-      setError("Firestore is not available. Please try again later.");
-      setIsLoading(false);
-      return;
-    }
-
-    // Subscribe to wallet data
     const walletDocRef = doc(firestore, 'wallets', user.uid);
     const unsubscribeWallet = onSnapshot(walletDocRef, 
       (docSnap) => {
@@ -44,16 +40,15 @@ export default function WalletPage() {
         } else {
           setWallet({ depositBalance: 0, winningBalance: 0, bonusBalance: 0 });
         }
-        setIsLoading(false);
+        setIsDataLoading(false);
       },
       (err) => {
         console.error("Error fetching wallet:", err);
         setError("Failed to load wallet information.");
-        setIsLoading(false);
+        setIsDataLoading(false);
       }
     );
 
-    // Subscribe to transactions data
     const transactionsQuery = query(
       collection(firestore, 'transactions'),
       where('uid', '==', user.uid),
@@ -67,7 +62,7 @@ export default function WalletPage() {
       },
       (err) => {
         console.error("Error fetching transactions:", err);
-        // Non-critical error, so we don't set a full-page error state
+        setError("Could not load recent transactions. Please check browser console for Firestore indexing errors.");
       }
     );
 
@@ -75,32 +70,43 @@ export default function WalletPage() {
       unsubscribeWallet();
       unsubscribeTransactions();
     };
-  }, [user, isUserLoading, firestore, router]);
+  }, [user, isUserLoading, firestore]);
 
   const totalBalance = useMemo(() => {
     if (!wallet) return 0;
     return (wallet.depositBalance || 0) + (wallet.winningBalance || 0) + (wallet.bonusBalance || 0);
   }, [wallet]);
 
-  if (isLoading || isUserLoading) {
+  if (isUserLoading || isDataLoading) {
     return <WalletSkeleton />;
   }
 
-  if (error) {
-    return <div className="text-center text-red-500 p-8">{error}</div>;
+  if (!user) {
+      return (
+        <div className="container mx-auto p-4 text-center">
+            <Card className="max-w-md mx-auto">
+                <CardHeader>
+                    <CardTitle>Access Denied</CardTitle>
+                    <CardDescription>You must be logged in to view your wallet.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={() => router.push('/login')}>Go to Login</Button>
+                </CardContent>
+            </Card>
+        </div>
+      )
   }
 
   return (
     <div className="container mx-auto p-4 space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">My Wallet</h1>
-        <Button onClick={() => router.push('/wallet/history')}>
+        <Button onClick={() => router.push('/transactions')}>
           <History className="mr-2 h-4 w-4"/>
           Transaction History
         </Button>
       </header>
 
-      {/* Wallet Balance Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <BalanceCard title="Total Balance" amount={totalBalance} icon={Wallet} />
         <BalanceCard title="Deposit Balance" amount={wallet?.depositBalance} icon={PiggyBank} />
@@ -108,19 +114,15 @@ export default function WalletPage() {
         <BalanceCard title="Bonus Balance" amount={wallet?.bonusBalance} icon={PiggyBank} className="text-purple-600"/>
       </div>
       
-      {/* Action Buttons */}
       <div className="flex space-x-4">
-        <Button size="lg" className="flex-1" onClick={() => router.push('/wallet/deposit')}>Deposit</Button>
-        <Button size="lg" variant="secondary" className="flex-1" onClick={() => router.push('/wallet/withdraw')}>Withdraw</Button>
+        <Button size="lg" className="flex-1" onClick={() => router.push('/deposit')}>Deposit</Button>
+        <Button size="lg" variant="secondary" className="flex-1" onClick={() => router.push('/withdraw')}>Withdraw</Button>
       </div>
-
-      {/* Recent Transactions */}
+      {error && <p className="text-center text-red-500">{error}</p>}
       <RecentTransactions transactions={transactions} />
     </div>
   );
 }
-
-// Sub-components (to keep the main component clean)
 
 function BalanceCard({ title, amount, icon: Icon, className }: { title: string, amount: number, icon: React.ElementType, className?: string }) {
   return (
@@ -131,13 +133,16 @@ function BalanceCard({ title, amount, icon: Icon, className }: { title: string, 
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">₹{amount?.toFixed(2) ?? '0.00'}</div>
-        <p className="text-xs text-muted-foreground">Updated just now</p>
       </CardContent>
     </Card>
   );
 }
 
 function RecentTransactions({ transactions }: { transactions: DocumentData[] }) {
+  const isValidTimestamp = (timestamp: any): timestamp is Timestamp => {
+      return timestamp && typeof timestamp.toDate === 'function';
+  }
+
   if (transactions.length === 0) {
     return (
       <Card>
@@ -171,7 +176,7 @@ function RecentTransactions({ transactions }: { transactions: DocumentData[] }) 
               <div className="flex-grow">
                 <p className="font-semibold capitalize">{tx.description || tx.type}</p>
                 <p className="text-sm text-muted-foreground">
-                  {format(tx.timestamp.toDate(), 'PPpp')}
+                  {isValidTimestamp(tx.timestamp) ? format(tx.timestamp.toDate(), 'PPpp') : 'Date not available'}
                 </p>
               </div>
               <div className={`font-bold ${tx.type === 'deposit' || tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
@@ -231,4 +236,3 @@ function WalletSkeleton() {
     </div>
   );
 }
-
