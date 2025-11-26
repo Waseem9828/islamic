@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -43,7 +44,7 @@ export const AdminDashboard = () => {
       try {
         const token = await user.getIdToken();
         const response = await fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminDashboardStats', {
-                method: 'GET', // Changed to GET
+                method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
         
@@ -54,12 +55,12 @@ export const AdminDashboard = () => {
         
         const result = await response.json();
         
-        if (result.error || !result.data) {
+        if (result.error || !result.stats || !result.chartData) {
             throw new Error(result.error || 'Failed to fetch dashboard data. The data format is incorrect.');
         }
 
-        setStats(result.data.stats);
-        setChartData(result.data.chartData);
+        setStats(result.stats);
+        setChartData(result.chartData);
 
       } catch (err: any) {
         console.error("Admin Dashboard Error:", err);
@@ -139,3 +140,5 @@ const DashboardSkeleton = () => (
         <div className="h-96 bg-gray-200 rounded-lg"></div>
     </div>
 );
+
+    

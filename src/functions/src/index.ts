@@ -176,7 +176,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onRequest(async (r
                 });
             }
             
-            res.status(200).send({ data: { stats, chartData } });
+            res.status(200).send({ stats, chartData });
 
         } catch (error: any) {
             console.error("Error in getAdminDashboardStats:", error);
@@ -499,5 +499,7 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${refundAmount} has been refunded.` };
     });
   });
+
+    
 
     
