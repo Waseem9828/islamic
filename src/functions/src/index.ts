@@ -100,21 +100,44 @@ export const getUsers = regionalFunctions.https.onCall(async (_, context) => {
         const usersSnapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
         const adminSnapshot = await db.collection('roles_admin').get();
         const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
+        
+        let activeUsers = 0;
+        let blockedUsers = 0;
+        let newToday = 0;
+        const twentyFourHoursAgo = admin.firestore.Timestamp.now().toMillis() - (24 * 60 * 60 * 1000);
 
         const users = usersSnapshot.docs.map(doc => {
             const data = doc.data();
+            
+            // Calculate stats
+            if (data.status === 'active') activeUsers++;
+            if (data.status === 'suspended') blockedUsers++;
+            if (data.createdAt && data.createdAt.toMillis() > twentyFourHoursAgo) {
+                newToday++;
+            }
+
             return {
                 id: doc.id,
                 ...data,
                 isAdmin: adminIds.has(doc.id)
             };
         });
-        return { users };
+
+        const stats = {
+            totalUsers: users.length,
+            activeUsers,
+            blockedUsers,
+            newToday,
+            kycVerifiedUsers: 0, // Placeholder for future implementation
+        };
+
+        return { users, stats };
     } catch (error) {
         console.error("Error fetching users:", error);
         throw new functions.https.HttpsError("internal", "Could not fetch users.");
     }
 });
+
 
 // --- Matches Management by Admin ---
 export const getMatches = regionalFunctions.https.onCall(async (_, context) => {

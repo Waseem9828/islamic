@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MoreHorizontal, UserX, UserCheck, Eye, Wallet as WalletIcon, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UsersDashboard } from '@/components/admin/UsersDashboard';
 
 
 // --- Type Definitions ---
@@ -31,16 +33,33 @@ interface User {
     createdAt?: Timestamp;
 }
 
+interface UserStats {
+    totalUsers: number;
+    activeUsers: number;
+    blockedUsers: number;
+    newToday: number;
+    kycVerifiedUsers: number;
+}
+
 interface Wallet {
     depositBalance: number;
     winningBalance: number;
     bonusBalance: number;
 }
 
+const initialStats: UserStats = {
+    totalUsers: 0,
+    activeUsers: 0,
+    blockedUsers: 0,
+    newToday: 0,
+    kycVerifiedUsers: 0,
+};
+
 // --- Main Client Component ---
 export const UserClient = () => {
     const { functions } = useFirebase();
     const [users, setUsers] = useState<User[]>([]);
+    const [stats, setStats] = useState<UserStats>(initialStats);
     const [isLoading, setIsLoading] = useState(true);
     const [globalFilter, setGlobalFilter] = useState('');
     const [sorting, setSorting] = useState<SortingState>([]);
@@ -51,26 +70,30 @@ export const UserClient = () => {
      useEffect(() => {
         if (!functions) return;
         
-        const fetchUsers = async () => {
+        const fetchUsersAndStats = async () => {
             setIsLoading(true);
             const getUsersFn = httpsCallable(functions, 'getUsers');
             try {
                 const result = await getUsersFn();
-                const data = result.data as { users: User[] };
+                const data = result.data as { users: User[], stats: UserStats };
+                
                 // Firebase Timestamps need to be converted
                 const formattedUsers = data.users.map(u => ({
                     ...u,
                     createdAt: u.createdAt ? new Timestamp((u.createdAt as any)._seconds, (u.createdAt as any)._nanoseconds) : undefined
                 }));
+
                 setUsers(formattedUsers);
+                setStats(data.stats);
+
             } catch (err: any) {
-                toast.error("Failed to load users", { description: err.message });
+                toast.error("Failed to load users and stats", { description: err.message });
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchUsers();
+        fetchUsersAndStats();
     }, [functions]);
 
 
@@ -136,22 +159,25 @@ export const UserClient = () => {
     // --- Table Instance ---
     const table = useReactTable({ data: users, columns, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getFilteredRowModel: getFilteredRowModel(), onSortingChange: setSorting, onGlobalFilterChange: setGlobalFilter, state: { sorting, globalFilter } });
 
-    if (isLoading) {
-        return (
-            <div className="p-4 space-y-4">
-                <Skeleton className="h-10 w-full max-w-sm" />
-                <Skeleton className="h-64 w-full" />
-            </div>
-        )
-    }
-
     // --- Render Method ---
     return (
-        <div className="p-4">
-            <div className="flex items-center justify-between py-4">
-                <Input placeholder="Filter by name, email..." value={globalFilter ?? ''} onChange={(e) => setGlobalFilter(e.target.value)} className="max-w-sm bg-white dark:bg-gray-800" />
+        <div>
+            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200">User Management</h1>
+            
+            {isLoading ? <Skeleton className="h-28 w-full mb-6" /> : <UsersDashboard stats={stats} />}
+
+            <div className="bg-white dark:bg-gray-900/80 rounded-lg shadow-md p-4">
+                <div className="flex items-center justify-between py-4">
+                    <Input placeholder="Filter by name, email..." value={globalFilter ?? ''} onChange={(e) => setGlobalFilter(e.target.value)} className="max-w-sm bg-white dark:bg-gray-800" />
+                </div>
+                {isLoading ? (
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                    </div>
+                ) : (
+                    <DataTable table={table} columns={columns} />
+                )}
             </div>
-            <DataTable table={table} columns={columns} />
             
             {/* Wallet Details Dialog */}
             <AlertDialog open={isWalletDialogOpen} onOpenChange={setIsWalletDialogOpen}>
@@ -162,13 +188,13 @@ export const UserClient = () => {
                             The current balances for the selected user.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    {selectedWallet && (
+                    {selectedWallet ? (
                         <div className="grid gap-3 py-4">
                            <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Deposit Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.depositBalance.toLocaleString()}</span></div>
                            <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Winning Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.winningBalance.toLocaleString()}</span></div>
                            <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Bonus Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.bonusBalance.toLocaleString()}</span></div>
                         </div>
-                    )}
+                    ) : <Loader2 className="h-6 w-6 animate-spin mx-auto"/>}
                     <AlertDialogFooter>
                         <AlertDialogAction onClick={() => setIsWalletDialogOpen(false)}>Close</AlertDialogAction>
                     </AlertDialogFooter>
