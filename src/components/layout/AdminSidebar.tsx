@@ -3,9 +3,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
   LayoutDashboard,
   Users,
@@ -18,8 +15,13 @@ import {
   Settings,
   PanelLeft,
   ArrowLeft,
+  Home,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,52 +36,6 @@ const navItems = [
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
-const SidebarLink = ({
-  item,
-  isExpanded,
-  count,
-  onClick,
-}: {
-  item: typeof navItems[0];
-  isExpanded: boolean;
-  count?: number;
-  onClick?: () => void;
-}) => {
-  const pathname = usePathname();
-  const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/admin/dashboard');
-
-  return (
-    <Link
-      href={item.href}
-      onClick={onClick}
-      className={`
-        flex items-center p-3 my-1 rounded-lg transition-colors relative
-        text-gray-300 hover:bg-gray-700 hover:text-white
-        ${isActive ? 'bg-primary text-white' : ''}
-        ${!isExpanded ? 'justify-center' : ''}
-      `}
-    >
-      <item.icon className="w-5 h-5 flex-shrink-0" />
-      <span
-        className={`
-          ml-4 transition-opacity duration-200
-          ${isExpanded ? 'opacity-100 flex-1' : 'opacity-0 w-0'}
-        `}
-      >
-        {item.label}
-      </span>
-      {count && count > 0 && (
-          <Badge className={`
-            transition-all duration-200
-            ${isExpanded ? 'ml-auto' : 'absolute top-1 right-1 h-5 w-5 p-0 justify-center text-xs'}
-          `}>
-            {count}
-          </Badge>
-      )}
-    </Link>
-  );
-};
-
 interface AdminSidebarProps {
     notificationCounts: {
         deposits: number;
@@ -88,57 +44,57 @@ interface AdminSidebarProps {
 }
 
 export const AdminSidebar = ({ notificationCounts }: AdminSidebarProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const pathname = usePathname();
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside
-        className={`
-          hidden md:flex flex-col fixed top-0 left-0 h-full bg-gray-800 text-white
-          transition-all duration-300 ease-in-out z-50
-        `}
-        onMouseEnter={() => setIsExpanded(true)}
-        onMouseLeave={() => setIsExpanded(false)}
-        style={{ width: isExpanded ? '16rem' : '4.5rem' }}
-      >
-        <div className="flex flex-col h-full">
-          <header className="flex items-center justify-center p-4 h-16 border-b border-gray-700">
-            <Link href="/admin/dashboard" className="flex items-center gap-2 text-xl font-bold text-white">
-              <Trophy className="text-primary h-7 w-7" />
-              <span className={`transition-opacity ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-                Admin
-              </span>
+      <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
+        <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+            <Link href="/" className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base">
+                <Home className="h-4 w-4 transition-all group-hover:scale-110" />
+                <span className="sr-only">Ludo App</span>
             </Link>
-          </header>
-
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <SidebarLink 
-                key={item.href} 
-                item={item} 
-                isExpanded={isExpanded} 
-                count={item.countKey ? notificationCounts[item.countKey as keyof typeof notificationCounts] : undefined}
-              />
-            ))}
-          </nav>
-
-          <footer className="p-2 border-t border-gray-700 mt-auto">
-            <Link
-              href="/"
-              className="flex items-center p-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white"
-            >
-              <ArrowLeft className="w-5 h-5 flex-shrink-0" />
-              <span className={`ml-4 transition-opacity ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
-                Back to App
-              </span>
-            </Link>
-          </footer>
-        </div>
+            <TooltipProvider>
+                {navItems.map((item) => {
+                    const isActive = pathname.startsWith(item.href);
+                    const count = item.countKey ? notificationCounts[item.countKey as keyof typeof notificationCounts] : 0;
+                    return (
+                        <Tooltip key={item.href}>
+                            <TooltipTrigger asChild>
+                                <Link
+                                    href={item.href}
+                                    className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8 ${isActive ? 'bg-accent text-accent-foreground' : ''}`}
+                                >
+                                    <item.icon className="h-5 w-5" />
+                                    {count > 0 && <Badge className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0">{count}</Badge>}
+                                    <span className="sr-only">{item.label}</span>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">{item.label}</TooltipContent>
+                        </Tooltip>
+                    )
+                })}
+            </TooltipProvider>
+        </nav>
+        <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+            <TooltipProvider>
+                 <Tooltip>
+                    <TooltipTrigger asChild>
+                    <Link
+                        href="/settings"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                    >
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Settings</span>
+                    </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Settings</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        </nav>
       </aside>
 
-      {/* Mobile Header & Sidebar */}
-      <header className="md:hidden sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
          <Sheet>
             <SheetTrigger asChild>
                 <Button size="icon" variant="outline" className="sm:hidden">
@@ -146,28 +102,24 @@ export const AdminSidebar = ({ notificationCounts }: AdminSidebarProps) => {
                     <span className="sr-only">Toggle Menu</span>
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs bg-gray-800 text-white p-0">
-                 <div className="flex flex-col h-full">
-                    <header className="flex items-center justify-center p-4 h-16 border-b border-gray-700">
-                        <Link href="/admin/dashboard" className="flex items-center gap-2 text-xl font-bold text-white">
-                            <Trophy className="text-primary h-7 w-7" />
-                            <span>Admin</span>
-                        </Link>
-                    </header>
-                    <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-                        {navItems.map((item) => (
-                            <SidebarLink 
-                                key={item.href} 
-                                item={item} 
-                                isExpanded={true} 
-                                count={item.countKey ? notificationCounts[item.countKey as keyof typeof notificationCounts] : undefined}
-                            />
-                        ))}
-                    </nav>
-                     <footer className="p-2 border-t border-gray-700 mt-auto">
-                        <SidebarLink item={{href: '/', icon: ArrowLeft, label: 'Back to App'}} isExpanded={true} />
-                    </footer>
-                </div>
+            <SheetContent side="left" className="sm:max-w-xs bg-background p-0">
+                <nav className="grid gap-6 text-lg font-medium p-4">
+                    <Link href="/" className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base">
+                        <Home className="h-5 w-5 transition-all group-hover:scale-110" />
+                        <span className="sr-only">Ludo App</span>
+                    </Link>
+                     {navItems.map((item) => {
+                        const isActive = pathname.startsWith(item.href);
+                        const count = item.countKey ? notificationCounts[item.countKey as keyof typeof notificationCounts] : 0;
+                        return (
+                            <Link key={item.href} href={item.href} className={`flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground ${isActive ? 'text-foreground' : ''}`}>
+                                <item.icon className="h-5 w-5" />
+                                {item.label}
+                                {count > 0 && <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">{count}</Badge>}
+                            </Link>
+                        )
+                    })}
+                </nav>
             </SheetContent>
         </Sheet>
       </header>

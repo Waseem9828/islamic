@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { IndianRupee, Users, Trophy, Hourglass, Loader2, AlertTriangle } from 'lucide-react';
+import { IndianRupee, Users, Trophy, Hourglass, Loader2, AlertTriangle, Gamepad2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardStats {
@@ -57,26 +58,51 @@ export const AdminDashboard = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Active Matches</CardTitle>
+                        <Gamepad2 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pending Deposits</CardTitle>
+                        <Hourglass className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+                        <IndianRupee className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
+                </Card>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="container mx-auto py-8">
-                 <Card className="border-destructive">
-                    <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-                         <AlertTriangle className="h-6 w-6 text-destructive mr-3" />
-                        <CardTitle className="text-destructive">Failed to Load Dashboard</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p>There was an error fetching the dashboard statistics. Please try again later.</p>
-                        <p className='text-xs text-muted-foreground mt-2'>{error}</p>
-                    </CardContent>
-                </Card>
-            </div>
+             <Card className="border-destructive">
+                <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                     <AlertTriangle className="h-6 w-6 text-destructive mr-3" />
+                    <CardTitle className="text-destructive">Failed to Load Dashboard</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>There was an error fetching the dashboard statistics. Please try again later.</p>
+                    <p className='text-xs text-muted-foreground mt-2'>{error}</p>
+                </CardContent>
+            </Card>
         );
     }
 
@@ -85,41 +111,39 @@ export const AdminDashboard = () => {
     }
 
     return (
-         <div className="container mx-auto py-8">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <StatCard 
-                    title="Total Users" 
-                    value={stats.totalUsers} 
-                    icon={Users} 
-                />
-                <StatCard 
-                    title="Active Matches" 
-                    value={stats.activeMatches} 
-                    icon={Trophy}
-                />
-                <StatCard 
-                    title="Pending Deposits" 
-                    value={stats.pendingDeposits} 
-                    icon={Hourglass} 
-                    note='Requires review'
-                />
-                 <StatCard 
-                    title="Pending Withdrawals" 
-                    value={stats.pendingWithdrawals} 
-                    icon={Hourglass} 
-                    note='Requires review'
-                />
-                <StatCard 
-                    title="Total Commission Earned" 
-                    value={`₹${stats.totalCommission.toFixed(2)}`} 
-                    icon={IndianRupee} 
-                />
-                <StatCard 
-                    title="Total Winnings Paid Out" 
-                    value={`₹${stats.totalWinnings.toFixed(2)}`} 
-                    icon={IndianRupee} 
-                />
-            </div>
+         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+            <StatCard 
+                title="Total Users" 
+                value={stats.totalUsers} 
+                icon={Users} 
+            />
+            <StatCard 
+                title="Active Matches" 
+                value={stats.activeMatches} 
+                icon={Gamepad2}
+            />
+            <StatCard 
+                title="Pending Deposits" 
+                value={stats.pendingDeposits} 
+                icon={Hourglass} 
+                note='Requires review'
+            />
+             <StatCard 
+                title="Pending Withdrawals" 
+                value={stats.pendingWithdrawals} 
+                icon={Hourglass} 
+                note='Requires review'
+            />
+            <StatCard 
+                title="Total Commission Earned" 
+                value={`₹${stats.totalCommission.toFixed(2)}`} 
+                icon={IndianRupee} 
+            />
+            <StatCard 
+                title="Total Winnings Paid Out" 
+                value={`₹${stats.totalWinnings.toFixed(2)}`} 
+                icon={Trophy} 
+            />
         </div>
     );
 };
