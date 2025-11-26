@@ -5,21 +5,23 @@ import Image from 'next/image';
 
 export default function LoginPage() {
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:grid-cols-5">
-      <div className="flex items-center justify-center py-12 xl:col-span-2">
-         <Suspense fallback={<div>Loading...</div>}>
-           <LoginForm />
-         </Suspense>
-      </div>
-      <div className="hidden bg-muted lg:block xl:col-span-3">
+    <div className="relative flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="absolute inset-0 -z-10">
         <Image
           src="https://picsum.photos/seed/5/1200/1200"
-          alt="Image"
-          width="1920"
-          height="1080"
+          alt="Background"
+          fill
+          priority
           data-ai-hint="mosque interior"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          className="object-cover object-center"
         />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      </div>
+
+      <div className="w-full max-w-md">
+        <Suspense fallback={<div className="text-white">Loading...</div>}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );
