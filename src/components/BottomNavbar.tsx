@@ -2,25 +2,24 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gamepad2, Home, Trophy, User, Wallet, History, Star } from "lucide-react";
+import { Gamepad2, History, User, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BottomNavbar = () => {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/matchmaking", label: "Play", icon: Home },
-    { href: "/play", label: "Create", icon: Star },
-    { href: "/leaderboard", label: "Ranks", icon: Trophy },
-    { href: "/wallet", label: "Wallet", icon: Wallet },
+    { href: "/matchmaking", label: "Play", icon: Gamepad2 },
     { href: "/match-history", label: "History", icon: History },
+    { href: "/wallet", label: "Wallet", icon: Wallet },
+    { href: "/profile", label: "Profile", icon: User },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
-      <div className="grid h-16 grid-cols-5">
+      <div className="grid h-16 grid-cols-4">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href === "/matchmaking" && pathname === "/play");
           return (
             <Link
               key={item.href}
@@ -32,7 +31,7 @@ const BottomNavbar = () => {
                   : "text-muted-foreground hover:text-primary"
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className="h-6 w-6" />
               <span className="text-xs font-medium">{item.label}</span>
             </Link>
           );
@@ -43,5 +42,3 @@ const BottomNavbar = () => {
 };
 
 export default BottomNavbar;
-
-    
