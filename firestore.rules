@@ -44,7 +44,7 @@ service cloud.firestore {
 
     // landingPage: Public can read, Admins can write.
     match /landingPage/{docId} {
-      allow read: if request.auth == null || request.auth != null;
+      allow read: if true;
       allow write: if isAdmin();
     }
 
