@@ -7,25 +7,25 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
-  Home,
+  LayoutDashboard,
   Users,
   IndianRupee,
-  Settings,
-  LayoutDashboard,
   Trophy,
   History,
+  FileText,
   HardDrive,
   Wallet,
-  FileText,
+  Settings,
   PanelLeft,
   ArrowLeft,
 } from 'lucide-react';
+import { Badge } from '../ui/badge';
 
 const navItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/users', icon: Users, label: 'Users' },
-  { href: '/admin/deposit-requests', icon: IndianRupee, label: 'Deposits' },
-  { href: '/admin/withdrawals', icon: IndianRupee, label: 'Withdrawals' },
+  { href: '/admin/deposit-requests', icon: IndianRupee, label: 'Deposits', countKey: 'deposits' },
+  { href: '/admin/withdrawals', icon: IndianRupee, label: 'Withdrawals', countKey: 'withdrawals' },
   { href: '/admin/matches', icon: Trophy, label: 'Matches' },
   { href: '/admin/transactions', icon: History, label: 'Transactions' },
   { href: '/admin/landing-page', icon: FileText, label: 'Landing Page' },
@@ -37,41 +37,57 @@ const navItems = [
 const SidebarLink = ({
   item,
   isExpanded,
+  count,
   onClick,
 }: {
   item: typeof navItems[0];
   isExpanded: boolean;
+  count?: number;
   onClick?: () => void;
 }) => {
   const pathname = usePathname();
-  const isActive =
-    pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/admin');
+  const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/admin/dashboard');
 
   return (
     <Link
       href={item.href}
       onClick={onClick}
       className={`
-      flex items-center p-3 my-1 rounded-lg transition-colors
-      text-gray-300 hover:bg-gray-700 hover:text-white
-      ${isActive ? 'bg-primary text-white' : ''}
-      ${!isExpanded ? 'justify-center' : ''}
-    `}
+        flex items-center p-3 my-1 rounded-lg transition-colors relative
+        text-gray-300 hover:bg-gray-700 hover:text-white
+        ${isActive ? 'bg-primary text-white' : ''}
+        ${!isExpanded ? 'justify-center' : ''}
+      `}
     >
-      <item.icon className="w-5 h-5" />
+      <item.icon className="w-5 h-5 flex-shrink-0" />
       <span
         className={`
-        ml-4 transition-all duration-200
-        ${isExpanded ? 'opacity-100' : 'opacity-0 w-0'}
-      `}
+          ml-4 transition-opacity duration-200
+          ${isExpanded ? 'opacity-100 flex-1' : 'opacity-0 w-0'}
+        `}
       >
         {item.label}
       </span>
+      {count && count > 0 && (
+          <Badge className={`
+            transition-all duration-200
+            ${isExpanded ? 'ml-auto' : 'absolute top-1 right-1 h-5 w-5 p-0 justify-center text-xs'}
+          `}>
+            {count}
+          </Badge>
+      )}
     </Link>
   );
 };
 
-export const AdminSidebar = () => {
+interface AdminSidebarProps {
+    notificationCounts: {
+        deposits: number;
+        withdrawals: number;
+    }
+}
+
+export const AdminSidebar = ({ notificationCounts }: AdminSidebarProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -88,7 +104,7 @@ export const AdminSidebar = () => {
       >
         <div className="flex flex-col h-full">
           <header className="flex items-center justify-center p-4 h-16 border-b border-gray-700">
-            <Link href="/admin" className="flex items-center gap-2 text-xl font-bold text-white">
+            <Link href="/admin/dashboard" className="flex items-center gap-2 text-xl font-bold text-white">
               <Trophy className="text-primary h-7 w-7" />
               <span className={`transition-opacity ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
                 Admin
@@ -98,16 +114,21 @@ export const AdminSidebar = () => {
 
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
             {navItems.map((item) => (
-              <SidebarLink key={item.href} item={item} isExpanded={isExpanded} />
+              <SidebarLink 
+                key={item.href} 
+                item={item} 
+                isExpanded={isExpanded} 
+                count={item.countKey ? notificationCounts[item.countKey as keyof typeof notificationCounts] : undefined}
+              />
             ))}
           </nav>
 
-          <footer className="p-2 border-t border-gray-700">
+          <footer className="p-2 border-t border-gray-700 mt-auto">
             <Link
               href="/"
               className="flex items-center p-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 flex-shrink-0" />
               <span className={`ml-4 transition-opacity ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
                 Back to App
               </span>
@@ -128,17 +149,22 @@ export const AdminSidebar = () => {
             <SheetContent side="left" className="sm:max-w-xs bg-gray-800 text-white p-0">
                  <div className="flex flex-col h-full">
                     <header className="flex items-center justify-center p-4 h-16 border-b border-gray-700">
-                        <Link href="/admin" className="flex items-center gap-2 text-xl font-bold text-white">
+                        <Link href="/admin/dashboard" className="flex items-center gap-2 text-xl font-bold text-white">
                             <Trophy className="text-primary h-7 w-7" />
                             <span>Admin</span>
                         </Link>
                     </header>
                     <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
                         {navItems.map((item) => (
-                            <SidebarLink key={item.href} item={item} isExpanded={true} />
+                            <SidebarLink 
+                                key={item.href} 
+                                item={item} 
+                                isExpanded={true} 
+                                count={item.countKey ? notificationCounts[item.countKey as keyof typeof notificationCounts] : undefined}
+                            />
                         ))}
                     </nav>
-                     <footer className="p-2 border-t border-gray-700">
+                     <footer className="p-2 border-t border-gray-700 mt-auto">
                         <SidebarLink item={{href: '/', icon: ArrowLeft, label: 'Back to App'}} isExpanded={true} />
                     </footer>
                 </div>
