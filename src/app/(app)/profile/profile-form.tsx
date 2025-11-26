@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -16,10 +17,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAdmin } from '@/hooks/useAdmin';
 
 export function ProfileForm() {
     const { auth, firestore } = useFirebase();
     const { user, isUserLoading } = useUser();
+    const { isAdmin, isAdminLoading } = useAdmin();
     const router = useRouter();
     
     const [displayName, setDisplayName] = useState('');
@@ -27,38 +30,20 @@ export function ProfileForm() {
     const [error, setError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [isAdminLoading, setIsAdminLoading] = useState(true);
-
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (isUserLoading || !user || !firestore) {
-            setIsAdminLoading(true);
-            return;
+        if (user) {
+            setDisplayName(user.displayName || '');
+            const userDocRef = doc(firestore!, 'users', user.uid);
+            getDoc(userDocRef).then(docSnap => {
+                if (docSnap.exists()) {
+                    setPhoneNumber(docSnap.data().phoneNumber || '');
+                }
+            });
         }
-
-        // Fetch user profile data
-        setDisplayName(user.displayName || '');
-        const userDocRef = doc(firestore, 'users', user.uid);
-        getDoc(userDocRef).then(docSnap => {
-            if (docSnap.exists()) {
-                setPhoneNumber(docSnap.data().phoneNumber || '');
-            }
-        });
-
-        // Check for admin status by querying the 'roles_admin' collection
-        const checkAdminStatus = async () => {
-            setIsAdminLoading(true);
-            const adminDocRef = doc(firestore, 'roles_admin', user.uid);
-            const adminDocSnap = await getDoc(adminDocRef);
-            setIsAdmin(adminDocSnap.exists());
-            setIsAdminLoading(false);
-        };
-
-        checkAdminStatus();
-
-    }, [user, isUserLoading, firestore]);
+    }, [user, firestore]);
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -97,7 +82,10 @@ export function ProfileForm() {
             const snapshot = await uploadBytes(avatarRef, file);
             const photoURL = await getDownloadURL(snapshot.ref);
 
-            await updateProfile(user, { photoURL });
+            if(auth?.currentUser) {
+              await updateProfile(auth.currentUser, { photoURL });
+            }
+            
             const userDocRef = doc(firestore!, 'users', user.uid);
             await updateDoc(userDocRef, { photoURL });
 
@@ -161,7 +149,7 @@ export function ProfileForm() {
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                         <nav className="mt-6 space-y-1">
-                            {isAdmin && <ProfileNavItem icon={Shield} label="Admin Dashboard" href="/admin/dashboard" />}
+                            {isAdmin && <ProfileNavItem icon={Shield} label="Admin Dashboard" href="/admin" />}
                             <ProfileNavItem icon={UserCog} label="Edit Profile" href="/profile" active />
                             <ProfileNavItem icon={Wallet} label="My Wallet" href="/wallet" />
                             <div className="pt-2 mt-2 border-t">

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useUser } from '@/firebase';
 
 // --- UI Components for Different States ---
 
@@ -20,25 +21,25 @@ const LoadingScreen = () => (
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { isAdmin, isAdminLoading } = useAdmin();
+    const { isUserLoading } = useUser();
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-
     useEffect(() => {
         // Wait until loading is complete before making a decision
-        if (isAdminLoading) {
+        if (isAdminLoading || isUserLoading) {
             return;
         }
         // If loading is done and the user is NOT an admin, redirect them.
         if (!isAdmin) {
             router.replace('/login');
         }
-    }, [isAdmin, isAdminLoading, router]);
+    }, [isAdmin, isAdminLoading, isUserLoading, router]);
 
 
     // --- Render based on Authorization Status ---
 
-    if (isAdminLoading) {
+    if (isAdminLoading || isUserLoading) {
         return <LoadingScreen />;
     }
 
@@ -52,9 +53,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <div className="min-h-screen bg-muted/40">
             <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-            <main className="md:pl-64">
-                {children}
-            </main>
+            <div className="md:pl-20 group-data-[sidebar-collapsed=false]:md:pl-64 transition-all duration-300 ease-in-out">
+                {/* A simple header can be added here if needed */}
+                <main>
+                    {children}
+                </main>
+            </div>
         </div>
     );
 }
