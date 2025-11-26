@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
@@ -103,6 +103,12 @@ export const AdminSidebar = ({ notificationCounts }: AdminSidebarProps) => {
                 </Button>
             </SheetTrigger>
             <SheetContent side="left" className="sm:max-w-xs bg-background p-0">
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle>Admin Menu</SheetTitle>
+                    <SheetDescription>
+                        Navigate through the admin sections.
+                    </SheetDescription>
+                </SheetHeader>
                 <nav className="grid gap-6 text-lg font-medium p-4">
                     <Link href="/" className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base">
                         <Home className="h-5 w-5 transition-all group-hover:scale-110" />
