@@ -97,6 +97,79 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
     }
 });
 
+export const processDeposit = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { requestId, approve } = data;
+    if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Request ID is required.');
+
+    const requestRef = db.collection('depositRequests').doc(requestId);
+    
+    return db.runTransaction(async (t) => {
+        const requestDoc = await t.get(requestRef);
+        if (!requestDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Deposit request not found.');
+        }
+        if (requestDoc.data()!.status !== 'pending') {
+            throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
+        }
+
+        const { userId, amount } = requestDoc.data()!;
+
+        if (approve) {
+            const rules = await getAppRules();
+            const bonusAmount = amount * (rules.depositBonusRate || 0);
+            
+            const walletRef = db.collection('wallets').doc(userId);
+            const walletDoc = await t.get(walletRef);
+
+            if (!walletDoc.exists) {
+                t.set(walletRef, {
+                    depositBalance: amount,
+                    bonusBalance: bonusAmount,
+                    winningBalance: 0,
+                    lifetimeBonus: bonusAmount
+                });
+            } else {
+                t.update(walletRef, {
+                    depositBalance: admin.firestore.FieldValue.increment(amount),
+                    bonusBalance: admin.firestore.FieldValue.increment(bonusAmount),
+                    lifetimeBonus: admin.firestore.FieldValue.increment(bonusAmount),
+                });
+            }
+
+            // Update request status
+            t.update(requestRef, {
+                status: 'approved',
+                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedBy: context.auth!.uid
+            });
+            
+            // Create transaction record
+            const txRef = db.collection('transactions').doc();
+            t.set(txRef, {
+                userId,
+                type: 'credit',
+                amount,
+                reason: 'deposit',
+                status: 'completed',
+                depositId: requestId,
+                bonus: bonusAmount,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            });
+
+            return { status: 'success', message: `Deposit of ₹${amount} approved.` };
+
+        } else { // If rejecting
+            t.update(requestRef, {
+                status: 'rejected',
+                processedAt: admin.firestore.FieldValue.serverTimestamp(),
+                processedBy: context.auth!.uid
+            });
+            return { status: 'success', message: "Request rejected." };
+        }
+    });
+});
+
 
 // --- Admin & Roles Functions ---
 export const getAdminDashboardStats = regionalFunctions.https.onRequest(async (req, res) => {
@@ -499,6 +572,8 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${refundAmount} has been refunded.` };
     });
   });
+
+    
 
     
 
