@@ -65,7 +65,7 @@ export default function SubmitResultPage() {
   const prizeDistribution = useMemo(() => {
       if (!match) return [];
       const playerCount = match.players.length;
-      const totalPool = match.entry * playerCount;
+      const totalPool = match.entryFee * playerCount;
       return calculateWinnings(totalPool, playerCount);
   }, [match]);
 
@@ -119,7 +119,7 @@ export default function SubmitResultPage() {
   if (loading || !match) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin h-8 w-8"/></div>;
 
   const playerCount = match.players.length;
-  const totalPool = match.entry * playerCount;
+  const totalPool = match.entryFee * playerCount;
   const isUserInMatch = user && match.players.includes(user.uid);
 
   if (!isUserInMatch) {
@@ -142,7 +142,7 @@ export default function SubmitResultPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-3 gap-4 text-center bg-muted/50 p-3 rounded-lg">
-            <div><p className="text-sm text-muted-foreground">Entry Fee</p><p className="font-bold flex items-center justify-center gap-1"><IndianRupee className="h-4 w-4"/>{match.entry}</p></div>
+            <div><p className="text-sm text-muted-foreground">Entry Fee</p><p className="font-bold flex items-center justify-center gap-1"><IndianRupee className="h-4 w-4"/>{match.entryFee}</p></div>
             <div><p className="text-sm text-muted-foreground">Players</p><p className="font-bold">{playerCount}</p></div>
             <div><p className="text-sm text-muted-foreground">Total Pool</p><p className="font-bold flex items-center justify-center gap-1"><IndianRupee className="h-4 w-4"/>{totalPool}</p></div>
           </div>
@@ -181,3 +181,5 @@ export default function SubmitResultPage() {
     </div>
   );
 }
+
+    

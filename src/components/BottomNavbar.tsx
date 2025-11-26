@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Gamepad2, Home, Trophy, User, Wallet, History, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const BottomNavbar = () => {
   const pathname = usePathname();
@@ -24,11 +25,12 @@ const BottomNavbar = () => {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center gap-1 p-2 transition-colors ${
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 p-2 transition-colors",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-primary"
-              }`}
+              )}
             >
               <item.icon className="h-5 w-5" />
               <span className="text-xs font-medium">{item.label}</span>
@@ -41,3 +43,5 @@ const BottomNavbar = () => {
 };
 
 export default BottomNavbar;
+
+    

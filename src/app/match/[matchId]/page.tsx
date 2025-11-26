@@ -26,7 +26,7 @@ interface Player {
 interface MatchData {
   id: string;
   matchTitle: string;
-  entry: number;
+  entryFee: number;
   maxPlayers: number;
   privacy: 'public' | 'private';
   timeLimit: string;
@@ -191,7 +191,7 @@ export default function MatchLobbyPage() {
       }
   });
   
-  const totalPot = match.entry * match.players.length;
+  const totalPot = match.entryFee * match.players.length;
 
   return (
     <div className="p-4 max-w-lg mx-auto flex flex-col h-screen pb-20 md:pb-4"> 
@@ -206,7 +206,7 @@ export default function MatchLobbyPage() {
             </div>
         </div>
          <div className="grid grid-cols-4 gap-2 text-center text-xs mb-4">
-            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><IndianRupee className='h-3 w-3'/>{match.entry}</span><span className='text-muted-foreground'>Entry</span></div>
+            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><IndianRupee className='h-3 w-3'/>{match.entryFee}</span><span className='text-muted-foreground'>Entry</span></div>
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><Users className='h-3 w-3'/>{match.players.length}/{match.maxPlayers}</span><span className='text-muted-foreground'>Players</span></div>
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><Clock className='h-3 w-3'/>{match.timeLimit}</span><span className='text-muted-foreground'>Time</span></div>
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'>{match.privacy === 'private' ? <Lock className='h-3 w-3'/> : <Unlock className='h-3 w-3'/>}</span><span className='text-muted-foreground capitalize'>{match.privacy}</span></div>
@@ -291,3 +291,5 @@ export default function MatchLobbyPage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -51,7 +52,7 @@ export default function WalletPage() {
 
     const transactionsQuery = query(
       collection(firestore, 'transactions'),
-      where('uid', '==', user.uid),
+      where('userId', '==', user.uid),
       orderBy('timestamp', 'desc'),
       limit(20)
     );
@@ -236,3 +237,5 @@ function WalletSkeleton() {
     </div>
   );
 }
+
+    

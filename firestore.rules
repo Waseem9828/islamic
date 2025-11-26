@@ -48,10 +48,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // matches: All users can read matches. Admins can write/manage them.
+    // matches: All users can read matches. Admins can create/update/delete.
+    // Players can join/leave (update players array) via Cloud Function.
     match /matches/{matchId} {
       allow read: if request.auth != null;
       allow create, update, delete: if isAdmin();
+      // Player actions like join, leave, ready are handled by Cloud Functions, so direct write is false.
     }
 
     // depositRequests: Admins can read/manage all. Users create their own.
@@ -74,7 +76,7 @@ service cloud.firestore {
     // transactions: Users can read their own transactions. Admins can read all.
     // Writes are blocked to force all transactions through trusted Cloud Functions.
     match /transactions/{transactionId} {
-       allow read: if isAdmin() || isOwner(resource.data.userId);
+       allow read: if isAdmin() || (resource.data.userId == request.auth.uid);
        allow write: if false;
     }
 
@@ -86,3 +88,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

@@ -426,7 +426,7 @@ export const joinMatch = regionalFunctions.https.onCall(async (data, context) =>
         if (matchData.players.includes(uid)) throw new functions.https.HttpsError("failed-precondition", "You have already joined this match.");
         if (matchData.players.length >= matchData.maxPlayers) throw new functions.https.HttpsError("failed-precondition", "This match is already full.");
 
-        const entryFee = matchData.entry;
+        const entryFee = matchData.entryFee;
         const totalBalance = (walletData.depositBalance || 0) + (walletData.winningBalance || 0) + (walletData.bonusBalance || 0);
         if (totalBalance < entryFee) throw new functions.https.HttpsError("failed-precondition", "Insufficient balance to join this match.");
 
@@ -494,7 +494,7 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         const txData = txSnapshot.docs[0].data();
         const breakdown = txData.breakdown || { fromDeposit: txData.amount, fromWinnings: 0, fromBonus: 0 };
         
-        const refundAmount = matchData.entry - rules.cancellationFee;
+        const refundAmount = matchData.entryFee - rules.cancellationFee;
 
         t.update(db.collection('wallets').doc(userId), {
           depositBalance: admin.firestore.FieldValue.increment(breakdown.fromDeposit),
@@ -508,15 +508,17 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         t.set(refundTxRef, {
             userId, 
             type: "credit", 
-            amount: matchData.entry,
+            amount: matchData.entryFee,
             reason: "match_cancellation_refund", 
             matchId, 
             status: 'completed',
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entry} has been refunded.` };
+        return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entryFee} has been refunded.` };
     });
   });
+
+    
 
     

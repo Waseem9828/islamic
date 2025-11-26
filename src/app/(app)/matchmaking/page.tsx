@@ -65,7 +65,7 @@ export default function MatchmakingPage() {
         const isSearchMatch = match.id.toLowerCase().includes(searchInput) || 
                               match.creatorName?.toLowerCase().includes(searchInput);
         
-        const isInFeeRange = match.entry >= filters.feeRange[0] && match.entry <= filters.feeRange[1];
+        const isInFeeRange = match.entryFee >= filters.feeRange[0] && match.entryFee <= filters.feeRange[1];
         const isPlayerCountMatch = filters.playerCount === 'all' || match.maxPlayers.toString() === filters.playerCount;
         
         return isSearchMatch && isInFeeRange && isPlayerCountMatch;
@@ -83,7 +83,7 @@ export default function MatchmakingPage() {
   const handleViewLobby = (matchId: string) => router.push(`/match/${matchId}`);
   
   const handleJoinClick = (match: any) => {
-      if (totalBalance < match.entry) {
+      if (totalBalance < match.entryFee) {
           toast.error("Insufficient Balance", { description: "You don't have enough funds to join this match." });
           return;
       }
@@ -132,7 +132,7 @@ export default function MatchmakingPage() {
                     <p className="text-sm font-semibold text-muted-foreground">#{match.id}</p>
                     <CardTitle className="text-lg font-bold leading-tight mt-1">{match.creatorName}</CardTitle>
                 </div>
-                <Badge variant="secondary" className="text-base font-bold shrink-0 px-4 py-2">₹{match.entry}</Badge>
+                <Badge variant="secondary" className="text-base font-bold shrink-0 px-4 py-2">₹{match.entryFee}</Badge>
             </div>
             <div className="flex justify-between items-center text-sm text-muted-foreground mt-4">
                 <span className="flex items-center"><Users className="mr-1.5 h-4 w-4" />{match.players.length} / {match.maxPlayers}</span>
@@ -247,7 +247,7 @@ export default function MatchmakingPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm to Join Match</AlertDialogTitle>
-              <AlertDialogDescription>You are about to join <span className="font-bold">{selectedMatch?.creatorName}'s</span> match for <span className="font-bold">₹{selectedMatch?.entry}</span>.</AlertDialogDescription>
+              <AlertDialogDescription>You are about to join <span className="font-bold">{selectedMatch?.creatorName}'s</span> match for <span className="font-bold">₹{selectedMatch?.entryFee}</span>.</AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-4 py-4">
               <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
@@ -256,7 +256,7 @@ export default function MatchmakingPage() {
               </div>
               <div className="flex items-center justify-between p-3 bg-red-500/10 border-l-4 border-red-500 rounded-lg">
                 <span className="font-semibold flex items-center text-red-800 dark:text-red-200"><AlertTriangle className="mr-2 h-4 w-4"/> Balance After Joining</span>
-                <span className="font-bold text-red-800 dark:text-red-200">₹{(totalBalance - (selectedMatch?.entry || 0)).toFixed(2)}</span>
+                <span className="font-bold text-red-800 dark:text-red-200">₹{(totalBalance - (selectedMatch?.entryFee || 0)).toFixed(2)}</span>
               </div>
             </div>
             <div className="text-xs text-muted-foreground bg-gray-100 dark:bg-gray-800 p-3 rounded-lg space-y-1">
@@ -278,3 +278,5 @@ export default function MatchmakingPage() {
     </div>
   );
 }
+
+    

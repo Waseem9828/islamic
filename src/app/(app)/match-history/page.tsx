@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -81,7 +82,7 @@ export default function MatchHistoryPage() {
                                                 <div className="font-medium">{match.matchTitle}</div>
                                                 <div className="text-xs text-muted-foreground font-mono">{match.id}</div>
                                             </TableCell>
-                                            <TableCell>{formatCurrency(match.entry)}</TableCell>
+                                            <TableCell>{formatCurrency(match.entryFee)}</TableCell>
                                             <TableCell>{getStatusBadge(match.status)}</TableCell>
                                             <TableCell className={`font-semibold ${isWinner ? 'text-green-600' : ''}`}>
                                                 {match.status === 'completed' ? (
@@ -105,3 +106,5 @@ export default function MatchHistoryPage() {
         </div>
     );
 }
+
+    
