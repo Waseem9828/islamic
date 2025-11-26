@@ -1,29 +1,54 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Loader2, Trash2, HardDrive, FileText, AlertTriangle, UserX } from 'lucide-react';
-import { collection, getDocs, query, where, writeBatch, updateDoc } from 'firebase/firestore';
+import { Loader2, Trash2, HardDrive, FileText, AlertTriangle, UserX, BarChart } from 'lucide-react';
+import { collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
 import { deleteFileByUrl } from '@/firebase/storage';
+import { httpsCallable } from 'firebase/functions';
+
+interface FileInfo {
+  name: string;
+  size: string;
+}
+
+interface AnalysisResult {
+  totalSize: string;
+  fileCount: number;
+  files: FileInfo[];
+}
 
 export default function ManageStoragePage() {
-  const { firestore } = useFirebase();
-  const [bucketName, setBucketName] = useState('');
+  const { firestore, functions } = useFirebase();
   const [isLoading, setIsLoading] = useState(false);
-  const [analysis, setAnalysis] = useState<{ totalSize: string, fileCount: number } | null>(null);
-  const [files, setFiles] = useState<string[]>([]);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isDepositCleaning, setIsDepositCleaning] = useState(false);
   const [isMatchWinningCleaning, setIsMatchWinningCleaning] = useState(false);
   const [isProfileCleaning, setIsProfileCleaning] = useState(false);
 
   const handleAnalyze = async () => {
-    toast.info('This feature is a placeholder. No real analysis is performed.');
-    // In a real app, you might have a backend function that uses GSUtil or a cloud API.
+    if (!functions) {
+        toast.error("Functions not available.");
+        return;
+    }
+    setIsLoading(true);
+    setAnalysis(null);
+    const toastId = toast.loading('Analyzing storage bucket...');
+
+    try {
+        const analyzeStorageFn = httpsCallable(functions, 'analyzeStorage');
+        const result = await analyzeStorageFn();
+        setAnalysis(result.data as AnalysisResult);
+        toast.success('Analysis complete!', { id: toastId });
+    } catch (error: any) {
+        toast.error('Analysis Failed', { id: toastId, description: error.message });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const handleCleanupSuccessfulDeposits = async () => {
@@ -172,10 +197,34 @@ export default function ManageStoragePage() {
               <CardTitle className="flex items-center"><HardDrive className="mr-2"/>Storage Bucket Management</CardTitle>
               <CardDescription>Analyze storage and clean up unnecessary files. Actions here are permanent.</CardDescription>
             </CardHeader>
-            <CardContent>
-                 <Button onClick={handleAnalyze} disabled={true} className="w-full sm:w-auto">
-                    Analyze Bucket (Not Implemented)
+            <CardContent className="space-y-4">
+                 <Button onClick={handleAnalyze} disabled={isLoading} className="w-full sm:w-auto">
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <BarChart className="mr-2 h-4 w-4" />}
+                    Analyze Bucket
                 </Button>
+                {analysis && (
+                    <Card className="bg-muted/50">
+                        <CardHeader>
+                            <CardTitle className="text-lg">Analysis Results</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Total Files</p>
+                                    <p className="font-bold text-xl">{analysis.fileCount}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <HardDrive className="h-5 w-5 text-primary" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Total Size</p>
+                                    <p className="font-bold text-xl">{analysis.totalSize}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </CardContent>
         </Card>
 

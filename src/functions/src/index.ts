@@ -9,6 +9,7 @@ if (admin.apps.length === 0) {
 }
 
 const db = admin.firestore();
+const storage = admin.storage();
 // Define the function region to match the Firestore database.
 const regionalFunctions = functions.region("us-east1");
 
@@ -90,6 +91,38 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
     } catch (error) {
         console.error("Error aggregating dashboard stats:", error);
         throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.", error);
+    }
+});
+
+export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) => {
+    await ensureIsAdmin(context);
+    try {
+        const bucket = storage.bucket(); 
+        const [files] = await bucket.getFiles();
+        
+        let totalSize = 0;
+        files.forEach(file => {
+            totalSize += parseInt(file.metadata.size as string, 10);
+        });
+
+        // Format size to be human-readable
+        const formatBytes = (bytes: number, decimals = 2) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        return {
+            fileCount: files.length,
+            totalSize: formatBytes(totalSize),
+            files: files.map(f => ({ name: f.name, size: formatBytes(parseInt(f.metadata.size as string, 10))})),
+        };
+    } catch (error) {
+        console.error("Error analyzing storage bucket:", error);
+        throw new functions.https.HttpsError("internal", "Failed to analyze storage.", error);
     }
 });
 
