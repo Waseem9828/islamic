@@ -99,51 +99,61 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
     }
 });
 
-export const getAdminChartData = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
-    
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
+export const getAdminChartData = regionalFunctions.https.onRequest(async (req, res) => {
+    corsHandler(req, res, async () => {
+        if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+            res.status(403).send('Unauthorized');
+            return;
+        }
 
-    try {
-        // Get user signups in the last 7 days
-        const signupsQuery = db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp);
-        const signupsSnapshot = await signupsQuery.get();
+        try {
+            const idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedIdToken = await admin.auth().verifyIdToken(idToken);
 
-        // Get matches created in the last 7 days
-        const matchesQuery = db.collection('matches').where('createdAt', '>=', sevenDaysAgoTimestamp);
-        const matchesSnapshot = await matchesQuery.get();
+            const adminDoc = await db.collection("roles_admin").doc(decodedIdToken.uid).get();
+            if (!adminDoc.exists) {
+                res.status(403).send('Permission Denied');
+                return;
+            }
 
-        // Process data into daily counts
-        const processSnaps = (snapshot: admin.firestore.QuerySnapshot) => {
-            const counts: { [key: string]: number } = {};
-            snapshot.docs.forEach(doc => {
-                const docDate = doc.data().createdAt.toDate();
-                const dateKey = docDate.toISOString().split('T')[0]; // YYYY-MM-DD
-                counts[dateKey] = (counts[dateKey] || 0) + 1;
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
+
+            const signupsQuery = db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp);
+            const signupsSnapshot = await signupsQuery.get();
+
+            const matchesQuery = db.collection('matches').where('createdAt', '>=', sevenDaysAgoTimestamp);
+            const matchesSnapshot = await matchesQuery.get();
+
+            const processSnaps = (snapshot: admin.firestore.QuerySnapshot) => {
+                const counts: { [key: string]: number } = {};
+                snapshot.docs.forEach(doc => {
+                    const docDate = doc.data().createdAt.toDate();
+                    const dateKey = docDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                    counts[dateKey] = (counts[dateKey] || 0) + 1;
+                });
+
+                const result = [];
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    const dateKey = d.toISOString().split('T')[0];
+                    result.push({ date: dateKey, count: counts[dateKey] || 0 });
+                }
+                return result.reverse();
+            };
+            
+            res.status(200).send({
+                signups: processSnaps(signupsSnapshot),
+                matches: processSnaps(matchesSnapshot),
             });
 
-            // Fill in missing days with 0
-            const result = [];
-            for (let i = 0; i < 7; i++) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                const dateKey = d.toISOString().split('T')[0];
-                result.push({ date: dateKey, count: counts[dateKey] || 0 });
-            }
-            return result.reverse(); // oldest to newest
-        };
-        
-        return {
-            signups: processSnaps(signupsSnapshot),
-            matches: processSnaps(matchesSnapshot),
-        };
-
-    } catch (error) {
-        console.error("Error fetching chart data:", error);
-        throw new functions.https.HttpsError("internal", "Failed to get chart data.");
-    }
+        } catch (error) {
+            console.error("Error fetching chart data:", error);
+            res.status(500).send({ error: "Failed to get chart data." });
+        }
+    });
 });
 
 

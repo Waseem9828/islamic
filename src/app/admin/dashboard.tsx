@@ -2,13 +2,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable, getFunctions } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { IndianRupee, Users, Trophy, Hourglass, Loader2, AlertTriangle, Gamepad2, BarChart, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { getAuth } from 'firebase/auth';
 
 interface DashboardStats {
     totalCommission: number;
@@ -45,29 +46,43 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export const AdminDashboard = () => {
-    const { functions } = useFirebase();
+    const { firebaseApp } = useFirebase();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [chartData, setChartData] = useState<ChartData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!functions) return;
+        if (!firebaseApp) return;
+        const functions = getFunctions(firebaseApp, 'us-east1');
+        const auth = getAuth(firebaseApp);
 
         const getData = async () => {
             setIsLoading(true);
             setError(null);
-            const getAdminDashboardStats = httpsCallable(functions, 'getAdminDashboardStats');
-            const getAdminChartData = httpsCallable(functions, 'getAdminChartData');
             
             try {
+                // We need to get the token to pass it to an onRequest function
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error("Not authenticated!");
+
                 const [statsResult, chartResult] = await Promise.all([
-                    getAdminDashboardStats(),
-                    getAdminChartData()
+                    fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminDashboardStats', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    }).then(res => res.json()),
+                    fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminChartData', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    }).then(res => res.json())
                 ]);
 
+                if (statsResult.error || !statsResult.data) throw new Error(statsResult.error || 'Failed to fetch stats');
+                if (chartResult.error) throw new Error(chartResult.error || 'Failed to fetch chart data');
+
                 setStats(statsResult.data as DashboardStats);
-                setChartData(chartResult.data as ChartData);
+                setChartData(chartResult as ChartData);
+
             } catch (err: any) {
                 console.error(err);
                 const errorMessage = err.message || 'Failed to load dashboard data.';
@@ -79,7 +94,7 @@ export const AdminDashboard = () => {
         };
 
         getData();
-    }, [functions]);
+    }, [firebaseApp]);
 
     if (isLoading) {
         return (
