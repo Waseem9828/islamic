@@ -2,7 +2,6 @@
 
 import AppHeader from '@/components/layout/AppHeader';
 import AppSidebar from '@/components/layout/AppSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
 
 export default function AppLayout({
   children,
@@ -10,7 +9,7 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   return (
-    <SidebarProvider>
+    <>
       <div className="flex min-h-screen">
         <AppSidebar />
         <main className="flex-1 flex flex-col">
@@ -20,6 +19,6 @@ export default function AppLayout({
           </div>
         </main>
       </div>
-    </SidebarProvider>
+    </>
   );
 }
