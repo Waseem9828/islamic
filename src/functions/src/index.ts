@@ -1,4 +1,5 @@
 
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -89,6 +90,29 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
     } catch (error) {
         console.error("Error aggregating dashboard stats:", error);
         throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.", error);
+    }
+});
+
+// --- NEW FUNCTION to fetch users ---
+export const getUsers = regionalFunctions.https.onCall(async (_, context) => {
+    await ensureIsAdmin(context);
+    try {
+        const usersSnapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
+        const adminSnapshot = await db.collection('roles_admin').get();
+        const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
+
+        const users = usersSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                isAdmin: adminIds.has(doc.id)
+            };
+        });
+        return { users };
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        throw new functions.https.HttpsError("internal", "Could not fetch users.");
     }
 });
 
@@ -199,7 +223,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
         remainingFee -= deductedFromBonus;
         let deductedFromDeposit = Math.min(remainingFee, walletData.depositBalance || 0);
         remainingFee -= deductedFromDeposit;
-        let deductedFromWinnings = Math.min(remainingFee, walletData.winningBalance || 0);
+        let deductedFromWinnings = remainingFee;
         
         if (entryFee - (deductedFromBonus + deductedFromDeposit + deductedFromWinnings) > 0.01) throw new functions.https.HttpsError("failed-precondition", "Insufficient balance after detailed check.");
 

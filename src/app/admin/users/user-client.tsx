@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase';
 import { toast } from 'sonner';
@@ -15,7 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, UserX, UserCheck, Eye, Wallet as WalletIcon } from 'lucide-react';
+import { MoreHorizontal, UserX, UserCheck, Eye, Wallet as WalletIcon, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 // --- Type Definitions ---
 interface User {
@@ -34,31 +37,42 @@ interface Wallet {
     bonusBalance: number;
 }
 
-interface UserClientProps {
-    initialUsers: User[];
-}
-
 // --- Main Client Component ---
-export const UserClient = ({ initialUsers }: UserClientProps) => {
-    const { firestore, functions } = useFirebase();
-    const [users, setUsers] = useState<User[]>(initialUsers);
+export const UserClient = () => {
+    const { functions } = useFirebase();
+    const [users, setUsers] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [globalFilter, setGlobalFilter] = useState('');
     const [sorting, setSorting] = useState<SortingState>([]);
     const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null);
     const [isWalletDialogOpen, setIsWalletDialogOpen] = useState(false);
 
     // --- Real-time User Updates ---
-    useEffect(() => {
-        if (!firestore) return;
-        const q = query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, async (snapshot) => {
-            const adminSnapshot = await getDocs(collection(firestore, 'roles_admin'));
-            const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
-            const usersData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, isAdmin: adminIds.has(doc.id) })) as User[];
-            setUsers(usersData);
-        });
-        return () => unsubscribe();
-    }, [firestore]);
+     useEffect(() => {
+        if (!functions) return;
+        
+        const fetchUsers = async () => {
+            setIsLoading(true);
+            const getUsersFn = httpsCallable(functions, 'getUsers');
+            try {
+                const result = await getUsersFn();
+                const data = result.data as { users: User[] };
+                // Firebase Timestamps need to be converted
+                const formattedUsers = data.users.map(u => ({
+                    ...u,
+                    createdAt: u.createdAt ? new Timestamp((u.createdAt as any)._seconds, (u.createdAt as any)._nanoseconds) : undefined
+                }));
+                setUsers(formattedUsers);
+            } catch (err: any) {
+                toast.error("Failed to load users", { description: err.message });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUsers();
+    }, [functions]);
+
 
     // --- API Calls ---
     const handleUpdateStatus = async (uid: string, status: 'active' | 'suspended') => {
@@ -66,6 +80,7 @@ export const UserClient = ({ initialUsers }: UserClientProps) => {
         const updateUserStatus = httpsCallable(functions, 'updateUserStatus');
         try {
             await updateUserStatus({ uid, status });
+            setUsers(users.map(u => u.id === uid ? {...u, status} : u));
             toast.success(`User ${status}`);
         } catch (error: any) {
             toast.error('Update failed', { description: error.message });
@@ -74,7 +89,7 @@ export const UserClient = ({ initialUsers }: UserClientProps) => {
 
     const handleViewWallet = async (uid: string) => {
         if (!functions) return;
-        const getWalletInfo = httpsCallable< { uid: string }, Wallet>(functions, 'getWalletInfo');
+        const getWalletInfo = httpsCallable<{ uid: string }, Wallet>(functions, 'getWalletInfo');
         try {
             const result = await getWalletInfo({ uid });
             setSelectedWallet(result.data);
@@ -95,7 +110,7 @@ export const UserClient = ({ initialUsers }: UserClientProps) => {
                 </div>
             </div>
         )},
-        { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={row.original.status === 'active' ? 'success' : 'destructive'}>{row.original.status}</Badge> },
+        { accessorKey: 'status', header: 'Status', cell: ({ row }) => <Badge variant={row.original.status === 'active' ? 'default' : 'destructive'}>{row.original.status}</Badge> },
         { accessorKey: 'isAdmin', header: 'Role', cell: ({ row }) => row.original.isAdmin ? <Badge variant="secondary">Admin</Badge> : <Badge variant='outline'>User</Badge> },
         { accessorKey: 'createdAt', header: 'Registration Date', cell: ({ row }) => {
             const date = row.original.createdAt?.toDate();
@@ -120,6 +135,15 @@ export const UserClient = ({ initialUsers }: UserClientProps) => {
 
     // --- Table Instance ---
     const table = useReactTable({ data: users, columns, getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(), getFilteredRowModel: getFilteredRowModel(), onSortingChange: setSorting, onGlobalFilterChange: setGlobalFilter, state: { sorting, globalFilter } });
+
+    if (isLoading) {
+        return (
+            <div className="p-4 space-y-4">
+                <Skeleton className="h-10 w-full max-w-sm" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        )
+    }
 
     // --- Render Method ---
     return (
