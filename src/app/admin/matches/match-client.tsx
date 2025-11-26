@@ -17,6 +17,7 @@ import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable 
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { Timestamp } from 'firebase/firestore';
 
 // Types
 interface Match {
@@ -26,7 +27,7 @@ interface Match {
     entry: number;
     maxPlayers: number;
     players: string[];
-    createdAt: any; // Timestamp
+    createdAt: Timestamp; // Timestamp
     winner?: string;
 }
 
@@ -47,8 +48,12 @@ export const MatchClient = () => {
         const getMatchesFn = httpsCallable(functions, 'getMatches');
         try {
             const result = await getMatchesFn();
-            const data = result.data as { matches: Match[] };
-            setMatches(data.matches);
+            const data = result.data as { matches: any[] };
+            const formattedMatches = data.matches.map(m => ({
+                ...m,
+                createdAt: new Timestamp(m.createdAt._seconds, m.createdAt._nanoseconds)
+            }))
+            setMatches(formattedMatches);
         } catch (err: any) {
             toast.error("Failed to load matches", { description: err.message });
         } finally {
@@ -140,7 +145,7 @@ export const MatchClient = () => {
         {
             accessorKey: 'createdAt',
             header: 'Created At',
-            cell: ({ row }) => format(row.original.createdAt.toDate(), 'PPp')
+            cell: ({ row }) => row.original.createdAt ? format(row.original.createdAt.toDate(), 'PPp') : 'N/A'
         },
         {
             id: 'actions',
@@ -260,3 +265,5 @@ export const MatchClient = () => {
         </div>
     );
 };
+
+    
