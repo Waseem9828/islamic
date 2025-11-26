@@ -1,3 +1,4 @@
+
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as cors from "cors";
@@ -82,6 +83,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         const pendingDeposits = depositsSnapshot.size;
         const pendingWithdrawals = withdrawalsSnapshot.size;
         const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
+        
         return {
             totalUsers,
             activeMatches,
@@ -90,9 +92,10 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
             totalCommission: financeConfig.totalCommission,
             totalWinnings: financeConfig.totalWinnings,
         };
+
     } catch (error) {
         console.error("Error aggregating dashboard stats:", error);
-        throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.", error);
+        throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.");
     }
 });
 
@@ -488,3 +491,5 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entry} has been refunded.` };
     });
   });
+
+    
