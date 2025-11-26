@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -10,7 +11,9 @@ export function useIsMobile(breakpoint = 768) {
       setIsMobile(window.innerWidth < breakpoint)
     }
 
+    // Set the initial value on the client
     checkIsMobile()
+    
     window.addEventListener("resize", checkIsMobile)
 
     return () => {
