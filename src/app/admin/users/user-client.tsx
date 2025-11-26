@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase';
 import { toast } from 'sonner';
@@ -35,6 +34,7 @@ interface User {
 interface UserStats {
     totalUsers: number;
     activeUsers: number;
+
     blockedUsers: number;
     newToday: number;
     kycVerifiedUsers: number;
@@ -56,7 +56,7 @@ const initialStats: UserStats = {
 
 // --- Main Client Component ---
 export const UserClient = () => {
-    const { functions } = useFirebase();
+    const { firestore, functions } = useFirebase();
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState<UserStats>(initialStats);
     const [isLoading, setIsLoading] = useState(true);
@@ -67,33 +67,66 @@ export const UserClient = () => {
 
     // --- Real-time User Updates ---
      useEffect(() => {
-        if (!functions) return;
+        if (!firestore) return;
         
-        const fetchUsersAndStats = async () => {
-            setIsLoading(true);
-            const getUsersFn = httpsCallable(functions, 'getUsers');
-            try {
-                const result = await getUsersFn();
-                const data = result.data as { users: User[], stats: UserStats };
-                
-                // Firebase Timestamps need to be converted
-                const formattedUsers = data.users.map(u => ({
-                    ...u,
-                    createdAt: u.createdAt ? new Timestamp((u.createdAt as any)._seconds, (u.createdAt as any)._nanoseconds) : undefined
-                }));
+        setIsLoading(true);
+        const usersQuery = query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
+        const adminsQuery = collection(firestore, 'roles_admin');
 
-                setUsers(formattedUsers);
-                setStats(data.stats);
+        const unsubUsers = onSnapshot(usersQuery, async (usersSnapshot) => {
+            const adminSnapshot = await getDocs(adminsQuery);
+            const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
+            
+            const fetchedUsers = usersSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                isAdmin: adminIds.has(doc.id)
+            } as User));
 
-            } catch (err: any) {
-                toast.error("Failed to load users and stats", { description: err.message });
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            setUsers(fetchedUsers);
 
-        fetchUsersAndStats();
-    }, [functions]);
+            // Calculate stats
+            let activeUsers = 0;
+            let blockedUsers = 0;
+            let newToday = 0;
+            const twentyFourHoursAgo = Timestamp.now().toMillis() - (24 * 60 * 60 * 1000);
+
+            fetchedUsers.forEach(user => {
+                if (user.status === 'active') activeUsers++;
+                if (user.status === 'suspended') blockedUsers++;
+                if (user.createdAt && user.createdAt.toMillis() > twentyFourHoursAgo) {
+                    newToday++;
+                }
+            });
+
+            setStats({
+                totalUsers: fetchedUsers.length,
+                activeUsers,
+                blockedUsers,
+                newToday,
+                kycVerifiedUsers: 0 // Placeholder
+            });
+
+            setIsLoading(false);
+        }, (err) => {
+            console.error(err);
+            toast.error("Failed to load users", { description: err.message });
+            setIsLoading(false);
+        });
+
+        const unsubAdmins = onSnapshot(adminsQuery, (adminSnapshot) => {
+            const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
+            setUsers(currentUsers => currentUsers.map(u => ({
+                ...u,
+                isAdmin: adminIds.has(u.id)
+            })));
+        });
+
+        return () => {
+            unsubUsers();
+            unsubAdmins();
+        }
+    }, [firestore]);
 
 
     // --- API Calls ---
@@ -102,7 +135,7 @@ export const UserClient = () => {
         const updateUserStatus = httpsCallable(functions, 'updateUserStatus');
         try {
             await updateUserStatus({ uid, status });
-            setUsers(users.map(u => u.id === uid ? {...u, status} : u));
+            // The local state will be updated by the onSnapshot listener
             toast.success(`User ${status}`);
         } catch (error: any) {
             toast.error('Update failed', { description: error.message });

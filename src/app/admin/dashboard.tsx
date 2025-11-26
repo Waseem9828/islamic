@@ -36,46 +36,43 @@ export const AdminDashboard = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user) return;
+    
     const getData = async () => {
-      if (!user) return;
-      setLoading(true);
       setError(null);
-
       try {
         const token = await user.getIdToken();
-
-        const [statsResult, chartResult] = await Promise.all([
-            fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminDashboardStats', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({}), // Sending an empty JSON body
-            }).then(res => res.json()),
-            fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminChartData', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({}), // Sending an empty JSON body
-            }).then(res => res.json())
-        ]);
-
-        if (statsResult.error || !statsResult.data) {
-            throw new Error(statsResult.error || 'Failed to fetch dashboard stats. The data format is incorrect.');
-        }
-        setStats(statsResult.data);
+        const response = await fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminDashboardStats', {
+                method: 'GET', // Changed to GET
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
         
-        if (chartResult.error || !chartResult.data) {
-            throw new Error(chartResult.error || 'Failed to fetch chart data. The data format is incorrect.');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Request failed with status ${response.status}`);
         }
-        setChartData(chartResult.data);
+        
+        const result = await response.json();
+        
+        if (result.error || !result.data) {
+            throw new Error(result.error || 'Failed to fetch dashboard data. The data format is incorrect.');
+        }
+
+        setStats(result.data.stats);
+        setChartData(result.data.chartData);
 
       } catch (err: any) {
         console.error("Admin Dashboard Error:", err);
-        setError(`Failed to load dashboard data. Reason: ${err.message || 'Network error'}. Please try refreshing the page.`);
+        setError(`Failed to load dashboard data. Reason: ${err.message || 'Network error'}.`);
       } finally {
         setLoading(false);
       }
     };
+    
+    getData(); // Initial fetch
+    const interval = setInterval(getData, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
 
-    getData();
   }, [user]);
 
   if (loading) {

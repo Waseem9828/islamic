@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -17,7 +16,7 @@ import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable 
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
-import { Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 
 // Types
 interface Match {
@@ -33,7 +32,7 @@ interface Match {
 
 // --- Client Component ---
 export const MatchClient = () => {
-    const { functions } = useFirebase();
+    const { firestore, functions } = useFirebase();
     const router = useRouter();
     const [matches, setMatches] = useState<Match[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -42,28 +41,23 @@ export const MatchClient = () => {
     const [actionState, setActionState] = useState<{ matchId: string | null; winnerId: string | null; type: 'win' | 'cancel' | null }>({ matchId: null, winnerId: null, type: null });
     const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
-    const fetchMatches = async () => {
-        if (!functions) return;
-        setIsLoading(true);
-        const getMatchesFn = httpsCallable(functions, 'getMatches');
-        try {
-            const result = await getMatchesFn();
-            const data = result.data as { matches: any[] };
-            const formattedMatches = data.matches.map(m => ({
-                ...m,
-                createdAt: new Timestamp(m.createdAt._seconds, m.createdAt._nanoseconds)
-            }))
-            setMatches(formattedMatches);
-        } catch (err: any) {
-            toast.error("Failed to load matches", { description: err.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchMatches();
-    }, [functions]);
+        if (!firestore) return;
+        setIsLoading(true);
+
+        const matchesQuery = query(collection(firestore, 'matches'), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
+            const fetchedMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
+            setMatches(fetchedMatches);
+            setIsLoading(false);
+        }, (err) => {
+            console.error(err);
+            toast.error("Failed to load matches", { description: err.message });
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [firestore]);
     
     const handleAction = async () => {
         if (!actionState.matchId || !actionState.type || !functions) return;
@@ -95,7 +89,7 @@ export const MatchClient = () => {
         try {
             await actionFn(payload);
             toast.success(successMessage);
-            fetchMatches(); // Re-fetch matches to update the list
+            // No need to fetch, onSnapshot will update automatically
         } catch (err: any) {
             toast.error("Action failed", { description: err.message });
         } finally {

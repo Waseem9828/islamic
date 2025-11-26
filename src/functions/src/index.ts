@@ -99,116 +99,123 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
 
 
 // --- Admin & Roles Functions ---
-export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
-    try {
-        const [ 
-            usersSnapshot,
-            matchesSnapshot, 
-            depositsSnapshot, 
-            withdrawalsSnapshot,
-            appConfigSnapshot
-        ] = await Promise.all([
-            db.collection("users").get(),
-            db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
-            db.collection("depositRequests").where("status", "==", "pending").get(),
-            db.collection("withdrawalRequests").where("status", "==", "pending").get(),
-            db.collection("settings").doc("finances").get()
-        ]);
-        const totalUsers = usersSnapshot.size;
-        const activeMatches = matchesSnapshot.size;
-        const pendingDeposits = depositsSnapshot.size;
-        const pendingWithdrawals = withdrawalsSnapshot.size;
-        const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
-        
-        return {
-            totalUsers,
-            activeMatches,
-            pendingDeposits,
-            pendingWithdrawals,
-            totalCommission: financeConfig.totalCommission,
-            totalWinnings: financeConfig.totalWinnings,
-        };
-
-    } catch (error) {
-        console.error("Error aggregating dashboard stats:", error);
-        throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.");
-    }
-});
-
-
-export const getAdminChartData = regionalFunctions.onRequest(async (req, res) => {
+export const getAdminDashboardStats = regionalFunctions.https.onRequest(async (req, res) => {
     corsHandler(req, res, async () => {
         if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
-            res.status(403).send('Unauthorized');
+            res.status(403).send({ error: 'Unauthorized: No token provided.' });
             return;
         }
-
         try {
             const idToken = req.headers.authorization.split('Bearer ')[1];
             const decodedIdToken = await admin.auth().verifyIdToken(idToken);
-
+            
             const adminDoc = await db.collection("roles_admin").doc(decodedIdToken.uid).get();
             if (!adminDoc.exists) {
-                res.status(403).send('Permission Denied');
+                res.status(403).send({ error: 'Permission Denied: User is not an admin.' });
                 return;
             }
 
+            // Fetch Stats
+            const [ 
+                usersSnapshot,
+                matchesSnapshot, 
+                depositsSnapshot, 
+                withdrawalsSnapshot,
+                appConfigSnapshot
+            ] = await Promise.all([
+                db.collection("users").get(),
+                db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
+                db.collection("depositRequests").where("status", "==", "pending").get(),
+                db.collection("withdrawalRequests").where("status", "==", "pending").get(),
+                db.collection("settings").doc("finances").get()
+            ]);
+            const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
+            
+            const stats = {
+                totalUsers: usersSnapshot.size,
+                activeMatches: matchesSnapshot.size,
+                pendingDeposits: depositsSnapshot.size,
+                pendingWithdrawals: withdrawalsSnapshot.size,
+                totalCommission: financeConfig.totalCommission,
+                totalWinnings: financeConfig.totalWinnings,
+            };
+
+            // Fetch Chart Data
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
-
-            const signupsQuery = db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp);
-            const signupsSnapshot = await signupsQuery.get();
             
-            // Assuming revenue is tracked in a 'transactions' collection with 'match_win_commission' reason
-            const revenueQuery = db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp);
-            const revenueSnapshot = await revenueQuery.get();
-
+            const [signupsSnapshot, revenueSnapshot] = await Promise.all([
+                db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp).get(),
+                db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get()
+            ]);
 
             const processSnaps = (snapshot: admin.firestore.QuerySnapshot, valueField?: string) => {
                 const dataByDate: { [key: string]: number } = {};
-                
                 snapshot.docs.forEach(doc => {
                     const docData = doc.data();
-                    if (docData.createdAt || docData.timestamp) {
-                        const date = (docData.createdAt || docData.timestamp).toDate();
-                        const dateKey = date.toISOString().split('T')[0];
-                        dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
-                    }
+                    const date = (docData.createdAt || docData.timestamp).toDate();
+                    const dateKey = date.toISOString().split('T')[0];
+                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
                 });
-
-                const result = [];
-                for (let i = 6; i >= 0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    const dateKey = d.toISOString().split('T')[0];
-                    result.push({
-                        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                        value: dataByDate[dateKey] || 0,
-                    });
-                }
-                return result;
+                return dataByDate;
             };
 
-            const signupsData = processSnaps(signupsSnapshot);
-            const revenueData = processSnaps(revenueSnapshot, 'amount');
+            const signupsByDate = processSnaps(signupsSnapshot);
+            const revenueByDate = processSnaps(revenueSnapshot, 'amount');
+
+            const chartData = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateKey = d.toISOString().split('T')[0];
+                chartData.push({
+                    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    "New Users": signupsByDate[dateKey] || 0,
+                    "Revenue": revenueByDate[dateKey] || 0,
+                });
+            }
             
-            const combinedData = signupsData.map((item, index) => ({
-                date: item.date,
-                "New Users": item.value,
-                "Revenue": revenueData[index].value,
-            }));
+            res.status(200).send({ data: { stats, chartData } });
 
-            res.status(200).send({ data: combinedData });
-
-        } catch (error) {
-            console.error("Error fetching chart data:", error);
-            res.status(500).send({ error: "Failed to get chart data." });
+        } catch (error: any) {
+            console.error("Error in getAdminDashboardStats:", error);
+            if (error.code === 'auth/id-token-expired') {
+                 res.status(401).send({ error: 'Unauthorized: Token expired.' });
+            } else {
+                 res.status(500).send({ error: "An internal error occurred while calculating statistics." });
+            }
         }
     });
 });
 
+export const updateUserStatus = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { uid, status } = data;
+    if (!uid || !['active', 'suspended'].includes(status)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid UID or status provided.');
+    }
+    await db.collection('users').doc(uid).update({ status });
+    return { success: true };
+});
+
+export const getWalletInfo = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { uid } = data;
+    if (!uid) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid UID provided.');
+    }
+    const walletDoc = await db.collection('wallets').doc(uid).get();
+    if (!walletDoc.exists) {
+        return { depositBalance: 0, winningBalance: 0, bonusBalance: 0, };
+    }
+    const walletData = walletDoc.data()!;
+    return {
+        depositBalance: walletData.depositBalance || 0,
+        winningBalance: walletData.winningBalance || 0,
+        bonusBalance: walletData.bonusBalance || 0,
+    };
+});
 
 export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) => {
     await ensureIsAdmin(context);
@@ -221,7 +228,6 @@ export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) 
             totalSize += parseInt(file.metadata.size as string, 10);
         });
 
-        // Format size to be human-readable
         const formatBytes = (bytes: number, decimals = 2) => {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -242,67 +248,6 @@ export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) 
     }
 });
 
-// --- NEW FUNCTION to fetch users ---
-export const getUsers = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
-    try {
-        const usersSnapshot = await db.collection('users').orderBy('createdAt', 'desc').get();
-        const adminSnapshot = await db.collection('roles_admin').get();
-        const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
-        
-        let activeUsers = 0;
-        let blockedUsers = 0;
-        let newToday = 0;
-        const twentyFourHoursAgo = admin.firestore.Timestamp.now().toMillis() - (24 * 60 * 60 * 1000);
-
-        const users = usersSnapshot.docs.map(doc => {
-            const data = doc.data();
-            
-            // Calculate stats
-            if (data.status === 'active') activeUsers++;
-            if (data.status === 'suspended') blockedUsers++;
-            if (data.createdAt && data.createdAt.toMillis() > twentyFourHoursAgo) {
-                newToday++;
-            }
-
-            return {
-                id: doc.id,
-                ...data,
-                isAdmin: adminIds.has(doc.id)
-            };
-        });
-
-        const stats = {
-            totalUsers: users.length,
-            activeUsers,
-            blockedUsers,
-            newToday,
-            kycVerifiedUsers: 0, // Placeholder for future implementation
-        };
-
-        return { users, stats };
-    } catch (error) {
-        console.error("Error fetching users:", error);
-        throw new functions.https.HttpsError("internal", "Could not fetch users.");
-    }
-});
-
-
-// --- Matches Management by Admin ---
-export const getMatches = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureIsAdmin(context);
-    try {
-        const matchesSnapshot = await db.collection('matches').orderBy('createdAt', 'desc').get();
-        const matches = matchesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
-        return { matches };
-    } catch (error) {
-        console.error("Error fetching matches:", error);
-        throw new functions.https.HttpsError("internal", "Could not fetch matches.");
-    }
-});
 
 export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, context) => {
     await ensureIsAdmin(context);
