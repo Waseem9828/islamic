@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Eye, XCircle, Crown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from 'date-fns';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
@@ -165,7 +166,7 @@ export const MatchClient = () => {
                                 
                                 {isDeclareWinnerEnabled && (
                                     <AlertDialogTrigger asChild>
-                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left">
+                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left" onClick={() => setActionState(prev => ({...prev, matchId: match.id}))}>
                                             <Crown className="mr-2 h-4 w-4"/>Declare Winner
                                         </button>
                                     </AlertDialogTrigger>
@@ -188,12 +189,13 @@ export const MatchClient = () => {
                                 <AlertDialogTitle>
                                     {actionState.type === 'cancel' ? `Cancel Match ${actionState.matchId}?` : `Declare Winner for Match ${match.id}`}
                                 </AlertDialogTitle>
+                                {actionState.type === 'cancel' ? (
+                                    <AlertDialogDescription>This will refund all players' entry fees and change the match status to 'cancelled'. This action is irreversible.</AlertDialogDescription>
+                                ) : (
+                                    <AlertDialogDescription>Select a winner from the list of players. This action is irreversible and will distribute the prize pool.</AlertDialogDescription>
+                                )}
                             </AlertDialogHeader>
-                            {actionState.type === 'cancel' ? (
-                                <AlertDialogDescription>This will refund all players' entry fees and change the match status to 'cancelled'. This action is irreversible.</AlertDialogDescription>
-                            ) : (
-                                <>
-                                <AlertDialogDescription>Select a winner from the list of players. This action is irreversible and will distribute the prize pool.</AlertDialogDescription>
+                            {actionState.type !== 'cancel' && (
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
                                     {match.players.map(p => (
                                         <Button key={p} variant={actionState.winnerId === p ? 'default' : 'outline'} className='w-full justify-start' onClick={() => setActionState(prev => ({ ...prev, winnerId: p, type: 'win' }))}>
@@ -201,7 +203,6 @@ export const MatchClient = () => {
                                         </Button>
                                     ))}
                                 </div>
-                                </>
                             )}
                             <AlertDialogFooter>
                                 <AlertDialogCancel disabled={isSubmittingAction}>Cancel</AlertDialogCancel>

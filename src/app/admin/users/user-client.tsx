@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -112,9 +113,9 @@ export const UserClient = () => {
         if (!functions) return;
         const getWalletInfo = httpsCallable<{ uid: string }, Wallet>(functions, 'getWalletInfo');
         try {
+            setIsWalletDialogOpen(true);
             const result = await getWalletInfo({ uid });
             setSelectedWallet(result.data);
-            setIsWalletDialogOpen(true);
         } catch (error: any) {
             toast.error('Failed to get wallet', { description: error.message });
         }
@@ -178,7 +179,10 @@ export const UserClient = () => {
             </div>
             
             {/* Wallet Details Dialog */}
-            <AlertDialog open={isWalletDialogOpen} onOpenChange={setIsWalletDialogOpen}>
+            <AlertDialog open={isWalletDialogOpen} onOpenChange={(open) => {
+                if (!open) setSelectedWallet(null);
+                setIsWalletDialogOpen(open);
+            }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>User Wallet Balance</AlertDialogTitle>
