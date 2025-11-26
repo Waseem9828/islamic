@@ -124,8 +124,8 @@ export default function MatchmakingPage() {
     return <Badge variant="outline" className={`font-semibold text-xs ${config[status]}`}>{status}</Badge>;
   }
 
-  const MatchCard = ({ match, action }: { match: any, action: React.ReactNode }) => (
-    <Card className="overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
+  const MatchCard = ({ match, action, style }: { match: any, action: React.ReactNode, style?: React.CSSProperties }) => (
+    <Card className="overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 animate-fade-in-up" style={style}>
         <CardContent className="p-4">
             <div className="flex justify-between items-start gap-4">
                 <div>
@@ -157,7 +157,7 @@ export default function MatchmakingPage() {
     
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-            {matches.map(m => {
+            {matches.map((m, index) => {
                 let action;
                 if (type === 'my') {
                     action = <Button size="sm" className="w-full font-semibold" onClick={() => handleViewLobby(m.id)}>View Lobby</Button>;
@@ -166,7 +166,7 @@ export default function MatchmakingPage() {
                 } else {
                     action = <Button size="sm" variant="outline" disabled className="w-full font-semibold">In Progress</Button>;
                 }
-                return <MatchCard key={m.id} match={m} action={action} />
+                return <MatchCard key={m.id} match={m} action={action} style={{ animationDelay: `${index * 50}ms` }} />
             })}
         </div>
     );
@@ -197,7 +197,7 @@ export default function MatchmakingPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-5xl py-4 sm:py-6 px-2 sm:px-4">
+    <div className="container mx-auto max-w-5xl py-4 sm:py-6 px-2 sm:px-4 animate-fade-in-up">
         <header className="flex justify-between items-center mb-6">
             <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center"><Gamepad2 className="mr-2 h-7 w-7 text-primary" /> Matchmaking</h1>
@@ -278,5 +278,3 @@ export default function MatchmakingPage() {
     </div>
   );
 }
-
-    

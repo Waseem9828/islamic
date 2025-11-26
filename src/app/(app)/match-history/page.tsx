@@ -49,7 +49,7 @@ export default function MatchHistoryPage() {
     };
 
     return (
-        <div className="container mx-auto max-w-4xl py-6">
+        <div className="container mx-auto max-w-4xl py-6 animate-fade-in-up">
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center"><History className="mr-2"/> Match History</CardTitle>
@@ -74,10 +74,10 @@ export default function MatchHistoryPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {matches.map(match => {
+                                {matches.map((match, index) => {
                                     const isWinner = match.winner === user?.uid;
                                     return (
-                                        <TableRow key={match.id}>
+                                        <TableRow key={match.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 50}ms` }}>
                                             <TableCell>
                                                 <div className="font-medium">{match.matchTitle}</div>
                                                 <div className="text-xs text-muted-foreground font-mono">{match.id}</div>
@@ -106,5 +106,3 @@ export default function MatchHistoryPage() {
         </div>
     );
 }
-
-    

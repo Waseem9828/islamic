@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -114,7 +115,7 @@ export default function LeaderboardPage() {
   );
 
   return (
-    <div className="container mx-auto max-w-3xl py-6 sm:py-8">
+    <div className="container mx-auto max-w-3xl py-6 sm:py-8 animate-fade-in-up">
       <Card className="shadow-lg">
         <CardHeader className="text-center border-b pb-6">
           <Trophy className="w-14 h-14 mx-auto text-yellow-400" />
@@ -128,8 +129,8 @@ export default function LeaderboardPage() {
             leaderboard.length > 0 ? (
                 <div className="flow-root">
                   <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {leaderboard.map(player => (
-                      <li key={player.id} className="flex items-center gap-4 p-3 sm:p-4 hover:bg-muted/50 transition-colors rounded-lg">
+                    {leaderboard.map((player, index) => (
+                      <li key={player.id} className="flex items-center gap-4 p-3 sm:p-4 hover:bg-muted/50 transition-colors rounded-lg animate-fade-in-up" style={{ animationDelay: `${index * 30}ms` }}>
                         <RankIcon rank={player.rank} />
                         <Avatar className="h-12 w-12 border">
                             <AvatarImage src={player.photoURL || undefined} alt={player.displayName || 'User'} />
