@@ -85,14 +85,12 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
         
         return {
-            data: {
-                totalUsers,
-                activeMatches,
-                pendingDeposits,
-                pendingWithdrawals,
-                totalCommission: financeConfig.totalCommission,
-                totalWinnings: financeConfig.totalWinnings,
-            }
+            totalUsers,
+            activeMatches,
+            pendingDeposits,
+            pendingWithdrawals,
+            totalCommission: financeConfig.totalCommission,
+            totalWinnings: financeConfig.totalWinnings,
         };
 
     } catch (error) {
@@ -100,6 +98,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.");
     }
 });
+
 
 export const getAdminChartData = regionalFunctions.https.onRequest(async (req, res) => {
     corsHandler(req, res, async () => {
@@ -518,6 +517,8 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${matchData.entryFee} has been refunded.` };
     });
   });
+
+    
 
     
 
