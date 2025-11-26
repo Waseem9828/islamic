@@ -45,7 +45,7 @@ export function LoginForm() {
                 const isAdmin = (result.data as { isAdmin: boolean }).isAdmin;
 
                 if (isAdmin) {
-                    router.push('/admin/dashboard');
+                    router.push('/admin');
                 } else {
                     router.push('/matchmaking');
                 }

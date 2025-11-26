@@ -2,22 +2,22 @@
 'use client';
 
 import { AdminDashboard } from '../dashboard';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
-    const { isAdmin, isAdminLoading } = useAdmin();
+    const { isAdmin, isUserLoading } = useUser();
     const router = useRouter();
 
     useEffect(() => {
-        if (!isAdminLoading && !isAdmin) {
+        if (!isUserLoading && !isAdmin) {
             router.push('/login');
         }
-    }, [isAdmin, isAdminLoading, router]);
+    }, [isAdmin, isUserLoading, router]);
 
-    if (isAdminLoading) {
+    if (isUserLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />

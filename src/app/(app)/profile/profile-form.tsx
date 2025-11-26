@@ -17,12 +17,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAdmin } from '@/hooks/useAdmin';
 
 export function ProfileForm() {
     const { auth, firestore } = useFirebase();
-    const { user, isUserLoading } = useUser();
-    const { isAdmin, isAdminLoading } = useAdmin();
+    const { user, isUserLoading, isAdmin } = useUser();
     const router = useRouter();
     
     const [displayName, setDisplayName] = useState('');
@@ -34,9 +32,9 @@ export function ProfileForm() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (user) {
+        if (user && firestore) {
             setDisplayName(user.displayName || '');
-            const userDocRef = doc(firestore!, 'users', user.uid);
+            const userDocRef = doc(firestore, 'users', user.uid);
             getDoc(userDocRef).then(docSnap => {
                 if (docSnap.exists()) {
                     setPhoneNumber(docSnap.data().phoneNumber || '');
@@ -115,7 +113,7 @@ export function ProfileForm() {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    if (isUserLoading || isAdminLoading) {
+    if (isUserLoading) {
         return <ProfileSkeleton />;
     }
 
@@ -149,7 +147,7 @@ export function ProfileForm() {
                             <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                         <nav className="mt-6 space-y-1">
-                            {isAdmin && <ProfileNavItem icon={Shield} label="Admin Dashboard" href="/admin" />}
+                            {isAdmin && <ProfileNavItem icon={Shield} label="Admin Dashboard" href="/admin/dashboard" />}
                             <ProfileNavItem icon={UserCog} label="Edit Profile" href="/profile" active />
                             <ProfileNavItem icon={Wallet} label="My Wallet" href="/wallet" />
                             <div className="pt-2 mt-2 border-t">

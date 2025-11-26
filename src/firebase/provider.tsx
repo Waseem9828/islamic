@@ -5,32 +5,21 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
-import { Functions } from 'firebase/functions';
-
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-  storage: FirebaseStorage;
-  functions: Functions;
-}
+import { Functions, httpsCallable } from 'firebase/functions';
 
 interface UserAuthState {
   user: User | null;
+  isAdmin: boolean;
   isUserLoading: boolean;
   userError: Error | null;
 }
 
-export interface FirebaseContextState {
+export interface FirebaseContextState extends UserAuthState {
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null;
   storage: FirebaseStorage | null;
   functions: Functions | null;
-  user: User | null;
-  isUserLoading: boolean;
-  userError: Error | null;
 }
 
 const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
@@ -45,22 +34,41 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 }) => {
   const [authState, setAuthState] = useState<UserAuthState>({
     user: null,
+    isAdmin: false,
     isUserLoading: true,
     userError: null,
   });
 
   useEffect(() => {
     if (!auth) {
-      setAuthState({ user: null, isUserLoading: false, userError: new Error("Auth not initialized") });
+      setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: new Error("Auth not initialized") });
       return;
     }
     const unsubscribe = onAuthStateChanged(
       auth,
-      (user) => setAuthState({ user, isUserLoading: false, userError: null }),
-      (error) => setAuthState({ user: null, isUserLoading: false, userError: error })
+      (user) => {
+        if (user) {
+            setAuthState({ user, isAdmin: false, isUserLoading: true, userError: null });
+             if (functions) {
+                const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
+                checkAdmin().then(result => {
+                    const isAdminResult = (result.data as { isAdmin: boolean }).isAdmin;
+                    setAuthState({ user, isAdmin: isAdminResult, isUserLoading: false, userError: null });
+                }).catch(error => {
+                    console.error("Admin check failed:", error);
+                    setAuthState({ user, isAdmin: false, isUserLoading: false, userError: error });
+                });
+            } else {
+                 setAuthState({ user, isAdmin: false, isUserLoading: false, userError: null });
+            }
+        } else {
+             setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: null });
+        }
+      },
+      (error) => setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: error })
     );
     return () => unsubscribe();
-  }, [auth]);
+  }, [auth, functions]);
 
   const contextValue = useMemo(() => ({
     firebaseApp,
@@ -103,6 +111,6 @@ export const useFirestore = () => {
 };
 
 export const useUser = () => {
-  const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
+  const { user, isAdmin, isUserLoading, userError } = useFirebase();
+  return { user, isAdmin, isUserLoading, userError };
 };
