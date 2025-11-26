@@ -21,6 +21,16 @@ import { Badge } from '../ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useUser } from '@/firebase';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 
 const navItems = [
@@ -45,6 +55,12 @@ interface AdminSidebarProps {
 
 export const AdminSidebar = ({ notificationCounts }: AdminSidebarProps) => {
   const pathname = usePathname();
+  const { user } = useUser();
+
+  const getInitials = (name: string | null | undefined): string => {
+    if (!name) return 'A';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
 
   return (
     <>
@@ -128,6 +144,31 @@ export const AdminSidebar = ({ notificationCounts }: AdminSidebarProps) => {
                 </nav>
             </SheetContent>
         </Sheet>
+        <div className="relative ml-auto flex-1 md:grow-0">
+          {/* This can be a search bar in the future if needed */}
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="overflow-hidden rounded-full"
+            >
+              <Avatar>
+                <AvatarImage src={user?.photoURL || undefined} alt="Admin" />
+                <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem>Support</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Logout</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
     </>
   );
