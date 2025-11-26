@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -86,7 +87,7 @@ export default function PaymentSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl py-8">
+    <div className="mx-auto max-w-4xl">
         <Card>
         <CardHeader>
             <CardTitle className="flex items-center"><Settings className="mr-2"/>Deposit Configuration</CardTitle>

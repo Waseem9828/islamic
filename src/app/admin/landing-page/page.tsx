@@ -115,7 +115,7 @@ export default function LandingPageManager() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="mx-auto max-w-4xl">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>

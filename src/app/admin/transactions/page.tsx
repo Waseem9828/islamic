@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -5,7 +6,6 @@ import Link from 'next/link';
 import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider'; 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +13,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { History, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DataTable } from '@/components/ui/data-table';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
+
 
 interface User {
   id: string;
@@ -38,8 +42,10 @@ export default function AllTransactionsPage() {
   const { firestore } = useFirebase(); 
   const [transactions, setTransactions] = useState<TransactionWithUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [globalFilter, setGlobalFilter] = useState('');
   const [filters, setFilters] = useState({ type: 'all', reason: 'all', status: 'all' });
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'timestamp', desc: true }]);
+
 
   useEffect(() => {
     if (!firestore) return;
@@ -83,20 +89,12 @@ export default function AllTransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
-        const searchLower = search.toLowerCase();
-        const searchMatch = !search || 
-            (tx.user?.displayName?.toLowerCase().includes(searchLower)) || 
-            (tx.user?.email?.toLowerCase().includes(searchLower)) || 
-            tx.userId.toLowerCase().includes(searchLower) || 
-            tx.id.toLowerCase().includes(searchLower) || 
-            (tx.matchId && tx.matchId.toLowerCase().includes(searchLower));
-        
         const typeMatch = filters.type === 'all' || tx.type === filters.type;
         const reasonMatch = filters.reason === 'all' || tx.reason === filters.reason;
         const statusMatch = filters.status === 'all' || tx.status === filters.status;
-        return searchMatch && typeMatch && reasonMatch && statusMatch;
+        return typeMatch && reasonMatch && statusMatch;
     });
-  }, [transactions, search, filters]);
+  }, [transactions, filters]);
 
   const uniqueReasons = useMemo(() => [...new Set(transactions.map(tx => tx.reason))], [transactions]);
   const uniqueStatuses = useMemo(() => [...new Set(transactions.map(tx => tx.status))], [transactions]);
@@ -117,85 +115,87 @@ export default function AllTransactionsPage() {
     }
   };
 
+  const columns: ColumnDef<TransactionWithUser>[] = useMemo(() => [
+    {
+        accessorKey: 'user',
+        header: 'User',
+        cell: ({ row }) => {
+            const tx = row.original;
+            return (
+                <Link href={`/admin/users?search=${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
+                    <Avatar className="h-9 w-9 border">
+                        <AvatarImage src={tx.user?.photoURL || undefined} />
+                        <AvatarFallback>{tx.user?.displayName?.[0] || 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <p className="font-semibold text-sm">{tx.user?.displayName || 'Unknown User'}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{tx.userId}</p>
+                    </div>
+                </Link>
+            )
+        }
+    },
+    { accessorKey: 'type', header: 'Type', cell: ({ row }) => (
+        row.original.type === 'credit' ? 
+        <span className='flex items-center text-green-600 font-medium'><ArrowDownLeft className="h-4 w-4 mr-1"/>Credit</span> : 
+        <span className='flex items-center text-red-600 font-medium'><ArrowUpRight className="h-4 w-4 mr-1"/>Debit</span>
+    )},
+    { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <div className={`font-semibold ${row.original.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>₹{row.original.amount.toFixed(2)}</div>},
+    { accessorKey: 'reason', header: 'Reason', cell: ({ row }) => <div className="capitalize">{row.original.reason.replace(/_/g, ' ')}</div> },
+    { accessorKey: 'status', header: 'Status', cell: ({ row }) => getStatusBadge(row.original.status) },
+    { accessorKey: 'id', header: 'Reference', cell: ({ row }) => (
+        <div className="font-mono text-xs max-w-[120px] truncate">
+            {row.original.matchId ? <Link href={`/match/${row.original.matchId}`} className="hover:underline" title={row.original.matchId}>Match: {row.original.matchId}</Link> : row.original.id}
+        </div>
+    )},
+    { accessorKey: 'timestamp', header: 'Date', cell: ({ row }) => <div className="text-right text-xs text-muted-foreground">{format(row.original.timestamp.toDate(), 'PPp')}</div> }
+  ], []);
+
+  const table = useReactTable({
+    data: filteredTransactions,
+    columns,
+    state: { sorting, globalFilter },
+    onGlobalFilterChange: setGlobalFilter,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
   return (
-    <div className="container mx-auto max-w-7xl py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center"><History className="mr-2"/>All Transactions</CardTitle>
-          <CardDescription>A complete, real-time history of all financial activities across the platform.</CardDescription>
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
-                <Input placeholder="Search Name, Email, User ID, TXN ID..." value={search} onChange={e => setSearch(e.target.value)} className="md:col-span-2" />
-                 <Select value={filters.type} onValueChange={v => handleFilterChange('type', v)}>
-                    <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="credit">Credit</SelectItem>
-                        <SelectItem value="debit">Debit</SelectItem>
-                    </SelectContent>
-                </Select>
-                 <Select value={filters.status} onValueChange={v => handleFilterChange('status', v)}>
-                    <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        {uniqueStatuses.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-        </CardHeader>
-        <CardContent>
-            {loading && (
-                <div className="space-y-2">
-                    {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-                </div>
-            )}
-            {!loading && (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>User</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Amount</TableHead>
-                            <TableHead>Reason</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Reference</TableHead>
-                            <TableHead className="text-right">Date</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredTransactions.map(tx => (
-                            <TableRow key={tx.id}>
-                                <TableCell>
-                                    <Link href={`/admin/users?search=${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
-                                        <Avatar className="h-9 w-9 border">
-                                            <AvatarImage src={tx.user?.photoURL || undefined} />
-                                            <AvatarFallback>{tx.user?.displayName?.[0] || 'U'}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-semibold text-sm">{tx.user?.displayName || 'Unknown User'}</p>
-                                            <p className="text-xs text-muted-foreground font-mono">{tx.userId}</p>
-                                        </div>
-                                    </Link>
-                                </TableCell>
-                                <TableCell>
-                                    {tx.type === 'credit' ? 
-                                    <span className='flex items-center text-green-600 font-medium'><ArrowDownLeft className="h-4 w-4 mr-1"/>Credit</span> : 
-                                    <span className='flex items-center text-red-600 font-medium'><ArrowUpRight className="h-4 w-4 mr-1"/>Debit</span>}
-                                </TableCell>
-                                <TableCell className={`font-semibold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>₹{tx.amount.toFixed(2)}</TableCell>
-                                <TableCell className="capitalize">{tx.reason.replace(/_/g, ' ')}</TableCell>
-                                <TableCell>{getStatusBadge(tx.status)}</TableCell>
-                                <TableCell className="font-mono text-xs max-w-[120px] truncate">
-                                    {tx.matchId ? <Link href={`/match/${tx.matchId}`} className="hover:underline" title={tx.matchId}>Match: {tx.matchId}</Link> : tx.id}
-                                </TableCell>
-                                <TableCell className="text-right text-xs text-muted-foreground">{format(tx.timestamp.toDate(), 'PPp')}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            )}
-            {!loading && filteredTransactions.length === 0 && <p className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg">No transactions found for the selected filters.</p>}
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center"><History className="mr-2"/>All Transactions</CardTitle>
+        <CardDescription>A complete, real-time history of all financial activities across the platform.</CardDescription>
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
+              <Input placeholder="Search Name, Email, User ID, TXN ID..." value={globalFilter} onChange={e => setGlobalFilter(e.target.value)} className="md:col-span-2" />
+               <Select value={filters.type} onValueChange={v => handleFilterChange('type', v)}>
+                  <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                      <SelectItem value="debit">Debit</SelectItem>
+                  </SelectContent>
+              </Select>
+               <Select value={filters.status} onValueChange={v => handleFilterChange('status', v)}>
+                  <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      {uniqueStatuses.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                  </SelectContent>
+              </Select>
+          </div>
+      </CardHeader>
+      <CardContent>
+          {loading && (
+              <div className="space-y-2">
+                  {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+              </div>
+          )}
+          {!loading && (
+             <DataTable table={table} columns={columns} />
+          )}
+      </CardContent>
+    </Card>
   );
 }

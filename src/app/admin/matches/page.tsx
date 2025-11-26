@@ -1,3 +1,4 @@
+
 import { MatchClient } from './match-client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
@@ -21,23 +22,21 @@ const MatchClientFallback = () => {
 
 export default function ManageMatchesPage() {
     return (
-        <div className="container mx-auto py-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <Trophy className="mr-2"/> 
-                        Match Command Center
-                    </CardTitle>
-                    <CardDescription>
-                        A real-time interface for viewing, managing, and resolving all game matches.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Suspense fallback={<MatchClientFallback />}>
-                        <MatchClient />
-                    </Suspense>
-                </CardContent>
-            </Card>
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <Trophy className="mr-2"/> 
+                    Match Command Center
+                </CardTitle>
+                <CardDescription>
+                    A real-time interface for viewing, managing, and resolving all game matches.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Suspense fallback={<MatchClientFallback />}>
+                    <MatchClient />
+                </Suspense>
+            </CardContent>
+        </Card>
     );
 }

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot, getDoc, doc, DocumentData } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider'; 
 import { Button } from '@/components/ui/button';
@@ -12,24 +12,18 @@ import { Loader2, CheckCircle, XCircle, Copy, Banknote, ExternalLink } from 'luc
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DataTable } from '@/components/ui/data-table';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
+import { Input } from '@/components/ui/input';
 
-// Define the structure for a wallet
-interface Wallet {
-  depositBalance?: number;
-  winningBalance?: number;
-  bonusBalance?: number;
-}
-
-// Define the structure for a user
+// --- Type Definitions ---
 interface User {
   id: string;
   email?: string;
   displayName?: string;
   photoURL?: string;
-  wallet?: Wallet;
 }
-
-// Define the structure for a deposit request
 interface Request {
   id: string;
   amount: number;
@@ -38,103 +32,18 @@ interface Request {
   requestedAt: { toDate: () => Date };
   screenshotUrl?: string; 
 }
-
-// Combine Request with User information
 type RequestWithUser = Request & { user?: User };
 
-const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWithUser; onProcess: (id: string, approve: boolean) => void; isSubmitting: boolean }) => {
-  const [timeAgo, setTimeAgo] = useState('');
-
-  useEffect(() => {
-    const updateDate = () => {
-      if (request.requestedAt) {
-        setTimeAgo(formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true }));
-      }
-    }
-    updateDate();
-    const interval = setInterval(updateDate, 60000);
-    return () => clearInterval(interval);
-  }, [request.requestedAt, setTimeAgo]);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.info('Copied to clipboard');
-  }
-
-  const userDisplayName = request.user?.displayName || request.user?.email || 'Unknown User';
-  const userIdentifier = request.user?.email || request.userId;
-  const totalBalance = (request.user?.wallet?.depositBalance ?? 0) + (request.user?.wallet?.winningBalance ?? 0) + (request.user?.wallet?.bonusBalance ?? 0);
-
-  return (
-    <Card className="p-4 transition-all hover:shadow-md">
-        <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-            <div className="md:col-span-2 flex items-start gap-4">
-                <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-primary transition-colors">
-                    <AvatarImage src={request.user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
-                    <AvatarFallback>{userDisplayName[0].toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                     <p className="font-bold text-2xl text-primary">₹{request.amount.toLocaleString()}</p>
-                     <p className='font-semibold'>{userDisplayName}</p>
-                     <div className='text-xs text-muted-foreground flex items-center gap-2 flex-wrap'>
-                        <p className="flex items-center gap-1 font-mono">
-                            {request.transactionId}
-                            <button onClick={() => copyToClipboard(request.transactionId)} className="hover:text-primary"><Copy className="h-3 w-3"/></button>
-                        </p>
-                     </div>
-                     <p className="text-xs text-muted-foreground">{timeAgo}</p>
-                </div>
-            </div>
-            <div className="flex gap-2 justify-self-start md:justify-self-end">
-                <Button variant="outline" size="sm" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>} Reject
-                </Button>
-                <Button size="sm" onClick={() => onProcess(request.id, true)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>} Approve
-                </Button>
-            </div>
-        </div>
-        {request.screenshotUrl && (
-            <div className='mt-4'>
-                <Button variant="outline" size="sm" asChild>
-                    <a href={request.screenshotUrl} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Screenshot
-                    </a>
-                </Button>
-            </div>
-        )}
-        {request.user?.wallet && (
-          <div className="mt-4 pt-4 border-t space-y-2 text-sm text-muted-foreground">
-              <h4 className="text-sm font-semibold text-primary mb-2">User Wallet</h4>
-              <div className="flex justify-between items-center">
-                  <span>Current Total Balance:</span>
-                  <span className="font-mono text-base text-primary">₹{totalBalance.toLocaleString() ?? 'N/A'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                  <span>Deposit Balance:</span>
-                  <span className="font-mono">₹{request.user.wallet.depositBalance?.toLocaleString() ?? 'N/A'}</span>
-              </div>
-               <div className="flex justify-between items-center">
-                  <span>Winning Balance:</span>
-                  <span className="font-mono">₹{request.user.wallet.winningBalance?.toLocaleString() ?? 'N/A'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                  <span>Bonus Balance:</span>
-                  <span className="font-mono">₹{request.user.wallet.bonusBalance?.toLocaleString() ?? 'N/A'}</span>
-              </div>
-          </div>
-        )}
-    </Card>
-  );
-};
-
+// --- Main Page Component ---
 export default function ManageDepositsPage() {
   const { firestore, functions } = useFirebase(); 
-  const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
   const [requests, setRequests] = useState<RequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'requestedAt', desc: true }]);
+  const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
 
+  // --- Data Fetching ---
   useEffect(() => {
     if (!firestore) return;
 
@@ -148,20 +57,21 @@ export default function ManageDepositsPage() {
       async (snapshot) => {
         const newRequests = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Request));
         
+        // Fetch user data for each request more efficiently
+        const userCache = new Map<string, User>();
         const requestsWithUsers = await Promise.all(newRequests.map(async (request) => {
+            if (userCache.has(request.userId)) {
+                return { ...request, user: userCache.get(request.userId) };
+            }
             try {
                 const userDoc = await getDoc(doc(firestore, 'users', request.userId));
-                let user: User | undefined;
                 if (userDoc.exists()) {
-                    user = { id: userDoc.id, ...userDoc.data() } as User;
-                    const walletDoc = await getDoc(doc(firestore, 'wallets', request.userId));
-                    if (walletDoc.exists()) {
-                        user.wallet = walletDoc.data() as Wallet;
-                    }
+                    const userData = { id: userDoc.id, ...userDoc.data() } as User;
+                    userCache.set(request.userId, userData);
+                    return { ...request, user: userData };
                 }
-                return { ...request, user };
             } catch (error) {
-                console.error(`Failed to fetch user or wallet for ${request.userId}`, error);
+                console.error(`Failed to fetch user for ${request.userId}`, error);
             }
             return { ...request, user: undefined };
         }));
@@ -179,12 +89,12 @@ export default function ManageDepositsPage() {
     return () => unsubscribe();
   }, [firestore]);
 
-
   const processDepositFunction = useMemo(() => {
       if (!functions) return null;
       return httpsCallable(functions, 'processDeposit');
   }, [functions]);
 
+  // --- Actions ---
   const handleProcessRequest = async (requestId: string, approve: boolean) => {
     if (!processDepositFunction) { 
       toast.error('Functions service is not available.'); 
@@ -206,36 +116,100 @@ export default function ManageDepositsPage() {
     }
   };
 
+  // --- Table Columns ---
+  const columns = useMemo<ColumnDef<RequestWithUser>[]>(() => [
+    {
+      accessorKey: 'user',
+      header: 'User',
+      cell: ({ row }) => {
+        const user = row.original.user;
+        const userIdentifier = user?.email || row.original.userId;
+        const userDisplayName = user?.displayName || user?.email || 'Unknown';
+        return (
+            <div className="flex items-center gap-2">
+                <Avatar className="h-9 w-9 border">
+                    <AvatarImage src={user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
+                    <AvatarFallback>{userDisplayName[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold text-sm">{userDisplayName}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{row.original.userId}</p>
+                </div>
+            </div>
+        )
+      }
+    },
+    { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <div className="font-bold text-lg text-primary">₹{row.original.amount.toLocaleString()}</div> },
+    { accessorKey: 'transactionId', header: 'UTR/Txn ID', cell: ({ row }) => (
+        <div className="font-mono text-xs flex items-center gap-1">
+            {row.original.transactionId} 
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {navigator.clipboard.writeText(row.original.transactionId); toast.info('Copied to clipboard');}}>
+                <Copy className="h-3 w-3"/>
+            </Button>
+        </div>
+    )},
+    { accessorKey: 'requestedAt', header: 'Time', cell: ({ row }) => <div className="text-xs text-muted-foreground">{formatDistanceToNow(row.original.requestedAt.toDate(), { addSuffix: true })}</div> },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => {
+        const request = row.original;
+        const isActionSubmitting = isSubmitting[request.id];
+        return (
+            <div className="flex gap-2">
+                {request.screenshotUrl && 
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={request.screenshotUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4"/></a>
+                  </Button>
+                }
+                <Button variant="outline" size="sm" onClick={() => handleProcessRequest(request.id, false)} disabled={isActionSubmitting}>
+                    {isActionSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>} Reject
+                </Button>
+                <Button size="sm" onClick={() => handleProcessRequest(request.id, true)} disabled={isActionSubmitting} className="bg-green-600 hover:bg-green-700">
+                    {isActionSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>} Approve
+                </Button>
+            </div>
+        )
+      }
+    },
+  ], [isSubmitting]);
+
+  // --- React Table Instance ---
+  const table = useReactTable({
+    data: requests,
+    columns,
+    state: { sorting, globalFilter },
+    onGlobalFilterChange: setGlobalFilter,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+  
+  // --- Render ---
   return (
-    <div className="container mx-auto max-w-4xl py-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center"><Banknote className="mr-2"/>Deposit Requests</CardTitle>
-          <CardDescription>Review and process pending deposit requests. Approving a request will add the funds and bonus to the user's wallet.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading && (
-            <div className="space-y-4">
-              <Skeleton className="h-36 w-full" />
-              <Skeleton className="h-36 w-full" />
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center"><Banknote className="mr-2"/>Deposit Requests</CardTitle>
+        <CardDescription>Review and process pending deposit requests. Approving a request will add the funds and bonus to the user's wallet.</CardDescription>
+        <div className="flex items-center pt-4">
+            <Input
+                placeholder="Search requests..."
+                value={globalFilter ?? ''}
+                onChange={(event) => setGlobalFilter(event.target.value)}
+                className="max-w-sm"
+            />
+        </div>
+      </CardHeader>
+      <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
             </div>
+          ) : (
+            <DataTable table={table} columns={columns} />
           )}
-          {!loading && requests.length === 0 && (
-            <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                <h3 className="text-lg font-semibold">All Caught Up!</h3>
-                <p className="text-muted-foreground mt-1">There are no pending deposit requests.</p>
-            </div>
-          )}
-          {!loading && requests.map(request => (
-              <RequestCard
-                key={request.id}
-                request={request}
-                onProcess={handleProcessRequest}
-                isSubmitting={isSubmitting[request.id]}
-              />
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

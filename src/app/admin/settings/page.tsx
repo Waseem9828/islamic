@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -81,7 +82,7 @@ export default function AppSettingsPage() {
     
     if (isLoading) {
         return (
-            <div className="container mx-auto max-w-2xl py-8">
+            <div className="mx-auto max-w-2xl">
                 <Card>
                     <CardHeader>
                         <Skeleton className="h-8 w-1/2" />
@@ -104,7 +105,7 @@ export default function AppSettingsPage() {
     }
 
     return (
-        <div className="container mx-auto max-w-2xl py-8">
+        <div className="mx-auto max-w-2xl">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                     <Card>

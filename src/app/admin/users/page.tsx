@@ -1,14 +1,20 @@
+
 'use client';
 
 import { UserClient } from "./user-client";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { User } from "lucide-react";
 
 export default function ManageUsersPage() {
     return (
-        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900/50 min-h-screen">
-            <div className="max-w-7xl mx-auto">
-                {/* The UserClient component now contains the dashboard and the table */}
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><User className="mr-2"/>User Management</CardTitle>
+                <CardDescription>View, manage, and monitor all users on the platform.</CardDescription>
+            </CardHeader>
+            <CardContent>
                 <UserClient />
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -109,7 +110,7 @@ export default function AdminRolesPage() {
     }
 
     return (
-        <div className="container mx-auto max-w-2xl py-8">
+        <div className="mx-auto max-w-2xl">
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center"><ShieldCheck className="mr-2" /> Manage Admin Roles</CardTitle>

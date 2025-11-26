@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Timestamp, collection, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase';
@@ -35,7 +35,6 @@ interface User {
 interface UserStats {
     totalUsers: number;
     activeUsers: number;
-
     blockedUsers: number;
     newToday: number;
     kycVerifiedUsers: number;
@@ -150,7 +149,7 @@ export const UserClient = () => {
             setIsWalletDialogOpen(true);
             const result = await getWalletInfo({ uid });
             setSelectedWallet(result.data);
-        } catch (error: any) {
+        } catch (error: any) => {
             toast.error('Failed to get wallet', { description: error.message });
         }
     };
@@ -195,13 +194,11 @@ export const UserClient = () => {
     // --- Render Method ---
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-200">User Management</h1>
-            
             {isLoading ? <Skeleton className="h-28 w-full mb-6" /> : <UsersDashboard stats={stats} />}
 
-            <div className="bg-white dark:bg-gray-900/80 rounded-lg shadow-md p-4">
+            <div>
                 <div className="flex items-center justify-between py-4">
-                    <Input placeholder="Filter by name, email..." value={globalFilter ?? ''} onChange={(e) => setGlobalFilter(e.target.value)} className="max-w-sm bg-white dark:bg-gray-800" />
+                    <Input placeholder="Filter by name, email..." value={globalFilter ?? ''} onChange={(e) => setGlobalFilter(e.target.value)} className="max-w-sm" />
                 </div>
                 {isLoading ? (
                     <div className="space-y-4">
