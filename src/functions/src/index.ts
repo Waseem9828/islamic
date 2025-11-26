@@ -85,12 +85,14 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
         
         return {
-            totalUsers,
-            activeMatches,
-            pendingDeposits,
-            pendingWithdrawals,
-            totalCommission: financeConfig.totalCommission,
-            totalWinnings: financeConfig.totalWinnings,
+            data: {
+                totalUsers,
+                activeMatches,
+                pendingDeposits,
+                pendingWithdrawals,
+                totalCommission: financeConfig.totalCommission,
+                totalWinnings: financeConfig.totalWinnings,
+            }
         };
 
     } catch (error) {
@@ -122,32 +124,47 @@ export const getAdminChartData = regionalFunctions.https.onRequest(async (req, r
 
             const signupsQuery = db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp);
             const signupsSnapshot = await signupsQuery.get();
+            
+            // Assuming revenue is tracked in a 'transactions' collection with 'match_win_commission' reason
+            const revenueQuery = db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp);
+            const revenueSnapshot = await revenueQuery.get();
 
-            const matchesQuery = db.collection('matches').where('createdAt', '>=', sevenDaysAgoTimestamp);
-            const matchesSnapshot = await matchesQuery.get();
 
-            const processSnaps = (snapshot: admin.firestore.QuerySnapshot) => {
-                const counts: { [key: string]: number } = {};
+            const processSnaps = (snapshot: admin.firestore.QuerySnapshot, valueField?: string) => {
+                const dataByDate: { [key: string]: number } = {};
+                
                 snapshot.docs.forEach(doc => {
-                    const docDate = doc.data().createdAt.toDate();
-                    const dateKey = docDate.toISOString().split('T')[0]; // YYYY-MM-DD
-                    counts[dateKey] = (counts[dateKey] || 0) + 1;
+                    const docData = doc.data();
+                    if (docData.createdAt || docData.timestamp) {
+                        const date = (docData.createdAt || docData.timestamp).toDate();
+                        const dateKey = date.toISOString().split('T')[0];
+                        dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
+                    }
                 });
 
                 const result = [];
-                for (let i = 0; i < 7; i++) {
+                for (let i = 6; i >= 0; i--) {
                     const d = new Date();
                     d.setDate(d.getDate() - i);
                     const dateKey = d.toISOString().split('T')[0];
-                    result.push({ date: dateKey, count: counts[dateKey] || 0 });
+                    result.push({
+                        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                        value: dataByDate[dateKey] || 0,
+                    });
                 }
-                return result.reverse();
+                return result;
             };
+
+            const signupsData = processSnaps(signupsSnapshot);
+            const revenueData = processSnaps(revenueSnapshot, 'amount');
             
-            res.status(200).send({
-                signups: processSnaps(signupsSnapshot),
-                matches: processSnaps(matchesSnapshot),
-            });
+            const combinedData = signupsData.map((item, index) => ({
+                date: item.date,
+                "New Users": item.value,
+                "Revenue": revenueData[index].value,
+            }));
+
+            res.status(200).send({ data: combinedData });
 
         } catch (error) {
             console.error("Error fetching chart data:", error);
