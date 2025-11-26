@@ -4,9 +4,11 @@
 import { useEffect, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { IndianRupee, Users, Trophy, Hourglass, Loader2, AlertTriangle, Gamepad2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { IndianRupee, Users, Trophy, Hourglass, Loader2, AlertTriangle, Gamepad2, BarChart, Activity } from 'lucide-react';
 import { toast } from 'sonner';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 interface DashboardStats {
     totalCommission: number;
@@ -15,6 +17,11 @@ interface DashboardStats {
     totalUsers: number;
     pendingDeposits: number;
     pendingWithdrawals: number;
+}
+
+interface ChartData {
+    signups: { date: string; count: number }[];
+    matches: { date: string; count: number }[];
 }
 
 const StatCard = ({ title, value, icon: Icon, note }: { title: string, value: string | number, icon: React.ElementType, note?: string }) => (
@@ -30,63 +37,62 @@ const StatCard = ({ title, value, icon: Icon, note }: { title: string, value: st
     </Card>
 );
 
+const chartConfig = {
+    count: {
+      label: "Count",
+      color: "hsl(var(--primary))",
+    },
+} satisfies ChartConfig
+
 export const AdminDashboard = () => {
     const { functions } = useFirebase();
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [chartData, setChartData] = useState<ChartData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!functions) return;
 
-        const getStats = async () => {
+        const getData = async () => {
+            setIsLoading(true);
+            setError(null);
             const getAdminDashboardStats = httpsCallable(functions, 'getAdminDashboardStats');
+            const getAdminChartData = httpsCallable(functions, 'getAdminChartData');
+            
             try {
-                const result = await getAdminDashboardStats();
-                setStats(result.data as DashboardStats);
+                const [statsResult, chartResult] = await Promise.all([
+                    getAdminDashboardStats(),
+                    getAdminChartData()
+                ]);
+
+                setStats(statsResult.data as DashboardStats);
+                setChartData(chartResult.data as ChartData);
             } catch (err: any) {
                 console.error(err);
-                setError(err.message || 'Failed to load dashboard data.');
-                toast.error('Dashboard Error', { description: err.message });
+                const errorMessage = err.message || 'Failed to load dashboard data.';
+                setError(errorMessage);
+                toast.error('Dashboard Error', { description: errorMessage });
             } finally {
                 setIsLoading(false);
             }
         };
 
-        getStats();
+        getData();
     }, [functions]);
 
     if (isLoading) {
         return (
-            <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Matches</CardTitle>
-                        <Gamepad2 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending Deposits</CardTitle>
-                        <Hourglass className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
-                        <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent>
-                </Card>
+            <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+                    {[...Array(4)].map(i => (
+                        <Card key={i}><CardHeader><Loader2 className="h-6 w-6 animate-spin" /></CardHeader></Card>
+                    ))}
+                </div>
+                 <div className="grid gap-4 md:grid-cols-2">
+                    <Card><CardHeader><CardTitle>Recent Signups</CardTitle></CardHeader><CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent></Card>
+                    <Card><CardHeader><CardTitle>Match Volume</CardTitle></CardHeader><CardContent><Loader2 className="h-6 w-6 animate-spin" /></CardContent></Card>
+                </div>
             </div>
         );
     }
@@ -106,44 +112,53 @@ export const AdminDashboard = () => {
         );
     }
 
-    if (!stats) {
-        return <div className="p-8 text-center">No stats available.</div>;
-    }
-
     return (
-         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-            <StatCard 
-                title="Total Users" 
-                value={stats.totalUsers} 
-                icon={Users} 
-            />
-            <StatCard 
-                title="Active Matches" 
-                value={stats.activeMatches} 
-                icon={Gamepad2}
-            />
-            <StatCard 
-                title="Pending Deposits" 
-                value={stats.pendingDeposits} 
-                icon={Hourglass} 
-                note='Requires review'
-            />
-             <StatCard 
-                title="Pending Withdrawals" 
-                value={stats.pendingWithdrawals} 
-                icon={Hourglass} 
-                note='Requires review'
-            />
-            <StatCard 
-                title="Total Commission Earned" 
-                value={`₹${stats.totalCommission.toFixed(2)}`} 
-                icon={IndianRupee} 
-            />
-            <StatCard 
-                title="Total Winnings Paid Out" 
-                value={`₹${stats.totalWinnings.toFixed(2)}`} 
-                icon={Trophy} 
-            />
+        <div className="space-y-6">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <StatCard title="Total Users" value={stats?.totalUsers || 0} icon={Users} />
+                <StatCard title="Active Matches" value={stats?.activeMatches || 0} icon={Gamepad2} />
+                <StatCard title="Pending Deposits" value={stats?.pendingDeposits || 0} icon={Hourglass} note='Requires review' />
+                <StatCard title="Pending Withdrawals" value={stats?.pendingWithdrawals || 0} icon={Hourglass} note='Requires review' />
+                <StatCard title="Total Commission" value={`₹${(stats?.totalCommission || 0).toFixed(2)}`} icon={IndianRupee} />
+                <StatCard title="Total Winnings Paid" value={`₹${(stats?.totalWinnings || 0).toFixed(2)}`} icon={Trophy} />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><BarChart className="mr-2 h-5 w-5"/>Recent Signups</CardTitle>
+                        <CardDescription>New users in the last 7 days.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                            <AreaChart data={chartData?.signups} margin={{ left: -20, right: 10, top: 10, bottom: 0 }}>
+                                <CartesianGrid vertical={false} />
+                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value.slice(5)} />
+                                 <YAxis stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+                                <Tooltip content={<ChartTooltipContent />} />
+                                <Area dataKey="count" type="monotone" fill="hsl(var(--primary))" fillOpacity={0.4} stroke="hsl(var(--primary))" />
+                            </AreaChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center"><Activity className="mr-2 h-5 w-5"/>Match Volume</CardTitle>
+                        <CardDescription>Matches created in the last 7 days.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+                            <AreaChart data={chartData?.matches} margin={{ left: -20, right: 10, top: 10, bottom: 0 }}>
+                                <CartesianGrid vertical={false} />
+                                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => value.slice(5)} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} tickMargin={8} allowDecimals={false} />
+                                <Tooltip content={<ChartTooltipContent />} />
+                                <Area dataKey="count" type="monotone" fill="hsl(var(--primary))" fillOpacity={0.4} stroke="hsl(var(--primary))" />
+                            </AreaChart>
+                        </ChartContainer>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 };

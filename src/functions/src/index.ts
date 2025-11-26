@@ -2,6 +2,10 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import * as cors from "cors";
+
+const corsHandler = cors({ origin: true });
+
 
 // Safely initialize the Firebase Admin SDK, preventing re-initialization.
 if (admin.apps.length === 0) {
@@ -93,6 +97,54 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         throw new functions.https.HttpsError("internal", "An error occurred while calculating statistics.", error);
     }
 });
+
+export const getAdminChartData = regionalFunctions.https.onCall(async (_, context) => {
+    await ensureIsAdmin(context);
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
+
+    try {
+        // Get user signups in the last 7 days
+        const signupsQuery = db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp);
+        const signupsSnapshot = await signupsQuery.get();
+
+        // Get matches created in the last 7 days
+        const matchesQuery = db.collection('matches').where('createdAt', '>=', sevenDaysAgoTimestamp);
+        const matchesSnapshot = await matchesQuery.get();
+
+        // Process data into daily counts
+        const processSnaps = (snapshot: admin.firestore.QuerySnapshot) => {
+            const counts: { [key: string]: number } = {};
+            snapshot.docs.forEach(doc => {
+                const docDate = doc.data().createdAt.toDate();
+                const dateKey = docDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                counts[dateKey] = (counts[dateKey] || 0) + 1;
+            });
+
+            // Fill in missing days with 0
+            const result = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateKey = d.toISOString().split('T')[0];
+                result.push({ date: dateKey, count: counts[dateKey] || 0 });
+            }
+            return result.reverse(); // oldest to newest
+        };
+        
+        return {
+            signups: processSnaps(signupsSnapshot),
+            matches: processSnaps(matchesSnapshot),
+        };
+
+    } catch (error) {
+        console.error("Error fetching chart data:", error);
+        throw new functions.https.HttpsError("internal", "Failed to get chart data.");
+    }
+});
+
 
 export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) => {
     await ensureIsAdmin(context);
@@ -441,4 +493,3 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
 
 
     
-
