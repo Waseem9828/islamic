@@ -122,7 +122,7 @@ export default function AllTransactionsPage() {
         cell: ({ row }) => {
             const tx = row.original;
             return (
-                <Link href={`/admin/users?search=${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
+                <Link href={`/admin/users/${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
                     <Avatar className="h-9 w-9 border">
                         <AvatarImage src={tx.user?.photoURL || undefined} />
                         <AvatarFallback>{tx.user?.displayName?.[0] || 'U'}</AvatarFallback>
@@ -145,7 +145,7 @@ export default function AllTransactionsPage() {
     { accessorKey: 'status', header: 'Status', cell: ({ row }) => getStatusBadge(row.original.status) },
     { accessorKey: 'id', header: 'Reference', cell: ({ row }) => (
         <div className="font-mono text-xs max-w-[120px] truncate">
-            {row.original.matchId ? <Link href={`/match/${row.original.matchId}`} className="hover:underline" title={row.original.matchId}>Match: {row.original.matchId}</Link> : row.original.id}
+            {row.original.matchId ? <Link href={`/admin/matches/${row.original.matchId}`} className="hover:underline" title={row.original.matchId}>Match: {row.original.matchId}</Link> : row.original.id}
         </div>
     )},
     { accessorKey: 'timestamp', header: 'Date', cell: ({ row }) => <div className="text-right text-xs text-muted-foreground">{format(row.original.timestamp.toDate(), 'PPp')}</div> }

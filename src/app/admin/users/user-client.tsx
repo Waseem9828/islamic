@@ -19,6 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { MoreHorizontal, UserX, UserCheck, Eye, Wallet as WalletIcon, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UsersDashboard } from '@/components/admin/UsersDashboard';
+import { useRouter } from 'next/navigation';
 
 
 // --- Type Definitions ---
@@ -35,6 +36,7 @@ interface User {
 interface UserStats {
     totalUsers: number;
     activeUsers: number;
+
     blockedUsers: number;
     newToday: number;
     kycVerifiedUsers: number;
@@ -57,6 +59,7 @@ const initialStats: UserStats = {
 // --- Main Client Component ---
 export const UserClient = () => {
     const { firestore, functions } = useFirebase();
+    const router = useRouter();
     const [users, setUsers] = useState<User[]>([]);
     const [stats, setStats] = useState<UserStats>(initialStats);
     const [isLoading, setIsLoading] = useState(true);
@@ -176,7 +179,7 @@ export const UserClient = () => {
                 <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => alert('Viewing details for ' + row.original.displayName)}><Eye className="mr-2 h-4 w-4" /> View Full Details</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push(`/admin/users/${row.original.id}`)}><Eye className="mr-2 h-4 w-4" /> View Full Details</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleViewWallet(row.original.id)}><WalletIcon className="mr-2 h-4 w-4" /> View Wallet</DropdownMenuItem>
                     {row.original.status === 'active' ? (
                         <DropdownMenuItem className="text-red-500" onClick={() => handleUpdateStatus(row.original.id, 'suspended')}><UserX className="mr-2 h-4 w-4" /> Suspend</DropdownMenuItem>

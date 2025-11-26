@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -156,7 +157,7 @@ export const MatchClient = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => router.push(`/match/${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/matches/${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
                                 
                                 {isDeclareWinnerEnabled && (
                                     <AlertDialogTrigger asChild>
