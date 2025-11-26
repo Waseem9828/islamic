@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -84,7 +85,7 @@ export const AdminDashboard = () => {
         return (
             <div className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                    {[...Array(4)].map(i => (
+                    {[...Array(4)].map((_, i) => (
                         <Card key={i}><CardHeader><Loader2 className="h-6 w-6 animate-spin" /></CardHeader></Card>
                     ))}
                 </div>
