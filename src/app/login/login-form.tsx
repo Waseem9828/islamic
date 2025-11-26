@@ -19,7 +19,7 @@ export function LoginForm() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     
-    const { auth } = useFirebase();
+    const { auth, functions } = useFirebase();
     const router = useRouter();
 
     const handleSignIn = async (e: React.FormEvent) => {
@@ -27,7 +27,7 @@ export function LoginForm() {
         setIsLoading(true);
         setError('');
 
-        if (!auth) {
+        if (!auth || !functions) {
             setError("Firebase is not initialized. Please try again later.");
             setIsLoading(false);
             return;
@@ -38,19 +38,18 @@ export function LoginForm() {
             const user = userCredential.user;
 
             if (user) {
-                // Force a token refresh to get the latest custom claims
-                await user.getIdToken(true);
-                const idTokenResult = await user.getIdTokenResult();
+                // Check for admin status by calling the cloud function
+                const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
+                const result = await checkAdmin();
+                const isAdmin = (result.data as { isAdmin: boolean }).isAdmin;
 
-                // Check for the admin custom claim directly on the token
-                if (idTokenResult.claims.admin) {
-                    window.location.href = '/admin/dashboard';
+                if (isAdmin) {
+                    router.push('/admin/dashboard');
                 } else {
-                    window.location.href = '/matchmaking';
+                    router.push('/matchmaking');
                 }
             } else {
-                 // This case should ideally not be reached if signInWithEmailAndPassword succeeds
-                 window.location.href = '/matchmaking';
+                 router.push('/matchmaking');
             }
 
         } catch (error: any) {
@@ -96,6 +95,7 @@ export function LoginForm() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             disabled={isLoading}
+                            suppressHydrationWarning
                         />
                     </div>
                     <div className="space-y-2">
@@ -109,6 +109,7 @@ export function LoginForm() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             disabled={isLoading}
+                            suppressHydrationWarning
                         />
                     </div>
 
@@ -119,7 +120,7 @@ export function LoginForm() {
                     )}
                 </CardContent>
                 <CardFooter className="flex flex-col gap-4">
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button type="submit" className="w-full" disabled={isLoading} suppressHydrationWarning>
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Login'}
                     </Button>
                     <div className="text-center text-sm">
