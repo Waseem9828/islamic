@@ -149,7 +149,7 @@ export const UserClient = () => {
             setIsWalletDialogOpen(true);
             const result = await getWalletInfo({ uid });
             setSelectedWallet(result.data);
-        } catch (error: any) => {
+        } catch (error: any) {
             toast.error('Failed to get wallet', { description: error.message });
         }
     };
