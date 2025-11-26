@@ -14,6 +14,7 @@ import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, H
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
+import { errorEmitter, FirestorePermissionError } from '@/firebase/errors';
 
 
 interface Player {
@@ -102,35 +103,52 @@ export default function MatchLobbyPage() {
   const handleJoinLeave = async (action: 'join' | 'leave') => {
     if (!user || !match || !firestore) return;
     const matchRef = doc(firestore, 'matches', match.id);
-    const playerInfoPayload = { name: user.displayName, photoURL: user.photoURL, isReady: false };
+    
+    if (action === 'join') {
+        if (match.players.length >= match.maxPlayers) {
+            toast.error("Match is full.");
+            return;
+        }
 
-    try {
-        if (action === 'join') {
-             if (match.players.length >= match.maxPlayers) {
-                toast.error("Match is full.");
-                return;
-            }
-            await updateDoc(matchRef, {
-                players: arrayUnion(user.uid),
-                [`playerInfo.${user.uid}`]: playerInfoPayload
+        const playerInfoPayload = { name: user.displayName, photoURL: user.photoURL, isReady: false };
+        const updateData = {
+            players: arrayUnion(user.uid),
+            [`playerInfo.${user.uid}`]: playerInfoPayload
+        };
+
+        // Non-blocking update with contextual error handling
+        updateDoc(matchRef, updateData)
+            .then(() => {
+                toast.success('Joined the match!');
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: matchRef.path,
+                    operation: 'update',
+                    requestResourceData: {
+                        players: `arrayUnion('${user.uid}')`,
+                        playerInfo: 'add new player info object',
+                    },
+                });
+                errorEmitter.emit('permission-error', permissionError);
             });
-            toast.success('Joined the match!');
-        } else {
-            // If creator leaves, cancel the match
+
+    } else { // leave action
+        try {
             if (isCreator && match.players.length === 1) {
                  await updateDoc(matchRef, { status: "cancelled" });
                  toast.info('You left and the match was cancelled.');
             } else {
                 await updateDoc(matchRef, {
                     players: arrayRemove(user.uid),
-                    [`playerInfo.${user.uid}`]: undefined
+                    [`playerInfo.${user.uid}`]: undefined // This will cause a delete operation
                 });
                 toast.info('You left the match.');
             }
+        } catch (err) {
+             console.error(`Error leaving match:`, err);
+             toast.error(`Failed to leave the match.`);
         }
-    } catch (err) {
-        console.error(`Error ${action}ing match:`, err);
-        toast.error(`Failed to ${action} the match.`);
     }
   };
   
