@@ -1,25 +1,23 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import BottomNavbar from '../BottomNavbar';
+import AppLayout from '@/app/(app)/layout';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  const isAuthRoute = pathname === '/login' || pathname === '/signup';
+  const isLandingPage = pathname === '/';
   const isAdminRoute = pathname.startsWith('/admin');
-  const noLayoutRoutes = ['/login', '/signup', '/'];
 
-  if (noLayoutRoutes.includes(pathname) || isAdminRoute) {
+  if (isAuthRoute || isLandingPage || isAdminRoute) {
     return <>{children}</>;
   }
 
-  // Otherwise, render the app layout with bottom navbar
+  // Otherwise, render the main app layout
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-1 w-full pb-16">
-        {children}
-      </main>
-      <BottomNavbar />
-    </div>
+    <AppLayout>
+      {children}
+    </AppLayout>
   );
 }

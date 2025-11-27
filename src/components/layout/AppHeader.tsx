@@ -6,12 +6,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Bell, Menu, Wallet } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useUser } from "@/firebase";
 import { doc, onSnapshot, DocumentData } from "firebase/firestore";
 import { useState, useEffect, useMemo } from "react";
+import { cn } from "@/lib/utils";
 
 const AppHeader = () => {
-    const { open, setOpen } = useSidebar();
+    const { toggleSidebar, state } = useSidebar();
     const { user, firestore } = useFirebase();
     const [wallet, setWallet] = useState<DocumentData | null>(null);
 
@@ -45,14 +46,13 @@ const AppHeader = () => {
     };
 
     return (
-        <header className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border-b sticky top-0 z-40">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} className="md:hidden">
-                    <Menu className="h-6 w-6" />
-                </Button>
-                <h1 className="text-xl font-semibold hidden md:block">Dashboard</h1>
-            </div>
-            <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+             <Button variant="ghost" size="icon" onClick={toggleSidebar} className="sm:hidden">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle Menu</span>
+            </Button>
+            
+            <div className="ml-auto flex items-center gap-4">
                 <Link href="/wallet" passHref>
                     <Button variant="outline" className="flex items-center gap-2">
                         <Wallet className="h-5 w-5" />
