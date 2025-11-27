@@ -1,19 +1,22 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useUser, useFirebase } from '@/firebase/provider';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play, Lock, Unlock } from 'lucide-react';
+import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play, Lock, Unlock, Upload, Info, Trophy, List, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
 import { errorEmitter, FirestorePermissionError } from '@/firebase/errors';
 
 
@@ -36,6 +39,7 @@ interface MatchData {
   creatorName: string;
   players: string[];
   playerInfo: { [uid: string]: { name: string; photoURL?: string; isReady?: boolean } };
+  results?: { [uid: string]: any };
 }
 
 const PlayerSlot = ({ player, isCreator }: { player: Player | null, isCreator: boolean }) => {
@@ -61,6 +65,122 @@ const PlayerSlot = ({ player, isCreator }: { player: Player | null, isCreator: b
                 <Badge variant="outline" className='text-xs'>Not Ready</Badge>
             }
         </div>
+    )
+}
+
+const calculateWinnings = (totalPool: number, playerCount: number): { position: number; prize: number }[] => {
+    const commission = totalPool * 0.10;
+    const netPool = totalPool - commission;
+    // Simplified prize structure
+    switch (playerCount) {
+        case 2: return [{ position: 1, prize: Math.floor(netPool) }, { position: 2, prize: 0 }];
+        case 3: return [{ position: 1, prize: Math.floor(netPool * 0.7) }, { position: 2, prize: Math.floor(netPool * 0.3) }, { position: 3, prize: 0 }];
+        case 4: return [{ position: 1, prize: Math.floor(netPool * 0.6) }, { position: 2, prize: Math.floor(netPool * 0.3) }, { position: 3, prize: Math.floor(netPool * 0.1) }, { position: 4, prize: 0 }];
+        default: return [];
+    }
+};
+
+const ResultSubmission = ({ match }: { match: MatchData }) => {
+    const router = useRouter();
+    const { user } = useUser();
+    const { firestore, storage } = useFirebase();
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
+    const [screenshot, setScreenshot] = useState<File | null>(null);
+
+    const prizeDistribution = useMemo(() => {
+        if (!match) return [];
+        const playerCount = match.players.length;
+        const totalPool = match.entryFee * playerCount;
+        return calculateWinnings(totalPool, playerCount);
+    }, [match]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) setScreenshot(e.target.files[0]);
+    };
+
+    const handleSubmitResult = async () => {
+        if (!user || !match || !selectedPosition || !screenshot || !storage || !firestore) {
+            toast.error("Please fill all fields and upload a screenshot.");
+            return;
+        }
+        setIsSubmitting(true);
+
+        try {
+            const screenshotRef = ref(storage, `results/${match.id}/${user.uid}/${Date.now()}`);
+            const uploadResult = await uploadBytes(screenshotRef, screenshot);
+            const screenshotUrl = await getDownloadURL(uploadResult.ref);
+
+            const matchRef = doc(firestore, 'matches', match.id);
+            const winning = prizeDistribution.find(p => p.position === parseInt(selectedPosition))?.prize || 0;
+
+            const resultData = {
+                position: parseInt(selectedPosition),
+                screenshotUrl,
+                submittedAt: new Date(),
+                status: 'Pending Verification',
+                estimatedWinnings: winning
+            };
+
+            await updateDoc(matchRef, { 
+                [`results.${user.uid}`]: resultData,
+                status: 'pending_verification' // Update match status
+            });
+
+            toast.success("Result submitted successfully!", {
+                description: `Position: ${selectedPosition}. Est. Winning: ₹${winning}. Results are under review.`,
+            });
+            router.push('/matchmaking');
+
+        } catch (error) {
+            console.error("Error submitting result:", error);
+            toast.error("Submission failed.", { description: "Could not upload screenshot or save result." });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    if (match.results && match.results[user!.uid]) {
+        return (
+            <Alert variant="default" className='mt-4 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'>
+                <Trophy className="h-4 w-4 text-green-600"/>
+                <AlertTitle className="text-green-800 dark:text-green-300">Result Submitted</AlertTitle>
+                <AlertDescription className="text-green-700 dark:text-green-400">
+                    You have already submitted your result for this match. It is currently under review.
+                </AlertDescription>
+            </Alert>
+        )
+    }
+
+    return (
+         <Card className="border-t-4 border-yellow-500 mt-6">
+            <CardHeader>
+            <CardTitle className="flex items-center text-xl font-bold"><Trophy className="mr-2 h-5 w-5" /> Submit Your Result</CardTitle>
+            <CardDescription>The match is complete. Report your final position and upload proof.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div>
+                    <Label className="text-base font-semibold">1. Select Your Position</Label>
+                    <RadioGroup onValueChange={setSelectedPosition} className={`mt-2 grid grid-cols-2 gap-4`}>
+                    {prizeDistribution.map(item => (
+                        <Label key={item.position} htmlFor={`pos-${item.position}`} className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-muted cursor-pointer has-[:checked]:bg-primary/10 has-[:checked]:border-primary">
+                        <RadioGroupItem value={String(item.position)} id={`pos-${item.position}`} />
+                        <span className="font-semibold">{item.position}{item.position === 1 ? 'st' : item.position === 2 ? 'nd' : item.position === 3 ? 'rd' : 'th'}</span>
+                        <span className={`text-sm ${item.prize > 0 ? 'text-green-600' : 'text-red-600'} font-bold ml-auto`}>{item.prize > 0 ? `Win ₹${item.prize}` : 'No Win'}</span>
+                        </Label>
+                    ))}
+                    </RadioGroup>
+                </div>
+
+                <div>
+                    <Label htmlFor="screenshot-upload" className="text-base font-semibold">2. Upload Result Screenshot</Label>
+                    <div className="mt-2"><Label htmlFor="screenshot-upload" className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted"><div className="flex flex-col items-center justify-center pt-5 pb-6"><Upload className="w-8 h-8 mb-3 text-muted-foreground" />{screenshot ? <p className="font-semibold text-green-600">{screenshot.name}</p> : <><p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span></p><p className="text-xs text-muted-foreground">PNG or JPG</p></>}</div><Input id="screenshot-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" /></Label></div> 
+                </div>
+
+                 <Button onClick={handleSubmitResult} disabled={isSubmitting || !selectedPosition || !screenshot} className="w-full text-lg py-6">{isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Submitting...</> : 'Confirm & Submit Result'}</Button>
+            </CardContent>
+         </Card>
     )
 }
 
@@ -116,7 +236,6 @@ export default function MatchLobbyPage() {
             [`playerInfo.${user.uid}`]: playerInfoPayload
         };
 
-        // Non-blocking update with contextual error handling
         updateDoc(matchRef, updateData)
             .then(() => {
                 toast.success('Joined the match!');
@@ -141,7 +260,7 @@ export default function MatchLobbyPage() {
             } else {
                 await updateDoc(matchRef, {
                     players: arrayRemove(user.uid),
-                    [`playerInfo.${user.uid}`]: undefined // This will cause a delete operation
+                    [`playerInfo.${user.uid}`]: undefined 
                 });
                 toast.info('You left the match.');
             }
@@ -230,12 +349,13 @@ export default function MatchLobbyPage() {
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'>{match.privacy === 'private' ? <Lock className='h-3 w-3'/> : <Unlock className='h-3 w-3'/>}</span><span className='text-muted-foreground capitalize'>{match.privacy}</span></div>
         </div>
 
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-            {playersList.map((player, index) => (
-                <PlayerSlot key={player?.uid || index} player={player} isCreator={player?.uid === match.createdBy} />
-            ))}
-        </div>
+        {match.status === 'waiting' &&
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                {playersList.map((player, index) => (
+                    <PlayerSlot key={player?.uid || index} player={player} isCreator={player?.uid === match.createdBy} />
+                ))}
+            </div>
+        }
 
         {isUserInMatch && (
             <Card className="mb-4 bg-muted/50">
@@ -268,6 +388,8 @@ export default function MatchLobbyPage() {
                 This match has been cancelled.
             </AlertDescription>
         </Alert>}
+
+        {isUserInMatch && match.status !== 'waiting' && match.status !== 'cancelled' && <ResultSubmission match={match} />}
       </div>
 
 
@@ -299,9 +421,9 @@ export default function MatchLobbyPage() {
                     )}
                 </>
                 ) : (
-                    <Button size="lg" onClick={() => router.push(`/result/${match.id}`)} className="col-span-2 text-base h-12">
-                        Submit Result
-                    </Button>
+                   <div className='col-span-2'>
+                        {/* The result submission form is shown above */}
+                   </div>
                 )
             )}
         </div>
@@ -309,5 +431,3 @@ export default function MatchLobbyPage() {
     </div>
   );
 }
-
-    
