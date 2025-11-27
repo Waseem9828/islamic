@@ -182,23 +182,32 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             matchesSnapshot, 
             depositsSnapshot, 
             withdrawalsSnapshot,
-            appConfigSnapshot
         ] = await Promise.all([
             db.collection("users").get(),
             db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
             db.collection("depositRequests").where("status", "==", "pending").get(),
             db.collection("withdrawalRequests").where("status", "==", "pending").get(),
-            db.collection("settings").doc("finances").get()
         ]);
-        const financeConfig = appConfigSnapshot.data() || { totalCommission: 0, totalWinnings: 0 };
         
+        const completedMatchesSnapshot = await db.collection("matches").where("status", "==", "completed").get();
+        let totalCommission = 0;
+        completedMatchesSnapshot.forEach(doc => {
+            totalCommission += doc.data().commission || 0;
+        });
+
+        const completedWithdrawalsSnapshot = await db.collection("withdrawalRequests").where("status", "==", "approved").get();
+        let totalWinnings = 0;
+        completedWithdrawalsSnapshot.forEach(doc => {
+            totalWinnings += doc.data().amount || 0;
+        });
+
         const stats = {
             totalUsers: usersSnapshot.size,
             activeMatches: matchesSnapshot.size,
             pendingDeposits: depositsSnapshot.size,
             pendingWithdrawals: withdrawalsSnapshot.size,
-            totalCommission: financeConfig.totalCommission,
-            totalWinnings: financeConfig.totalWinnings,
+            totalCommission,
+            totalWinnings,
         };
 
         // Fetch Chart Data
@@ -555,9 +564,3 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${refundAmount} has been refunded.` };
     });
   });
-
-    
-
-    
-
-    

@@ -2,30 +2,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useFirebase } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 import { httpsCallable } from 'firebase/functions';
-import { BarChart, Card, Title, Text } from '@tremor/react';
-import { DollarSign, Users, ShoppingCart, TrendingUp, AlertCircle, BarChart2, Briefcase, UserCheck } from 'lucide-react';
+import { useFirebase } from '@/firebase';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DollarSign, Users, Gamepad2, AlertCircle, TrendingUp, HandCoins } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Define the structure for a single stat card
 interface StatCardProps {
   title: string;
   value: string | number;
   icon: React.ElementType;
-  color?: string;
+  description: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color }) => (
-  <Card className="p-4 flex items-center" decoration="top" decorationColor={color as any || 'blue'}>
-    <div className={`p-3 rounded-full bg-${color}-100 mr-4`}>
-        <Icon className={`h-6 w-6 text-${color}-600`} />
-    </div>
-    <div>
-      <Text>{title}</Text>
-      <p className="text-2xl font-semibold">{value}</p>
-    </div>
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, description }) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </CardContent>
   </Card>
 );
 
@@ -49,10 +52,10 @@ export const AdminDashboard = () => {
         
         const data = result.data as any;
 
-        if (!data || data.error) {
+        if (!data || data.error || !data.stats || !data.chartData) {
             throw new Error(data.error || 'Failed to fetch dashboard data. The data format is incorrect.');
         }
-
+        
         setStats(data.stats);
         setChartData(data.chartData);
 
@@ -65,7 +68,7 @@ export const AdminDashboard = () => {
     };
     
     getData(); // Initial fetch
-    const interval = setInterval(getData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(getData, 60000); // Refresh every 60 seconds
     return () => clearInterval(interval);
 
   }, [user, functions]);
@@ -83,54 +86,62 @@ export const AdminDashboard = () => {
         </Alert>
     );
   }
+  
+  const formatCurrency = (value: number) => `₹${value.toFixed(2)}`;
 
   return (
-    <div className="p-4 space-y-6">
-        <Title>Admin Dashboard</Title>
-        <Text>Overview of platform activity and finances.</Text>
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard title="Total Users" value={stats?.totalUsers ?? 0} icon={Users} description="All registered users" />
+        <StatCard title="Active Matches" value={stats?.activeMatches ?? 0} icon={Gamepad2} description="Matches currently in progress or waiting" />
+        <StatCard title="Total Commission" value={formatCurrency(stats?.totalCommission ?? 0)} icon={DollarSign} description="Total revenue generated from matches" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard title="Pending Deposits" value={stats?.pendingDeposits ?? 0} icon={TrendingUp} description="Deposit requests needing approval" />
+        <StatCard title="Pending Withdrawals" value={stats?.pendingWithdrawals ?? 0} icon={TrendingUp} description="Withdrawal requests needing approval" />
+        <StatCard title="Total Winnings Paid" value={formatCurrency(stats?.totalWinnings ?? 0)} icon={HandCoins} description="Total amount paid out to winners" />
+      </div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatCard title="Total Users" value={stats?.totalUsers ?? 0} icon={Users} color="blue" />
-            <StatCard title="Active Matches" value={stats?.activeMatches ?? 0} icon={ShoppingCart} color="orange" />
-            <StatCard title="Total Commission" value={`₹${(stats?.totalCommission ?? 0).toFixed(2)}`} icon={DollarSign} color="green" />
-            <StatCard title="Pending Deposits" value={stats?.pendingDeposits ?? 0} icon={Briefcase} color="yellow" />
-            <StatCard title="Pending Withdrawals" value={stats?.pendingWithdrawals ?? 0} icon={TrendingUp} color="red" />
-            <StatCard title="Total Winnings Paid" value={`₹${(stats?.totalWinnings ?? 0).toFixed(2)}`} icon={UserCheck} color="indigo"/>
-        </div>
-
-        {/* Charts */}
-        <Card>
-            <Title>Recent Activity (Last 7 Days)</Title>
-            <BarChart
-                className="mt-6"
-                data={chartData}
-                index="date"
-                categories={['New Users', 'Revenue']}
-                colors={['blue', 'green']}
-                yAxisWidth={48}
-                valueFormatter={(number) => {
-                    if (chartData.some(item => item.Revenue === number)) return `₹${number}`;
-                    return `${number}`;
-                }}
-            />
-        </Card>
+      <Card className="col-span-1 lg:col-span-2">
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="pl-2">
+            <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--background))", 
+                        border: "1px solid hsl(var(--border))" 
+                      }}
+                    />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="New Users" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="Revenue" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+            </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
 // Skeleton loader component
 const DashboardSkeleton = () => (
-    <div className="p-4 space-y-6 animate-pulse">
-        <div>
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[126px]" />)}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
-            ))}
+         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-[126px]" />)}
         </div>
-        <div className="h-96 bg-gray-200 rounded-lg"></div>
+        <Card>
+            <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+            <CardContent><Skeleton className="h-[350px]" /></CardContent>
+        </Card>
     </div>
 );
