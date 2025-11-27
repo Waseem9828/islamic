@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirebase } from '@/firebase';
+import { useUser, useFirebase } from '@/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { BarChart, Card, Title, Text } from '@tremor/react';
 import { DollarSign, Users, ShoppingCart, TrendingUp, AlertCircle, BarChart2, Briefcase, UserCheck } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -30,37 +31,30 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color }) 
 
 // Main dashboard component
 export const AdminDashboard = () => {
-  const { user } = useFirebase();
+  const { user } = useUser();
+  const { functions } = useFirebase();
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !functions) return;
     
     const getData = async () => {
       setError(null);
       try {
-        const token = await user.getIdToken();
-        const response = await fetch('https://us-east1-studio-4431476254-c1156.cloudfunctions.net/getAdminDashboardStats', {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+        const getAdminDashboardStats = httpsCallable(functions, 'getAdminDashboardStats');
+        const result = await getAdminDashboardStats();
         
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Request failed with status ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.error || !result.stats || !result.chartData) {
-            throw new Error(result.error || 'Failed to fetch dashboard data. The data format is incorrect.');
+        const data = result.data as any;
+
+        if (!data || data.error) {
+            throw new Error(data.error || 'Failed to fetch dashboard data. The data format is incorrect.');
         }
 
-        setStats(result.stats);
-        setChartData(result.chartData);
+        setStats(data.stats);
+        setChartData(data.chartData);
 
       } catch (err: any) {
         console.error("Admin Dashboard Error:", err);
@@ -74,7 +68,7 @@ export const AdminDashboard = () => {
     const interval = setInterval(getData, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
 
-  }, [user]);
+  }, [user, functions]);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -140,5 +134,3 @@ const DashboardSkeleton = () => (
         <div className="h-96 bg-gray-200 rounded-lg"></div>
     </div>
 );
-
-    
