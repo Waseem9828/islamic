@@ -50,7 +50,7 @@ const PlayerSlot = ({ player, isCreator }: { player: Player | null, isCreator: b
     
     return (
          <div className={cn("relative flex flex-col items-center justify-center gap-2 p-4 border rounded-lg h-40 transition-all", player.isReady ? 'border-green-500 bg-green-500/10' : 'border-border')}>
-            {isCreator && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-500" title="Match Creator" />}
+            {isCreator && <Crown className="absolute top-2 right-2 h-5 w-5 text-yellow-500" />}
             <Avatar className="h-16 w-16 border-2">
                 <AvatarImage src={player.photoURL} alt={player.name} />
                 <AvatarFallback>{player.name.charAt(0).toUpperCase()}</AvatarFallback>

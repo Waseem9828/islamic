@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   getPaginationRowModel, // New import
   useReactTable,
+  Table as TanstackTable, // Import Table type with an alias
 } from "@tanstack/react-table";
 
 import {
@@ -20,7 +21,7 @@ import { Button } from "@/components/ui/button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
-  table: ReturnType<typeof useReactTable>;
+  table: TanstackTable<TData>; // Use the generic type for the table instance
 }
 
 export function DataTable<TData, TValue>({

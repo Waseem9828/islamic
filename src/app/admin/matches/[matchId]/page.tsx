@@ -52,8 +52,8 @@ const StatCard = ({ label, value, icon: Icon }: { label: string, value: string |
 const PlayerCard = ({ uid, info, isCreator, isWinner }: { uid: string, info: PlayerInfo, isCreator: boolean, isWinner: boolean }) => (
     <Card className={`relative ${isWinner ? 'border-2 border-green-500' : ''}`}>
         <CardContent className="p-4 flex items-center gap-4">
-            {isCreator && <Crown className="absolute top-2 right-2 h-4 w-4 text-yellow-500" title="Creator" />}
-            {isWinner && <ShieldCheck className="absolute top-2 left-2 h-4 w-4 text-green-500" title="Winner" />}
+            {isCreator && <Crown className="absolute top-2 right-2 h-4 w-4 text-yellow-500" />}
+            {isWinner && <ShieldCheck className="absolute top-2 left-2 h-4 w-4 text-green-500" />}
             <Avatar className="h-12 w-12">
                 <AvatarImage src={info.photoURL} />
                 <AvatarFallback>{info.name?.[0]}</AvatarFallback>

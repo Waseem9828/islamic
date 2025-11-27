@@ -19,7 +19,7 @@ export function Header() {
         if (!auth) return;
         const unsubscribe = auth.onAuthStateChanged((user) => {
             setUser(user);
-            if (user) {
+            if (user && functions) {
                 // Check for admin status when user logs in
                 const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
                 checkAdmin()

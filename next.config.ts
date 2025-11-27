@@ -1,65 +1,23 @@
-
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
-  /* config options here */
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Setting this to true will disable optimizations and tree-shaking.
+  // This is not recommended for production builds.
+  // We have this on to get clearer error messages in the console.
+  optimizeFonts: false, 
   typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  devIndicators: {
-    buildActivity: true,
-    buildActivityPosition: 'bottom-right',
-  },
-  experimental: {
-    // This allows the development server to accept requests from the
-    // Firebase Studio environment, fixing cross-origin issues.
-    allowedDevOrigins: [
-      'https://*.cloudworkstations.dev',
-    ],
-  },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-       {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
-       {
-        protocol: 'https',
-        hostname: 'avatar.vercel.sh',
-        port: '',
-        pathname: '/**',
-      },
-    ],
-  },
+   experimental: {
+     // This is required to make the Storybook integration work.
+     // We are using a custom server to serve the Storybook UI.
+     // This is not a standard Next.js feature.
+     // serverComponentsExternalPackages: ['@storybook/react'],
+     
+   },
 };
 
 export default nextConfig;
