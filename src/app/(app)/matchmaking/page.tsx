@@ -124,12 +124,10 @@ export default function MatchmakingPage() {
   return (
     <div className="p-4 animate-fade-in-up">
         <section>
-            <h2 className="text-xl font-bold flex items-center"><Gamepad2 className="mr-2 h-6 w-6 text-primary" /> My Active Matches</h2>
             {renderMatchList(myMatches, true)}
         </section>
 
         <section className="mt-6">
-            <h2 className="text-xl font-bold flex items-center"><Hourglass className="mr-2 h-6 w-6 text-primary" /> Open Matches</h2>
             {renderMatchList(openMatches, false)}
         </section>
 

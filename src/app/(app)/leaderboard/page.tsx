@@ -117,11 +117,6 @@ export default function LeaderboardPage() {
   return (
     <div className="container mx-auto max-w-3xl py-6 sm:py-8 animate-fade-in-up">
       <Card className="shadow-lg">
-        <CardHeader className="text-center border-b pb-6">
-          <Trophy className="w-14 h-14 mx-auto text-yellow-400" />
-          <CardTitle className="text-3xl sm:text-4xl font-extrabold mt-2">Player Leaderboard</CardTitle>
-          <CardDescription className="mt-2 text-base">Top 100 players ranked by total winnings.</CardDescription>
-        </CardHeader>
         <CardContent className="p-2 sm:p-4">
           {isLoading ? (
             <LeaderboardSkeleton />

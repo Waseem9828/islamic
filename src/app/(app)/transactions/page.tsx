@@ -76,11 +76,7 @@ export default function AllTransactionsPage() {
   return (
     <div className="container mx-auto max-w-4xl py-6">
         <Card>
-        <CardHeader>
-            <CardTitle className="flex items-center"><Banknote className="mr-2"/>Transaction History</CardTitle>
-            <CardDescription>A complete log of all movements in your wallet.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
             {isLoading ? (
                 <div className="space-y-2">
                     <Skeleton className="h-12 w-full" />
