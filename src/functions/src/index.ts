@@ -401,11 +401,11 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
         if (totalBalance < entryFee) throw new functions.https.HttpsError("failed-precondition", "Insufficient total balance.");
 
         let remainingFee = entryFee;
-        let deductedFromBonus = Math.min(remainingFee, walletData.bonusBalance || 0);
+        const deductedFromBonus = Math.min(remainingFee, walletData.bonusBalance || 0);
         remainingFee -= deductedFromBonus;
-        let deductedFromDeposit = Math.min(remainingFee, walletData.depositBalance || 0);
+        const deductedFromDeposit = Math.min(remainingFee, walletData.depositBalance || 0);
         remainingFee -= deductedFromDeposit;
-        let deductedFromWinnings = remainingFee;
+        const deductedFromWinnings = remainingFee;
         
         if (entryFee - (deductedFromBonus + deductedFromDeposit + deductedFromWinnings) > 0.01) throw new functions.https.HttpsError("failed-precondition", "Insufficient balance after detailed check.");
 
@@ -441,7 +441,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
             breakdown: { fromDeposit: deductedFromDeposit, fromWinnings: deductedFromWinnings, fromBonus: deductedFromBonus }
         });
         
-        return { result: { status: "success", message: "Match created!", matchId: matchId.toUpperCase() } };
+        return { status: "success", message: "Match created!", matchId: matchId.toUpperCase() };
     });
 });
 
@@ -564,3 +564,188 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
         return { status: "success", message: `Match cancelled. Your entry fee of ₹${refundAmount} has been refunded.` };
     });
   });
+
+export const distributeWinnings = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { matchId, winnerId } = data;
+    if (!matchId || !winnerId) {
+        throw new functions.https.HttpsError('invalid-argument', 'matchId and winnerId are required.');
+    }
+
+    const matchRef = db.collection('matches').doc(matchId);
+    const rules = await getAppRules();
+
+    return db.runTransaction(async (t) => {
+        const matchDoc = await t.get(matchRef);
+        if (!matchDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Match not found.');
+        }
+        const matchData = matchDoc.data()!;
+        if (matchData.status !== 'inprogress') {
+            throw new functions.https.HttpsError('failed-precondition', `Match is not in progress. Current status: ${matchData.status}.`);
+        }
+        if (!matchData.players.includes(winnerId)) {
+            throw new functions.https.HttpsError('failed-precondition', 'Winner was not a player in this match.');
+        }
+
+        const totalPot = matchData.entryFee * matchData.players.length;
+        const commission = totalPot * rules.adminCommissionRate;
+        const winnings = totalPot - commission;
+
+        // Update winner's wallet
+        const winnerWalletRef = db.collection('wallets').doc(winnerId);
+        t.update(winnerWalletRef, { winningBalance: admin.firestore.FieldValue.increment(winnings) });
+
+        // Update match document
+        t.update(matchRef, { status: 'completed', winner: winnerId, winnings, commission });
+        
+        // Create transaction record for the win
+        const winTxRef = db.collection('transactions').doc();
+        t.set(winTxRef, {
+            userId: winnerId,
+            type: 'credit',
+            amount: winnings,
+            reason: 'match_win',
+            matchId,
+            status: 'completed',
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        
+        return { status: 'success', message: `Winnings of ₹${winnings.toFixed(2)} distributed to ${winnerId}.` };
+    });
+});
+
+
+// --- Withdrawal Functions ---
+export const requestWithdrawal = regionalFunctions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to request a withdrawal.");
+    }
+    const { amount, upiId } = data;
+    const userId = context.auth.uid;
+
+    if (typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid amount greater than zero is required.");
+    }
+     if (typeof upiId !== 'string' || !upiId.match(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/)) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid UPI ID is required.");
+    }
+
+    return db.runTransaction(async (t) => {
+        const walletRef = db.collection("wallets").doc(userId);
+        const walletDoc = await t.get(walletRef);
+        if (!walletDoc.exists || (walletDoc.data()!.winningBalance || 0) < amount) {
+            throw new functions.https.HttpsError("failed-precondition", "Insufficient winning balance for this withdrawal.");
+        }
+        
+        // Optimistically deduct from wallet
+        t.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-amount) });
+        
+        // Create withdrawal request
+        const requestRef = db.collection("withdrawalRequests").doc();
+        t.set(requestRef, {
+            userId,
+            amount,
+            upiId,
+            status: 'pending',
+            requestedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Create transaction record
+        const txRef = db.collection('transactions').doc();
+        t.set(txRef, {
+            userId,
+            type: 'debit',
+            amount,
+            reason: 'withdrawal_request',
+            status: 'pending',
+            withdrawalId: requestRef.id,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Also update user's profile with the UPI ID for future use
+        t.update(db.collection('users').doc(userId), { upiId: upiId });
+
+        return { result: { status: "success", message: "Withdrawal request submitted successfully." } };
+    });
+});
+
+
+export const processWithdrawal = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { requestId, approve } = data;
+    if (!requestId) {
+        throw new functions.https.HttpsError('invalid-argument', 'Request ID is required.');
+    }
+
+    const requestRef = db.collection('withdrawalRequests').doc(requestId);
+    
+    return db.runTransaction(async (t) => {
+        const requestDoc = await t.get(requestRef);
+        if (!requestDoc.exists) {
+            throw new functions.https.HttpsError('not-found', 'Withdrawal request not found.');
+        }
+        const requestData = requestDoc.data()!;
+        if (requestData.status !== 'pending') {
+            throw new functions.https.HttpsError('failed-precondition', 'This request has already been processed.');
+        }
+
+        const txQuery = await db.collection('transactions').where('withdrawalId', '==', requestId).limit(1).get();
+        const txDoc = !txQuery.empty ? txQuery.docs[0] : null;
+
+        if (approve) {
+            // Money has already been deducted, so we just update statuses
+            t.update(requestRef, { status: 'approved', processedAt: admin.firestore.FieldValue.serverTimestamp(), processedBy: context.auth!.uid });
+            if(txDoc) {
+                t.update(txDoc.ref, { status: 'completed' });
+            }
+            return { status: 'success', message: `Request for ₹${requestData.amount} has been approved.` };
+        } else {
+            // Rejection: refund the amount back to the winning balance
+            t.update(db.collection('wallets').doc(requestData.userId), { winningBalance: admin.firestore.FieldValue.increment(requestData.amount) });
+            t.update(requestRef, { status: 'rejected', processedAt: admin.firestore.FieldValue.serverTimestamp(), processedBy: context.auth!.uid });
+            if(txDoc) {
+                t.update(txDoc.ref, { status: 'rejected' });
+            }
+            return { status: 'success', message: `Request for ₹${requestData.amount} has been rejected and the amount refunded to the user's winning balance.` };
+        }
+    });
+});
+
+export const manageAdminRole = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+    const { uid, action } = data; // action can be 'grant' or 'revoke'
+
+    if (!uid || !action || !['grant', 'revoke'].includes(action)) {
+        throw new functions.https.HttpsError('invalid-argument', 'Valid UID and action (grant/revoke) are required.');
+    }
+    if (uid === context.auth!.uid) {
+        throw new functions.https.HttpsError('permission-denied', 'Admins cannot change their own role.');
+    }
+
+    try {
+        const user = await admin.auth().getUser(uid);
+        const currentClaims = user.customClaims || {};
+
+        if (action === 'grant') {
+            if (currentClaims.admin) {
+                return { message: 'User is already an admin.' };
+            }
+            await admin.auth().setCustomUserClaims(uid, { ...currentClaims, admin: true });
+            await db.collection('roles_admin').doc(uid).set({ grantedAt: admin.firestore.FieldValue.serverTimestamp() });
+            return { message: `Successfully granted admin role to ${user.displayName || user.email}.` };
+        } else { // revoke
+            if (!currentClaims.admin) {
+                return { message: 'User is not an admin.' };
+            }
+            await admin.auth().setCustomUserClaims(uid, { ...currentClaims, admin: false });
+            await db.collection('roles_admin').doc(uid).delete();
+            return { message: `Successfully revoked admin role for ${user.displayName || user.email}.` };
+        }
+    } catch (error: any) {
+        console.error('Error managing admin role:', error);
+        throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
+    }
+});
+
+    
