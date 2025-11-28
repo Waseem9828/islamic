@@ -100,14 +100,18 @@ export default function WalletPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">My Wallet</h1>
-        <Button onClick={() => router.push('/transactions')}>
-          <History className="mr-2 h-4 w-4"/>
-          Transaction History
-        </Button>
-      </header>
-
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-3xl font-bold">My Wallet</CardTitle>
+            <Button onClick={() => router.push('/transactions')} variant="outline">
+              <History className="mr-2 h-4 w-4"/>
+              All Transactions
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <BalanceCard title="Total Balance" amount={totalBalance} icon={Wallet} />
         <BalanceCard title="Deposit Balance" amount={wallet?.depositBalance} icon={PiggyBank} />

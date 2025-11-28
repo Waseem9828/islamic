@@ -123,17 +123,6 @@ export default function MatchmakingPage() {
 
   return (
     <div className="p-4 animate-fade-in-up">
-        <header className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-                <Trophy className="h-7 w-7 text-primary" />
-                <h1 className="text-2xl font-bold tracking-tight">LudoVerse</h1>
-            </div>
-             <Avatar className="cursor-pointer" onClick={() => router.push('/profile')}>
-                <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'user avatar'} />
-                <AvatarFallback>{user.displayName?.[0] || 'U'}</AvatarFallback>
-            </Avatar>
-        </header>
-
         <section>
             <h2 className="text-xl font-bold flex items-center"><Gamepad2 className="mr-2 h-6 w-6 text-primary" /> My Active Matches</h2>
             {renderMatchList(myMatches, true)}
