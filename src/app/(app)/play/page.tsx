@@ -26,7 +26,7 @@ export default function PlayPage() {
     const [maxPlayers, setMaxPlayers] = useState('2');
     const [privacy, setPrivacy] = useState('public');
     const [timeLimit, setTimeLimit] = useState('15');
-    const [matchId, setMatchId] = useState('');
+    const [createdMatchId, setCreatedMatchId] = useState('');
 
     const [wallet, setWallet] = useState<{ depositBalance: number, winningBalance: number, bonusBalance: number } | null>(null);
     const [isLoadingWallet, setIsLoadingWallet] = useState(true);
@@ -69,11 +69,6 @@ export default function PlayPage() {
             return;
         }
 
-        if (!matchId || matchId.length !== 8) {
-            toast.error("Invalid Room Code", { description: "Please enter the 8-digit code from Ludo King." });
-            return;
-        }
-
         if (totalBalance < entryFee[0]) {
             toast.error("Insufficient Balance", { description: `You need at least ₹${entryFee[0]} to create this match.` });
             return;
@@ -81,18 +76,23 @@ export default function PlayPage() {
         
         setIsCreating(true);
         try {
+            // Generate a unique match ID on the client
+            const newMatchId = Math.random().toString(36).substring(2, 10).toUpperCase();
+
             const result = await createMatchFunction({
-                matchId,
-                matchTitle: matchTitle || `Match ${matchId}`,
+                matchId: newMatchId,
+                matchTitle: matchTitle || `Match ${newMatchId}`,
                 entryFee: entryFee[0],
                 maxPlayers: parseInt(maxPlayers),
                 privacy,
                 timeLimit: `${timeLimit} mins`
             });
-            const data = (result.data as any).result as { status: string; message: string; matchId: string };
+            
+            const data = (result.data as any);
+
             if (data.status === 'success') {
                 toast.success("Match Created!", { description: data.message });
-                setMatchId(data.matchId);
+                setCreatedMatchId(data.matchId);
                 setIsMatchCreated(true);
             } else {
                 throw new Error(data.message);
@@ -106,16 +106,16 @@ export default function PlayPage() {
     };
     
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(matchId);
-        toast.success("Room Code Copied!");
+        navigator.clipboard.writeText(createdMatchId);
+        toast.success("Match ID Copied!");
     };
     
     const handleShare = () => {
         if (navigator.share) {
             navigator.share({
-                title: `Join my Ludo match: ${matchTitle || `Match ${matchId}`}`,
-                text: `Join my Ludo match!\nRoom Code: ${matchId}\nEntry Fee: ₹${entryFee[0]}`,
-                url: window.location.origin + `/match/${matchId}`,
+                title: `Join my Ludo match: ${matchTitle || `Match ${createdMatchId}`}`,
+                text: `Join my Ludo match!\nMatch ID: ${createdMatchId}\nEntry Fee: ₹${entryFee[0]}`,
+                url: window.location.origin + `/match/${createdMatchId}`,
             }).catch(err => console.log('Error sharing', err));
         } else {
             handleCopyCode();
@@ -134,13 +134,13 @@ export default function PlayPage() {
                     <CardHeader className="text-center">
                         <CheckCircle className="mx-auto w-12 h-12 text-green-500" />
                         <CardTitle className="text-2xl font-bold mt-4">Match Created!</CardTitle>
-                        <CardDescription>Your match is ready. Share the code with other players.</CardDescription>
+                        <CardDescription>Your match is ready. Share the Match ID with other players.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="text-center space-y-2">
-                            <Label className="text-muted-foreground">Room Code</Label>
+                            <Label className="text-muted-foreground">Match ID</Label>
                             <div className="p-4 bg-muted rounded-lg border-2 border-dashed">
-                                <p className="text-4xl font-bold tracking-[0.3em]">{matchId}</p>
+                                <p className="text-4xl font-bold tracking-[0.3em]">{createdMatchId}</p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -159,7 +159,7 @@ export default function PlayPage() {
                                </ul>
                             </CardContent>
                         </Card>
-                         <Button onClick={() => router.push(`/match/${matchId}`)} className="w-full" size="lg">Go to Lobby <ArrowRight className="ml-2 h-4 w-4"/></Button>
+                         <Button onClick={() => router.push(`/match/${createdMatchId}`)} className="w-full" size="lg">Go to Lobby <ArrowRight className="ml-2 h-4 w-4"/></Button>
                     </CardContent>
                 </Card>
             </div>
@@ -218,16 +218,7 @@ export default function PlayPage() {
                             </RadioGroup>
                         </div>
                     </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="match-id">Ludo King Room Code</Label>
-                        <Input 
-                            id="match-id" 
-                            placeholder="Enter 8-digit room code" 
-                            value={matchId} 
-                            onChange={(e) => setMatchId(e.target.value.toUpperCase())}
-                            maxLength={8}
-                            className="font-mono tracking-widest text-lg" />
-                    </div>
+                    
                     <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isCreating || isLoadingWallet}>
                         {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
                         Create Match & Deduct ₹{entryFee[0]}

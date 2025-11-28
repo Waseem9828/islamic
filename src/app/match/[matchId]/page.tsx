@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play, Lock, Unlock, Upload, Info, Trophy, List, Loader2 } from 'lucide-react';
+import { Crown, Swords, Users, Clock, IndianRupee, LogIn, LogOut, CheckCircle, Hourglass, ShieldCheck, Gamepad2, Copy, UserPlus, X, Play, Lock, Unlock, Upload, Info, Trophy, List, Loader2, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
@@ -29,6 +29,7 @@ interface Player {
 
 interface MatchData {
   id: string;
+  ludoKingRoomCode?: string;
   matchTitle: string;
   entryFee: number;
   maxPlayers: number;
@@ -125,14 +126,13 @@ const ResultSubmission = ({ match }: { match: MatchData }) => {
 
             await updateDoc(matchRef, { 
                 [`results.${user.uid}`]: resultData,
-                status: 'pending_verification' // Update match status
+                 // status is updated by admin now, not on submission
             });
 
             toast.success("Result submitted successfully!", {
                 description: `Position: ${selectedPosition}. Est. Winning: ₹${winning}. Results are under review.`,
             });
-            router.push('/matchmaking');
-
+            // Don't redirect, stay on page to see submission status
         } catch (error) {
             console.error("Error submitting result:", error);
             toast.error("Submission failed.", { description: "Could not upload screenshot or save result." });
@@ -147,7 +147,7 @@ const ResultSubmission = ({ match }: { match: MatchData }) => {
                 <Trophy className="h-4 w-4 text-green-600"/>
                 <AlertTitle className="text-green-800 dark:text-green-300">Result Submitted</AlertTitle>
                 <AlertDescription className="text-green-700 dark:text-green-400">
-                    You have already submitted your result for this match. It is currently under review.
+                    You have already submitted your result for this match. It is currently under review by an admin.
                 </AlertDescription>
             </Alert>
         )
@@ -184,6 +184,78 @@ const ResultSubmission = ({ match }: { match: MatchData }) => {
     )
 }
 
+const RoomCodeManager = ({ match }: { match: MatchData }) => {
+    const { firestore } = useFirebase();
+    const [roomCode, setRoomCode] = useState(match.ludoKingRoomCode || '');
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSaveCode = async () => {
+        if (!roomCode || roomCode.length < 4) {
+            toast.error("Invalid Code", { description: "Please enter a valid Ludo King room code." });
+            return;
+        }
+        setIsSaving(true);
+        const matchRef = doc(firestore!, 'matches', match.id);
+        try {
+            await updateDoc(matchRef, { ludoKingRoomCode: roomCode });
+            toast.success("Room Code Saved!");
+        } catch (error) {
+            console.error("Error saving room code:", error);
+            toast.error("Could not save room code.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCopyCode = () => {
+        if (!match.ludoKingRoomCode) return;
+        navigator.clipboard.writeText(match.ludoKingRoomCode);
+        toast.success("Room Code Copied!");
+    };
+    
+    const handleLudoKingRedirect = () => {
+        if (!match.ludoKingRoomCode) return;
+        const ludoKingURL = `ludoking://?join=${match.ludoKingRoomCode}`;
+        window.location.href = ludoKingURL;
+        toast.info("Redirecting to Ludo King...");
+    };
+
+    // View for the match creator
+    return (
+        <Card className="mb-4 bg-muted/50">
+            <CardHeader className='p-3'>
+                <CardTitle className="text-base">Ludo King Room Code</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 flex gap-2">
+                <div className="flex-grow">
+                    <Input 
+                        placeholder="Enter Ludo King Code"
+                        value={roomCode}
+                        onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                        maxLength={8}
+                        className="font-mono tracking-widest text-lg text-center"
+                    />
+                </div>
+                <Button onClick={handleSaveCode} disabled={isSaving} size="icon" className="h-auto px-4">
+                    {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                </Button>
+            </CardContent>
+            {match.ludoKingRoomCode && (
+                <CardContent className="p-3 pt-0 flex gap-2">
+                     <div className="p-3 bg-background rounded-lg border-2 border-dashed flex justify-between items-center flex-grow">
+                        <p className="text-2xl font-bold tracking-[0.2em]">{match.ludoKingRoomCode}</p>
+                        <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
+                    </div>
+                    <Button onClick={handleLudoKingRedirect} className='h-auto bg-green-600 hover:bg-green-700 flex-col gap-1 px-4'>
+                        <Gamepad2 className="h-6 w-6"/>
+                        <span className="text-xs">Play</span>
+                    </Button>
+                </CardContent>
+            )}
+        </Card>
+    );
+};
+
 export default function MatchLobbyPage() {
   const { matchId } = useParams();
   const router = useRouter();
@@ -201,9 +273,6 @@ export default function MatchLobbyPage() {
       if (docSnap.exists()) {
         const matchData = { id: docSnap.id, ...docSnap.data() } as MatchData;
         setMatch(matchData);
-         if (matchData.status === 'inprogress' && user && matchData.players.includes(user.uid)) {
-            handleLudoKingRedirect(matchData.id);
-        }
       } else {
         setError('Match not found.');
         toast.error('Match not found');
@@ -285,27 +354,19 @@ export default function MatchLobbyPage() {
 
     const handleStartMatch = async () => {
         if (!user || !match || !firestore || !isCreator) return;
+        if (!match.ludoKingRoomCode) {
+            toast.error("Please enter the Ludo King room code before starting.");
+            return;
+        }
         const matchRef = doc(firestore, 'matches', match.id);
         try {
             await updateDoc(matchRef, { status: 'inprogress' });
-            handleLudoKingRedirect(match.id);
+            toast.success("Match Started! Good luck.");
         } catch (error) {
             console.error("Error starting match:", error);
             toast.error("Couldn't start the match.");
         }
     };
-  
-  const handleLudoKingRedirect = (code: string) => {
-    const ludoKingURL = `ludoking://?join=${code}`;
-    window.location.href = ludoKingURL;
-    toast.info("Redirecting to Ludo King...");
-  };
-
-  const handleCopyCode = () => {
-    if (!match) return;
-    navigator.clipboard.writeText(match.id);
-    toast.success("Room Code Copied!");
-  };
 
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
@@ -336,7 +397,7 @@ export default function MatchLobbyPage() {
         <div className="text-center mb-4">
             <h1 className="text-2xl font-bold">{match.matchTitle}</h1>
             <p className="text-sm text-muted-foreground">
-                Created by <span className="font-semibold text-primary">{match.creatorName}</span>
+                Match ID: <span className="font-semibold text-primary font-mono">{match.id}</span>
             </p>
             <div className="mt-2 text-xl font-bold text-green-600">
                 Total Prize: ₹{totalPot}
@@ -357,24 +418,20 @@ export default function MatchLobbyPage() {
             </div>
         }
 
-        {isUserInMatch && (
-            <Card className="mb-4 bg-muted/50">
-                <CardHeader className='p-3'>
-                    <CardTitle className="text-base">Ludo King Room Code</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0 flex gap-2">
-                    <div className="p-3 bg-background rounded-lg border-2 border-dashed flex justify-between items-center flex-grow">
-                        <p className="text-2xl font-bold tracking-[0.2em]">{match.id}</p>
-                        <Button size="icon" variant="ghost" onClick={handleCopyCode}><Copy className="h-5 w-5"/></Button>
-                    </div>
-                    <Button onClick={() => handleLudoKingRedirect(match.id)} className='h-auto bg-green-600 hover:bg-green-700 flex-col gap-1 px-4'>
-                        <Gamepad2 className="h-6 w-6"/>
-                        <span className="text-xs">Play</span>
-                    </Button>
-                </CardContent>
-            </Card>
-        )}
+        {isCreator && match.status === 'waiting' && <RoomCodeManager match={match} />}
 
+        {isUserInMatch && !isCreator && match.status === 'waiting' && (
+            <Alert className="mb-4">
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                    {match.ludoKingRoomCode 
+                        ? `The Ludo King room code is: ${match.ludoKingRoomCode}`
+                        : "Waiting for the creator to share the Ludo King room code."
+                    }
+                </AlertDescription>
+            </Alert>
+        )}
+        
         {isUserInMatch && match.status === 'waiting' && <Alert className="mb-4">
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
@@ -389,7 +446,7 @@ export default function MatchLobbyPage() {
             </AlertDescription>
         </Alert>}
 
-        {isUserInMatch && match.status !== 'waiting' && match.status !== 'cancelled' && <ResultSubmission match={match} />}
+        {isUserInMatch && match.status === 'completed' && <ResultSubmission match={match} />}
       </div>
 
 

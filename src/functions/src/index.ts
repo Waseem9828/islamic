@@ -85,7 +85,7 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
             userId: uid,
             amount: amount,
             transactionId: transactionId,
-            screenshotUrl: screenshotUrl,
+            screenshotURL: screenshotUrl, // Corrected from screenshotUrl
             status: 'pending',
             requestedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -173,14 +173,13 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
 
 // --- Admin & Roles Functions ---
 export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data, context) => {
-    await ensureIsAdmin(context);
-
     try {
+        await ensureIsAdmin(context);
+
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
 
-        // Fetch all data in parallel
         const [
             usersSnapshot,
             activeMatchesSnapshot,
@@ -201,7 +200,6 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get(),
         ]);
 
-        // Process stats
         const totalCommission = completedMatchesSnapshot.docs.reduce((sum, doc) => sum + (doc.data().commission || 0), 0);
         const totalWinnings = completedWithdrawalsSnapshot.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
 
@@ -214,16 +212,15 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             totalWinnings,
         };
 
-        // Process chart data
         const processSnaps = (snapshot: admin.firestore.QuerySnapshot, valueField?: string) => {
             const dataByDate: { [key: string]: number } = {};
             snapshot.docs.forEach(doc => {
                 const docData = doc.data();
                 const timestamp = docData.createdAt || docData.timestamp;
-                if (timestamp && typeof timestamp.toDate === 'function') { // SAFE CHECK
+                if (timestamp && typeof timestamp.toDate === 'function') {
                     const date = timestamp.toDate();
                     const dateKey = date.toISOString().split('T')[0];
-                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] || 0 : 1);
+                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? (docData[valueField] || 0) : 1);
                 }
             });
             return dataByDate;
@@ -244,16 +241,11 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             });
         }
         
-        // Always return the full object
         return { stats, chartData };
 
     } catch (error: any) {
         console.error("Error in getAdminDashboardStats:", error);
-        // In case of error, return a default structure to avoid frontend crashes
-        return {
-            stats: { totalUsers: 0, activeMatches: 0, pendingDeposits: 0, pendingWithdrawals: 0, totalCommission: 0, totalWinnings: 0 },
-            chartData: [],
-        };
+        throw new functions.https.HttpsError("internal", error.message || "An internal error occurred while calculating statistics.");
     }
 });
 
@@ -394,7 +386,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
     return db.runTransaction(async (t) => {
         const [matchDoc, walletDoc, userDoc] = await Promise.all([t.get(matchRef), t.get(walletRef), t.get(userRef)]);
 
-        if (matchDoc.exists) throw new functions.https.HttpsError("already-exists", "Room code already exists.");
+        if (matchDoc.exists) throw new functions.https.HttpsError("already-exists", "This Match ID is already in use.");
         if (!walletDoc.exists) throw new functions.https.HttpsError("not-found", "Wallet not found.");
         if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "User profile not found.");
 
@@ -600,7 +592,7 @@ export const distributeWinnings = regionalFunctions.https.onCall(async (data, co
         const winnerWalletRef = db.collection('wallets').doc(winnerId);
         t.update(winnerWalletRef, { winningBalance: admin.firestore.FieldValue.increment(winnings) });
 
-        // Update match document
+        // Update match document to 'completed'
         t.update(matchRef, { status: 'completed', winner: winnerId, winnings, commission });
         
         // Create transaction record for the win
@@ -751,5 +743,3 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
-
-    
