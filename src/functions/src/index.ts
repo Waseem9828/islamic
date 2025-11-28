@@ -81,7 +81,7 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
             userId: uid,
             amount: amount,
             transactionId: transactionId,
-            screenshotUrl: screenshotUrl, // Corrected variable name
+            screenshotUrl: screenshotUrl,
             status: 'pending',
             requestedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -743,6 +743,3 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
-
-
-    
