@@ -176,11 +176,10 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
     await ensureIsAdmin(context);
 
     try {
-        // Fetch Stats
-        const [ 
+        const [
             usersSnapshot,
-            matchesSnapshot, 
-            depositsSnapshot, 
+            matchesSnapshot,
+            depositsSnapshot,
             withdrawalsSnapshot,
         ] = await Promise.all([
             db.collection("users").get(),
@@ -188,7 +187,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             db.collection("depositRequests").where("status", "==", "pending").get(),
             db.collection("withdrawalRequests").where("status", "==", "pending").get(),
         ]);
-        
+
         const completedMatchesSnapshot = await db.collection("matches").where("status", "==", "completed").get();
         let totalCommission = 0;
         completedMatchesSnapshot.forEach(doc => {
@@ -210,14 +209,13 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             totalWinnings,
         };
 
-        // Fetch Chart Data
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
-        
+
         const [signupsSnapshot, revenueSnapshot] = await Promise.all([
             db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp).get(),
-            db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get()
+            db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get(),
         ]);
 
         const processSnaps = (snapshot: admin.firestore.QuerySnapshot, valueField?: string) => {
@@ -234,7 +232,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
         const signupsByDate = processSnaps(signupsSnapshot);
         const revenueByDate = processSnaps(revenueSnapshot, 'amount');
 
-        const chartData = [];
+        const chartData: { date: string; "New Users": number; Revenue: number }[] = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
@@ -245,7 +243,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
                 "Revenue": revenueByDate[dateKey] || 0,
             });
         }
-        
+
         return { stats, chartData };
 
     } catch (error: any) {
