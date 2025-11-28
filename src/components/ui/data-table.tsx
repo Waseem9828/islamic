@@ -1,12 +1,10 @@
+
 'use client';
 
 import {
   ColumnDef,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel, // New import
-  useReactTable,
-  Table as TanstackTable, // Import Table type with an alias
+  Table as TanstackTable,
 } from "@tanstack/react-table";
 
 import {
@@ -21,7 +19,7 @@ import { Button } from "@/components/ui/button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
-  table: TanstackTable<TData>; // Use the generic type for the table instance
+  table: TanstackTable<TData>;
 }
 
 export function DataTable<TData, TValue>({
@@ -30,68 +28,70 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   return (
     <div>
-        <div className="rounded-md border">
+      <div className="rounded-md border">
         <Table>
-            <TableHeader>
+          <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                    return (
+                  return (
                     <TableHead key={header.id}>
-                        {header.isPlaceholder
+                      {header.isPlaceholder
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
                             header.getContext()
-                            )}
+                          )}
                     </TableHead>
-                    );
+                  );
                 })}
-                </TableRow>
+              </TableRow>
             ))}
-            </TableHeader>
-            <TableBody>
+          </TableHeader>
+          <TableBody>
             {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row) => (
                 <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
                 >
-                    {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
-                    ))}
+                  ))}
                 </TableRow>
-                ))
+              ))
             ) : (
-                <TableRow>
+              <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
+                  No results.
                 </TableCell>
-                </TableRow>
+              </TableRow>
             )}
-            </TableBody>
+          </TableBody>
         </Table>
-        </div>
-        <div className="flex items-center justify-end space-x-2 py-4">
-            <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            >
-            Previous
-            </Button>
-            <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            >
-            Next
-            </Button>
+      </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
       </div>
     </div>
   );
 }
+
+    

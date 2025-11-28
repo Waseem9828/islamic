@@ -12,10 +12,9 @@ import { Loader2, CheckCircle, XCircle, Copy, ListChecks } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DataTable } from '@/components/ui/data-table';
-import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 import { Input } from '@/components/ui/input';
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 // --- Type Definitions ---
 interface User {
@@ -33,6 +32,44 @@ interface WithdrawalRequest {
 }
 type RequestWithUser = WithdrawalRequest & { user?: User };
 
+const WithdrawalCard = ({ request, onProcess, isSubmitting }: { request: RequestWithUser, onProcess: (id: string, approve: boolean) => void, isSubmitting: boolean }) => {
+    const user = request.user;
+    return (
+        <Card className="w-full">
+            <CardHeader className="p-4 flex flex-row items-center gap-3">
+                 <Avatar className="h-10 w-10 border">
+                    <AvatarImage src={user?.photoURL || `https://avatar.vercel.sh/${user?.email}.png`} alt={user?.displayName} />
+                    <AvatarFallback>{user?.displayName?.[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold text-sm">{user?.displayName || 'Unknown'}</p>
+                    <p className="text-xs text-muted-foreground">{formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true })}</p>
+                </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 space-y-3">
+                <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
+                    <span className="text-sm text-muted-foreground">Amount</span>
+                    <span className="font-bold text-lg">₹{request.amount.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between bg-muted/50 p-3 rounded-md">
+                    <p className="font-mono text-sm text-muted-foreground break-all">{request.upiId}</p>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {navigator.clipboard.writeText(request.upiId); toast.info('UPI ID Copied');}}>
+                        <Copy className="h-4 w-4"/>
+                    </Button>
+                </div>
+                <div className="flex gap-2">
+                     <Button variant="outline" size="sm" className="w-full" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <><XCircle className="mr-2 h-4 w-4 text-red-500"/> Reject</>}
+                    </Button>
+                    <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => onProcess(request.id, true)} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <><CheckCircle className="mr-2 h-4 w-4"/> Approve</>}
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 // --- Main Component ---
 export default function ManageWithdrawalsPage() {
@@ -40,8 +77,8 @@ export default function ManageWithdrawalsPage() {
   const [requests, setRequests] = useState<RequestWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'requestedAt', desc: true }]);
   const [isSubmitting, setIsSubmitting] = useState<Record<string, boolean>>({});
+  const isMobile = useIsMobile();
 
   const processWithdrawalFunction = useMemo(() => {
     if (!functions) return null;
@@ -94,6 +131,20 @@ export default function ManageWithdrawalsPage() {
 
     return () => unsubscribe();
   }, [firestore]);
+  
+  const filteredRequests = useMemo(() => {
+      if (!globalFilter) return requests;
+      return requests.filter(req => {
+          const user = req.user;
+          const search = globalFilter.toLowerCase();
+          return (
+              user?.displayName?.toLowerCase().includes(search) ||
+              user?.email?.toLowerCase().includes(search) ||
+              req.userId.toLowerCase().includes(search) ||
+              req.upiId.toLowerCase().includes(search)
+          );
+      });
+  }, [requests, globalFilter]);
 
   // --- Actions ---
   const handleProcessRequest = async (requestId: string, approve: boolean) => {
@@ -120,70 +171,6 @@ export default function ManageWithdrawalsPage() {
     }
   };
 
-  // --- Table Columns ---
-  const columns = useMemo<ColumnDef<RequestWithUser>[]>(() => [
-    {
-      accessorKey: 'user',
-      header: 'User',
-      cell: ({ row }) => {
-        const user = row.original.user;
-        const userIdentifier = user?.email || row.original.userId;
-        const userDisplayName = user?.displayName || user?.email || 'Unknown';
-        return (
-            <div className="flex items-center gap-2">
-                <Avatar className="h-9 w-9 border">
-                    <AvatarImage src={user?.photoURL || `https://avatar.vercel.sh/${userIdentifier}.png`} alt={userDisplayName} />
-                    <AvatarFallback>{userDisplayName[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-semibold text-sm">{userDisplayName}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{row.original.userId}</p>
-                </div>
-            </div>
-        )
-      }
-    },
-    { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <div className="font-bold text-lg text-primary">₹{row.original.amount.toLocaleString()}</div> },
-    { accessorKey: 'upiId', header: 'UPI ID', cell: ({ row }) => (
-        <div className="font-mono text-xs flex items-center gap-1">
-            {row.original.upiId} 
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {navigator.clipboard.writeText(row.original.upiId); toast.info('Copied to clipboard');}}>
-                <Copy className="h-3 w-3"/>
-            </Button>
-        </div>
-    )},
-    { accessorKey: 'requestedAt', header: 'Time', cell: ({ row }) => <div className="text-xs text-muted-foreground">{formatDistanceToNow(row.original.requestedAt.toDate(), { addSuffix: true })}</div> },
-    {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }) => {
-        const request = row.original;
-        const isActionSubmitting = isSubmitting[request.id];
-        return (
-            <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleProcessRequest(request.id, false)} disabled={isActionSubmitting}>
-                    {isActionSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <XCircle className="mr-2 h-4 w-4 text-red-500"/>} Reject
-                </Button>
-                <Button size="sm" onClick={() => handleProcessRequest(request.id, true)} disabled={isActionSubmitting} className="bg-green-600 hover:bg-green-700">
-                    {isActionSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>} Approve
-                </Button>
-            </div>
-        )
-      }
-    },
-  ], [isSubmitting]);
-
-  const table = useReactTable({
-    data: requests,
-    columns,
-    state: { sorting, globalFilter },
-    onGlobalFilterChange: setGlobalFilter,
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-  });
-
   return (
     <Card>
       <CardHeader>
@@ -191,7 +178,7 @@ export default function ManageWithdrawalsPage() {
         <CardDescription>Review and process pending withdrawal requests from users.</CardDescription>
         <div className="flex items-center pt-4">
             <Input
-                placeholder="Search requests..."
+                placeholder="Search by name, email, UPI ID..."
                 value={globalFilter ?? ''}
                 onChange={(event) => setGlobalFilter(event.target.value)}
                 className="max-w-sm"
@@ -200,14 +187,23 @@ export default function ManageWithdrawalsPage() {
       </CardHeader>
       <CardContent>
           {loading ? (
-             <div className="space-y-2">
-              <Skeleton className="h-14 w-full" />
-              <Skeleton className="h-14 w-full" />
+             <div className="space-y-4">
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full" />
             </div>
           ) : (
-            <DataTable table={table} columns={columns} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredRequests.length > 0 ? (
+                    filteredRequests.map(req => (
+                        <WithdrawalCard key={req.id} request={req} onProcess={handleProcessRequest} isSubmitting={isSubmitting[req.id]} />
+                    ))
+                ) : <p className="text-center text-muted-foreground p-8 col-span-full">No pending requests found.</p>
+                }
+            </div>
           )}
       </CardContent>
     </Card>
   );
 }
+
+    
