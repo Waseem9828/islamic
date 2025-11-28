@@ -168,6 +168,10 @@ export default function PlayPage() {
     return (
         <div className="container mx-auto max-w-2xl py-8">
             <Card>
+                <CardHeader>
+                    <CardTitle>Create a New Match</CardTitle>
+                    <CardDescription>Set up a new Ludo match for others to join.</CardDescription>
+                </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                     <Alert variant={totalBalance < entryFee[0] ? "destructive" : "default"}>
                         <Wallet className="h-4 w-4" />

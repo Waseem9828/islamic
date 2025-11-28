@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs, query, orderBy, limit, where, documentId } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -123,6 +123,10 @@ export default function LeaderboardPage() {
   return (
     <div className="container mx-auto max-w-3xl py-6 sm:py-8 animate-fade-in-up">
       <Card className="shadow-lg">
+        <CardHeader>
+            <CardTitle>Global Leaderboard</CardTitle>
+            <CardDescription>See how you rank against the top players worldwide.</CardDescription>
+        </CardHeader>
         <CardContent className="p-2 sm:p-4">
           {isLoading ? (
             <LeaderboardSkeleton />

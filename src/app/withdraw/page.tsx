@@ -114,7 +114,11 @@ export default function WithdrawPage() {
   return (
     <div className="container mx-auto max-w-lg py-8">
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+            <CardTitle>Request Withdrawal</CardTitle>
+            <CardDescription>Withdraw your winnings to your bank account via UPI.</CardDescription>
+        </CardHeader>
+        <CardContent>
             <div className="p-4 mb-4 bg-secondary/50 border border-secondary rounded-lg">
                 <p className="text-sm text-muted-foreground">Available for Withdrawal</p>
                 {isLoading ? 

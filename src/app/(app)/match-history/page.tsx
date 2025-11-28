@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,7 +50,11 @@ export default function MatchHistoryPage() {
     return (
         <div className="container mx-auto max-w-4xl py-6 animate-fade-in-up">
             <Card>
-                <CardContent className="pt-6">
+                <CardHeader>
+                    <CardTitle>Your Match History</CardTitle>
+                    <CardDescription>A record of all the matches you have played.</CardDescription>
+                </CardHeader>
+                <CardContent>
                     {isLoading ? (
                         <div className="space-y-2">
                             <Skeleton className="h-12 w-full" />

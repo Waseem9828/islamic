@@ -127,6 +127,10 @@ export default function DepositPage() {
     return (
         <div className="container mx-auto max-w-md py-8">
             <Card>
+                <CardHeader>
+                    <CardTitle>Request a Deposit</CardTitle>
+                    <CardDescription>Complete the steps below to add funds to your wallet.</CardDescription>
+                </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">

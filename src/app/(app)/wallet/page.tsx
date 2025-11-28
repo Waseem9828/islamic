@@ -101,6 +101,11 @@ export default function WalletPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-6">
+        <CardHeader className="px-0">
+            <CardTitle>My Wallet</CardTitle>
+            <CardDescription>View your balances, make deposits, and withdraw winnings.</CardDescription>
+        </CardHeader>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <BalanceCard title="Total Balance" amount={totalBalance} icon={Wallet} />
         <BalanceCard title="Deposit Balance" amount={wallet?.depositBalance} icon={PiggyBank} />
@@ -192,6 +197,10 @@ function RecentTransactions({ transactions }: { transactions: DocumentData[] }) 
 function WalletSkeleton() {
   return (
     <div className="container mx-auto p-4 space-y-6">
+        <CardHeader className="px-0">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-64 mt-2" />
+        </CardHeader>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
