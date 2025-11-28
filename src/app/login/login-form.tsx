@@ -14,6 +14,7 @@ import { Loader2, Mail, KeyRound, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { FirebaseError } from 'firebase/app';
 
 // A simple SVG for the Google icon
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -85,25 +86,27 @@ export function LoginForm() {
     const handleAuthError = (error: any) => {
         console.error("Auth Error:", error);
         let errorMessage = "An unknown error occurred. Please try again.";
-        switch (error.code) {
-            case 'auth/user-not-found':
-                errorMessage = "No account found with this email.";
-                break;
-            case 'auth/wrong-password':
-                errorMessage = "Incorrect password. Please try again.";
-                break;
-            case 'auth/invalid-email':
-                errorMessage = "The email address is not valid.";
-                break;
-             case 'auth/invalid-credential':
-                errorMessage = "Invalid credentials. Please check your email and password.";
-                break;
-            case 'auth/popup-closed-by-user':
-                errorMessage = "Sign-in popup closed. Please try again.";
-                break;
-            default:
-                errorMessage = error.message;
-                break;
+        if (error instanceof FirebaseError) {
+            switch (error.code) {
+                case 'auth/user-not-found':
+                    errorMessage = "No account found with this email. Please sign up.";
+                    break;
+                case 'auth/wrong-password':
+                    errorMessage = "Incorrect password. Please try again.";
+                    break;
+                case 'auth/invalid-email':
+                    errorMessage = "The email address is not valid.";
+                    break;
+                 case 'auth/invalid-credential':
+                    errorMessage = "Invalid credentials. Please check your email and password.";
+                    break;
+                case 'auth/popup-closed-by-user':
+                    errorMessage = "Sign-in popup closed. Please try again.";
+                    break;
+                default:
+                    errorMessage = error.message;
+                    break;
+            }
         }
         setError(errorMessage);
     }
