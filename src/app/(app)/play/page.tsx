@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -169,11 +168,7 @@ export default function PlayPage() {
     return (
         <div className="container mx-auto max-w-2xl py-8">
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center text-2xl"><Gamepad2 className="mr-2" />Create a New Match</CardTitle>
-                    <CardDescription>Set up your game rules and challenge your friends or the community.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 pt-6">
                     <Alert variant={totalBalance < entryFee[0] ? "destructive" : "default"}>
                         <Wallet className="h-4 w-4" />
                         <AlertTitle>Wallet Balance</AlertTitle>
@@ -221,7 +216,7 @@ export default function PlayPage() {
                     
                     <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isCreating || isLoadingWallet}>
                         {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
-                        Create Match & Deduct ₹{entryFee[0]}
+                        Create Match &amp; Deduct ₹{entryFee[0]}
                     </Button>
                 </CardContent>
             </Card>

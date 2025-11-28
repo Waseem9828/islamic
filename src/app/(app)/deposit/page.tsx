@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -123,10 +122,6 @@ export default function DepositPage() {
         <div className="container mx-auto max-w-md py-8">
             <Card>
                 <form onSubmit={handleSubmit}>
-                     <CardHeader>
-                        <CardTitle>Request a Deposit</CardTitle>
-                        <CardDescription>Follow the steps below to add funds to your wallet.</CardDescription>
-                    </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
                             <Label>1. Payment Details</Label>
@@ -138,7 +133,7 @@ export default function DepositPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="amount">2. Amount & Transaction ID</Label>
+                            <Label htmlFor="amount">2. Amount &amp; Transaction ID</Label>
                             <Input
                                 id="amount"
                                 type="number"
