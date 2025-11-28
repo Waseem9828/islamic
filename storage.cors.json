@@ -4,15 +4,18 @@
     "origin": [
       "https://*.cloudworkstations.dev",
       "https://*.firebaseapp.com",
-      "https://*.web.app"
+      "https://*.web.app",
+      "http://localhost:3000"
     ],
     "method": [
       "GET",
       "POST",
+      "PUT",
+      "DELETE",
       "OPTIONS"
     ],
     "header": [
-      "Content-Type"
+      "*"
     ],
     "maxAgeSeconds": 3600
   }
