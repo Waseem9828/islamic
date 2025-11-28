@@ -266,5 +266,3 @@ function ProfileNavItem({ icon: Icon, label, href, active = false }: { icon: Rea
         </button>
     );
 }
-
-    
