@@ -223,7 +223,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
                 if (timestamp && typeof timestamp.toDate === 'function') { // SAFE CHECK
                     const date = timestamp.toDate();
                     const dateKey = date.toISOString().split('T')[0];
-                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
+                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] || 0 : 1);
                 }
             });
             return dataByDate;
@@ -751,3 +751,5 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
+
+    
