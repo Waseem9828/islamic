@@ -77,7 +77,7 @@ export default function PlayPage() {
         setIsCreating(true);
         try {
             // Generate a unique match ID on the client
-            const newMatchId = Math.random().toString(36).substring(2, 10).toUpperCase();
+            const newMatchId = Math.random().toString(36).substring(2, 8).toUpperCase();
 
             const result = await createMatchFunction({
                 matchId: newMatchId,

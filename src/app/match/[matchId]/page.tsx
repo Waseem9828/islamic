@@ -126,7 +126,6 @@ const ResultSubmission = ({ match }: { match: MatchData }) => {
 
             await updateDoc(matchRef, { 
                 [`results.${user.uid}`]: resultData,
-                 // status is updated by admin now, not on submission
             });
 
             toast.success("Result submitted successfully!", {
@@ -446,7 +445,16 @@ export default function MatchLobbyPage() {
             </AlertDescription>
         </Alert>}
 
-        {isUserInMatch && match.status === 'completed' && <ResultSubmission match={match} />}
+        {isUserInMatch && match.status === 'inprogress' && <ResultSubmission match={match} />}
+        {match.status === 'completed' && (
+             <Alert variant="default" className='mt-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'>
+                <Trophy className="h-4 w-4 text-blue-600"/>
+                <AlertTitle className="text-blue-800 dark:text-blue-300">Match Completed</AlertTitle>
+                <AlertDescription className="text-blue-700 dark:text-blue-400">
+                    This match has been completed and verified by an admin. Winnings have been distributed.
+                </AlertDescription>
+            </Alert>
+        )}
       </div>
 
 

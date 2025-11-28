@@ -85,7 +85,7 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
             userId: uid,
             amount: amount,
             transactionId: transactionId,
-            screenshotURL: screenshotUrl, // Corrected from screenshotUrl
+            screenshotUrl: screenshotUrl,
             status: 'pending',
             requestedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -245,6 +245,9 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
 
     } catch (error: any) {
         console.error("Error in getAdminDashboardStats:", error);
+        if (error instanceof functions.https.HttpsError) {
+            throw error;
+        }
         throw new functions.https.HttpsError("internal", error.message || "An internal error occurred while calculating statistics.");
     }
 });
@@ -593,7 +596,7 @@ export const distributeWinnings = regionalFunctions.https.onCall(async (data, co
         t.update(winnerWalletRef, { winningBalance: admin.firestore.FieldValue.increment(winnings) });
 
         // Update match document to 'completed'
-        t.update(matchRef, { status: 'completed', winner: winnerId, winnings, commission });
+        t.update(matchRef, { status: 'completed', winner: winnerId, winnings, commission, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         
         // Create transaction record for the win
         const winTxRef = db.collection('transactions').doc();
