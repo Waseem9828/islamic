@@ -105,11 +105,12 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
         if (!requestDoc.exists) {
             throw new functions.https.HttpsError('not-found', 'Deposit request not found.');
         }
-        if (requestDoc.data()!.status !== 'pending') {
+        const requestData = requestDoc.data();
+        if (!requestData || requestData.status !== 'pending') {
             throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
         }
 
-        const { userId, amount } = requestDoc.data()!;
+        const { userId, amount } = requestData;
 
         if (approve) {
             const rules = await getAppRules();
