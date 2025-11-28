@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -48,6 +49,8 @@ export default function DepositPage() {
                     const data = settingsDoc.data();
                     setUpiId(data.upiId || '');
                     setPayeeName(data.payeeName || 'Ludo Wizard');
+                } else {
+                     toast.error("Payment Settings Not Found", { description: "Admin needs to configure payment settings." });
                 }
             } catch (error) {
                 console.error("Error fetching payment settings:", error);
@@ -75,6 +78,7 @@ export default function DepositPage() {
     };
     
     const copyToClipboard = () => {
+        if(!upiId) return;
         navigator.clipboard.writeText(upiId);
         toast.success("UPI ID copied to clipboard!");
     };
@@ -129,7 +133,7 @@ export default function DepositPage() {
         }
     };
 
-    if (isUserLoading || isLoadingSettings) {
+    if (isUserLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
@@ -143,10 +147,19 @@ export default function DepositPage() {
                     <Card className="border-t-4 border-primary">
                         <CardHeader>
                             <CardTitle>1. Make Payment</CardTitle>
-                            <CardDescription>Send the desired amount to the UPI ID or scan the QR code below.</CardDescription>
+                            <CardDescription>Enter an amount, then scan the QR code or use the UPI ID to pay.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {upiId ? (
+                             <div className="space-y-2">
+                                <Label htmlFor="amount" className="flex items-center"><IndianRupee className="mr-2 h-4 w-4"/>Amount to Deposit</Label>
+                                <Input
+                                    id="amount" type="number" placeholder="e.g., 500"
+                                    value={amount} onChange={(e) => setAmount(e.target.value)}
+                                    required className="text-base"
+                                    disabled={isLoadingSettings}
+                                />
+                            </div>
+                            {isLoadingSettings ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin mt-2" /></div> : upiId ? (
                                 <div className="space-y-4 text-center">
                                     <div className="bg-muted p-4 rounded-lg flex items-center justify-center">
                                        <QRCode value={upiUri} size={200} level="M" />
@@ -159,7 +172,11 @@ export default function DepositPage() {
                                         </div>
                                     </div>
                                 </div>
-                            ) : <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin mt-2" /></div>}
+                            ) : (
+                                <div className="text-center text-muted-foreground p-4 border rounded-lg">
+                                    <p>The admin has not configured payment details yet. Please check back later.</p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -173,15 +190,6 @@ export default function DepositPage() {
                         </CardHeader>
                         <form onSubmit={handleSubmit}>
                             <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="amount" className="flex items-center"><IndianRupee className="mr-2 h-4 w-4"/>Amount Paid</Label>
-                                    <Input
-                                        id="amount" type="number" placeholder="e.g., 500"
-                                        value={amount} onChange={(e) => setAmount(e.target.value)}
-                                        required className="text-base"
-                                    />
-                                </div>
-
                                 <div className="space-y-2">
                                     <Label htmlFor="transactionId">12-digit UTR / Transaction ID</Label>
                                     <Input
@@ -209,7 +217,7 @@ export default function DepositPage() {
                                 </div>
                             </CardContent>
                             <CardFooter>
-                                <Button type="submit" size="lg" className="w-full text-base" disabled={isSubmitting}>
+                                <Button type="submit" size="lg" className="w-full text-base" disabled={isSubmitting || !amount}>
                                     {isSubmitting ? (
                                         <div className="flex items-center">
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -230,3 +238,5 @@ export default function DepositPage() {
         </div>
     );
 }
+
+    
