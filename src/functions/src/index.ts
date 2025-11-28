@@ -81,7 +81,7 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
             userId: uid,
             amount: amount,
             transactionId: transactionId,
-            screenshotUrl: screenshotUrl,
+            screenshotUrl: screenshotUrl, // Corrected variable name
             status: 'pending',
             requestedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -168,12 +168,11 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
 
 
 // --- Admin & Roles Functions ---
-export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
-    if (!context.auth || !(await ensureIsAdmin(context).catch(() => false))) {
-        throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
-    }
-    
+export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data, context) => {
+    await ensureIsAdmin(context);
+
     try {
+        // Fetch Stats
         const [ 
             usersSnapshot,
             matchesSnapshot, 
@@ -207,6 +206,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
             totalWinnings,
         };
 
+        // Fetch Chart Data
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
@@ -220,12 +220,9 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
             const dataByDate: { [key: string]: number } = {};
             snapshot.docs.forEach(doc => {
                 const docData = doc.data();
-                const timestamp = docData.createdAt || docData.timestamp;
-                if (timestamp && timestamp.toDate) {
-                    const date = timestamp.toDate();
-                    const dateKey = date.toISOString().split('T')[0];
-                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
-                }
+                const date = (docData.createdAt || docData.timestamp).toDate();
+                const dateKey = date.toISOString().split('T')[0];
+                dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
             });
             return dataByDate;
         };
@@ -246,19 +243,10 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
         }
         
         return { stats, chartData };
+
     } catch (error: any) {
         console.error("Error in getAdminDashboardStats:", error);
-        return { 
-            stats: {
-                totalUsers: 0,
-                activeMatches: 0,
-                pendingDeposits: 0,
-                pendingWithdrawals: 0,
-                totalCommission: 0,
-                totalWinnings: 0,
-            },
-            chartData: []
-        };
+        throw new functions.https.HttpsError("internal", "An internal error occurred while calculating statistics.");
     }
 });
 
@@ -604,8 +592,8 @@ export const distributeWinnings = regionalFunctions.https.onCall(async (data, co
         const winnerWalletRef = db.collection('wallets').doc(winnerId);
         t.update(winnerWalletRef, { winningBalance: admin.firestore.FieldValue.increment(winnings) });
 
-        // Update match document to 'completed'
-        t.update(matchRef, { status: 'completed', winner: winnerId, winnings, commission, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        // Update match document
+        t.update(matchRef, { status: 'completed', winner: winnerId, winnings, commission });
         
         // Create transaction record for the win
         const winTxRef = db.collection('transactions').doc();
@@ -755,3 +743,6 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
+
+
+    
