@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
-import { httpsCallable } from 'firebase/functions';
+import { collection, onSnapshot, query, where, Timestamp } from 'firebase/firestore';
 import { useFirebase } from '@/firebase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,45 +44,93 @@ const UserStatCard: React.FC<Omit<StatCardProps, 'description'>> = ({ title, val
 
 export const AdminDashboard = () => {
   const { user } = useUser();
-  const { functions } = useFirebase();
+  const { firestore } = useFirebase();
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !functions) return;
-    
-    const getData = async () => {
-      setError(null);
-      try {
-        const getAdminDashboardStats = httpsCallable(functions, 'getAdminDashboardStats');
-        const result = await getAdminDashboardStats();
-        const data = result.data as any;
+    if (!firestore) return;
 
-        // Loosened data validation
-        if (!data || typeof data !== 'object') {
-            throw new Error('Failed to fetch dashboard data. The data format is incorrect.');
+    setLoading(true);
+
+    const unsubscribers = [
+      onSnapshot(collection(firestore, 'users'), (snapshot) => {
+        const twentyFourHoursAgo = Timestamp.now().toMillis() - (24 * 60 * 60 * 1000);
+        let total = 0, active = 0, suspended = 0, newToday = 0;
+        snapshot.forEach(doc => {
+            const user = doc.data();
+            total++;
+            if (user.status === 'active') active++;
+            if (user.status === 'suspended') suspended++;
+            if (user.createdAt && user.createdAt.toMillis() > twentyFourHoursAgo) newToday++;
+        });
+        setStats((prev: any) => ({ ...prev, totalUsers: total, activeUsers: active, suspendedUsers: suspended, newToday: newToday }));
+      }),
+
+      onSnapshot(collection(firestore, 'matches'), (snapshot) => {
+        let activeMatches = 0, completedMatches = 0, totalCommission = 0;
+        snapshot.forEach(doc => {
+            const match = doc.data();
+            if (match.status === 'waiting' || match.status === 'inprogress') activeMatches++;
+            if (match.status === 'completed') {
+                completedMatches++;
+                totalCommission += match.commission || 0;
+            }
+        });
+        setStats((prev: any) => ({ ...prev, activeMatches, completedMatches, totalCommission }));
+      }),
+      
+      onSnapshot(query(collection(firestore, 'depositRequests'), where('status', '==', 'pending')), (snapshot) => {
+        setStats((prev: any) => ({ ...prev, pendingDeposits: snapshot.size }));
+      }),
+
+      onSnapshot(query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending')), (snapshot) => {
+        setStats((prev: any) => ({ ...prev, pendingWithdrawals: snapshot.size }));
+      }),
+      
+      onSnapshot(query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'approved')), (snapshot) => {
+          let totalWinnings = 0;
+          snapshot.forEach(doc => {
+              totalWinnings += doc.data().amount || 0;
+          });
+          setStats((prev: any) => ({ ...prev, totalWinnings }));
+      }),
+
+      onSnapshot(query(collection(firestore, 'transactions'), where('reason', '==', 'match_win_commission')), (snapshot) => {
+         const revenueByDate: { [key: string]: number } = {};
+         snapshot.docs.forEach(doc => {
+            const docData = doc.data();
+            const timestamp = docData.timestamp;
+            if (timestamp && typeof timestamp.toDate === 'function') {
+                const date = timestamp.toDate();
+                const dateKey = date.toISOString().split('T')[0];
+                revenueByDate[dateKey] = (revenueByDate[dateKey] || 0) + (docData['amount'] || 0);
+            }
+        });
+
+        const newChartData: { date: string; Revenue: number }[] = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateKey = d.toISOString().split('T')[0];
+            newChartData.push({
+                date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                "Revenue": revenueByDate[dateKey] || 0,
+            });
         }
-        
-        setStats(data.stats || {}); // Fallback to empty object
-        setChartData(data.chartData || []); // Fallback to empty array
-
-      } catch (err: any) {
-        console.error("Admin Dashboard Error:", err);
-        setError(`Failed to load dashboard data. Reason: ${err.message || 'Network error'}.`);
-      } finally {
-        setLoading(false);
-      }
-    };
+        setChartData(newChartData);
+      })
+    ];
     
-    getData(); // Initial fetch
-    const interval = setInterval(getData, 60000); // Refresh every 60 seconds
-    return () => clearInterval(interval);
+    setLoading(false);
 
-  }, [user, functions]);
+    return () => unsubscribers.forEach(unsub => unsub());
 
-  if (loading) {
+  }, [firestore]);
+
+  if (loading && !stats) {
     return <DashboardSkeleton />;
   }
 
