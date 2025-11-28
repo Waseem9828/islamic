@@ -44,7 +44,7 @@ export default function DepositPage() {
             if (!firestore) return;
             setIsLoadingSettings(true);
             try {
-                const settingsDoc = await getDoc(doc(firestore, 'settings', 'payments'));
+                const settingsDoc = await getDoc(doc(firestore, 'settings', 'payment'));
                 if (settingsDoc.exists()) {
                     const data = settingsDoc.data();
                     setUpiId(data.upiId || '');
@@ -141,15 +141,16 @@ export default function DepositPage() {
 
     return (
         <div className="container mx-auto py-8">
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                {/* Left Column - Payment Info */}
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="border-t-4 border-primary">
-                        <CardHeader>
-                            <CardTitle>1. Make Payment</CardTitle>
-                            <CardDescription>Enter an amount, then scan the QR code or use the UPI ID to pay.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Make a Deposit</CardTitle>
+                    <CardDescription>Add funds to your wallet to start playing.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Left Column - Payment Info */}
+                        <div className="space-y-6">
+                            <h3 className="font-semibold text-lg">1. Make Payment</h3>
                              <div className="space-y-2">
                                 <Label htmlFor="amount" className="flex items-center"><IndianRupee className="mr-2 h-4 w-4"/>Amount to Deposit</Label>
                                 <Input
@@ -161,7 +162,7 @@ export default function DepositPage() {
                             </div>
                             {isLoadingSettings ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin mt-2" /></div> : upiId ? (
                                 <div className="space-y-4 text-center">
-                                    <div className="bg-muted p-4 rounded-lg flex items-center justify-center">
+                                    <div className="bg-white p-4 rounded-lg flex items-center justify-center">
                                        <QRCode value={upiUri} size={200} level="M" />
                                     </div>
                                     <div>
@@ -177,64 +178,57 @@ export default function DepositPage() {
                                     <p>The admin has not configured payment details yet. Please check back later.</p>
                                 </div>
                             )}
-                        </CardContent>
-                    </Card>
-                </div>
+                        </div>
 
-                {/* Right Column - Form */}
-                <div className="lg:col-span-3">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>2. Submit Proof</CardTitle>
-                            <CardDescription>After payment, fill out this form with the correct details.</CardDescription>
-                        </CardHeader>
-                        <form onSubmit={handleSubmit}>
-                            <CardContent className="space-y-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="transactionId">12-digit UTR / Transaction ID</Label>
-                                    <Input
-                                        id="transactionId" type="text" placeholder="Found in your payment app's details"
-                                        value={transactionId} onChange={(e) => setTransactionId(e.target.value)}
-                                        required minLength={12} className="text-base font-mono"
-                                    />
-                                </div>
+                        {/* Right Column - Form */}
+                        <div>
+                             <h3 className="font-semibold text-lg">2. Submit Proof</h3>
+                            <form onSubmit={handleSubmit}>
+                                <div className="space-y-6 pt-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="transactionId">12-digit UTR / Transaction ID</Label>
+                                        <Input
+                                            id="transactionId" type="text" placeholder="Found in your payment app's details"
+                                            value={transactionId} onChange={(e) => setTransactionId(e.target.value)}
+                                            required minLength={12} className="text-base font-mono"
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="screenshot">Payment Screenshot</Label>
-                                    <Input id="screenshot" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required />
-                                    <Label htmlFor="screenshot" className="cursor-pointer">
-                                        <div className="flex items-center justify-center w-full h-48 border-2 border-dashed border-muted rounded-lg text-center hover:border-primary transition-colors">
-                                            {screenshotPreview ? (
-                                                <Image src={screenshotPreview} alt="Screenshot Preview" width={200} height={192} className="object-contain h-full w-full p-2" />
-                                            ) : (
-                                                <div className="text-muted-foreground">
-                                                    <ImageIcon className="mx-auto h-10 w-10 mb-2" />
-                                                    Click to select an image
-                                                </div>
-                                            )}
-                                        </div>
-                                    </Label>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="screenshot">Payment Screenshot</Label>
+                                        <Input id="screenshot" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required />
+                                        <Label htmlFor="screenshot" className="cursor-pointer">
+                                            <div className="flex items-center justify-center w-full h-48 border-2 border-dashed border-muted rounded-lg text-center hover:border-primary transition-colors">
+                                                {screenshotPreview ? (
+                                                    <Image src={screenshotPreview} alt="Screenshot Preview" width={200} height={192} className="object-contain h-full w-full p-2" />
+                                                ) : (
+                                                    <div className="text-muted-foreground">
+                                                        <ImageIcon className="mx-auto h-10 w-10 mb-2" />
+                                                        Click to select an image
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Label>
+                                    </div>
+                                    <Button type="submit" size="lg" className="w-full text-base" disabled={isSubmitting || !amount}>
+                                        {isSubmitting ? (
+                                            <div className="flex items-center">
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                <span>
+                                                    {submitStep}
+                                                    {submitProgress > 0 && submitProgress < 100 && ` (${Math.round(submitProgress)}%)`}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            'Submit for Verification'
+                                        )}
+                                    </Button>
                                 </div>
-                            </CardContent>
-                            <CardFooter>
-                                <Button type="submit" size="lg" className="w-full text-base" disabled={isSubmitting || !amount}>
-                                    {isSubmitting ? (
-                                        <div className="flex items-center">
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            <span>
-                                                {submitStep}
-                                                {submitProgress > 0 && submitProgress < 100 && ` (${Math.round(submitProgress)}%)`}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        'Submit for Verification'
-                                    )}
-                                </Button>
-                            </CardFooter>
-                        </form>
-                    </Card>
-                </div>
-            </div>
+                            </form>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
