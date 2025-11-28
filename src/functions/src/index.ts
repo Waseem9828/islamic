@@ -1,6 +1,10 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import * as cors from "cors";
+
+const corsHandler = cors({ origin: true });
+
 
 // Safely initialize the Firebase Admin SDK, preventing re-initialization.
 if (admin.apps.length === 0) {
@@ -58,39 +62,46 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
 
 
 // --- Deposit Functions ---
-export const requestDeposit = regionalFunctions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a deposit request.");
-    }
+export const requestDeposit = regionalFunctions.https.onRequest((req, res) => {
+    corsHandler(req, res, async () => {
+        const data = req.body.data; // onCall functions wrap data in a 'data' property
+        if (!data.context.auth) {
+             res.status(401).send({ error: { message: "You must be logged in to make a deposit request." }});
+             return;
+        }
 
-    const { amount, transactionId, screenshotUrl } = data;
-    const uid = context.auth.uid;
+        const { amount, transactionId, screenshotUrl } = data;
+        const uid = data.context.auth.uid;
 
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A valid amount is required.");
-    }
-    if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length === 0) {
-        throw new functions.https.HttpsError("invalid-argument", "A transaction ID is required.");
-    }
-    if (!screenshotUrl || typeof screenshotUrl !== 'string') {
-        throw new functions.https.HttpsError("invalid-argument", "A screenshot URL is required.");
-    }
+        if (!amount || typeof amount !== 'number' || amount <= 0) {
+             res.status(400).send({ error: { message: "A valid amount is required." }});
+             return;
+        }
+        if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length === 0) {
+             res.status(400).send({ error: { message: "A transaction ID is required." }});
+             return;
+        }
+        if (!screenshotUrl || typeof screenshotUrl !== 'string') {
+             res.status(400).send({ error: { message: "A screenshot URL is required." }});
+             return;
+        }
 
-    try {
-        await db.collection("depositRequests").add({
-            userId: uid,
-            amount: amount,
-            transactionId: transactionId,
-            screenshotUrl: screenshotUrl,
-            status: 'pending',
-            requestedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        try {
+            await db.collection("depositRequests").add({
+                userId: uid,
+                amount: amount,
+                transactionId: transactionId,
+                screenshotUrl: screenshotUrl,
+                status: 'pending',
+                requestedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
 
-        return { status: "success", message: "Deposit request submitted successfully." };
-    } catch (error) {
-        console.error("Error creating deposit request:", error);
-        throw new functions.https.HttpsError("internal", "Could not submit your deposit request at this time.");
-    }
+            res.status(200).send({ data: { status: "success", message: "Deposit request submitted successfully." } });
+        } catch (error) {
+            console.error("Error creating deposit request:", error);
+            res.status(500).send({ error: { message: "Could not submit your deposit request at this time." }});
+        }
+    });
 });
 
 export const processDeposit = regionalFunctions.https.onCall(async (data, context) => {
@@ -109,7 +120,7 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
             throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
         }
 
-        const { userId, amount, screenshotUrl } = requestDoc.data()!;
+        const { userId, amount } = requestDoc.data()!;
 
         if (approve) {
             const rules = await getAppRules();
@@ -168,6 +179,100 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
 
 
 // --- Admin & Roles Functions ---
+export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data, context) => {
+    if (!context.auth || !(await ensureIsAdmin(context).catch(() => false))) {
+        throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
+    }
+    
+    try {
+        const [ 
+            usersSnapshot,
+            matchesSnapshot, 
+            depositsSnapshot, 
+            withdrawalsSnapshot,
+        ] = await Promise.all([
+            db.collection("users").get(),
+            db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
+            db.collection("depositRequests").where("status", "==", "pending").get(),
+            db.collection("withdrawalRequests").where("status", "==", "pending").get(),
+        ]);
+        
+        const completedMatchesSnapshot = await db.collection("matches").where("status", "==", "completed").get();
+        let totalCommission = 0;
+        completedMatchesSnapshot.forEach(doc => {
+            totalCommission += doc.data().commission || 0;
+        });
+
+        const completedWithdrawalsSnapshot = await db.collection("withdrawalRequests").where("status", "==", "approved").get();
+        let totalWinnings = 0;
+        completedWithdrawalsSnapshot.forEach(doc => {
+            totalWinnings += doc.data().amount || 0;
+        });
+
+        const stats = {
+            totalUsers: usersSnapshot.size,
+            activeMatches: matchesSnapshot.size,
+            pendingDeposits: depositsSnapshot.size,
+            pendingWithdrawals: withdrawalsSnapshot.size,
+            totalCommission,
+            totalWinnings,
+        };
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
+        
+        const [signupsSnapshot, revenueSnapshot] = await Promise.all([
+            db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp).get(),
+            db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get()
+        ]);
+
+        const processSnaps = (snapshot: admin.firestore.QuerySnapshot, valueField?: string) => {
+            const dataByDate: { [key: string]: number } = {};
+            snapshot.docs.forEach(doc => {
+                const docData = doc.data();
+                const timestamp = docData.createdAt || docData.timestamp;
+                if (timestamp && timestamp.toDate) {
+                    const date = timestamp.toDate();
+                    const dateKey = date.toISOString().split('T')[0];
+                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
+                }
+            });
+            return dataByDate;
+        };
+
+        const signupsByDate = processSnaps(signupsSnapshot);
+        const revenueByDate = processSnaps(revenueSnapshot, 'amount');
+
+        const chartData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateKey = d.toISOString().split('T')[0];
+            chartData.push({
+                date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                "New Users": signupsByDate[dateKey] || 0,
+                "Revenue": revenueByDate[dateKey] || 0,
+            });
+        }
+        
+        return { stats, chartData };
+    } catch (error: any) {
+        console.error("Error in getAdminDashboardStats:", error);
+        return { 
+            stats: {
+                totalUsers: 0,
+                activeMatches: 0,
+                pendingDeposits: 0,
+                pendingWithdrawals: 0,
+                totalCommission: 0,
+                totalWinnings: 0,
+            },
+            chartData: []
+        };
+    }
+});
+
 export const updateUserStatus = regionalFunctions.https.onCall(async (data, context) => {
     await ensureIsAdmin(context);
     const { uid, status } = data;
@@ -661,3 +766,5 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
+
+    

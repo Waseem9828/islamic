@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
 import { uploadFile } from '@/firebase/storage';
-import { httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -16,7 +16,7 @@ import { Loader2, Upload } from 'lucide-react';
 
 export default function DepositPage() {
     const { user, isUserLoading } = useUser();
-    const { functions, firestore } = useFirebase();
+    const { functions: regionalFunctions, firestore } = useFirebase();
     const router = useRouter();
 
     const [amount, setAmount] = useState('');
@@ -69,7 +69,7 @@ export default function DepositPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!user || !functions) return;
+        if (!user || !regionalFunctions) return;
 
         if (!amount || !transactionId || !screenshot) {
             toast.error("Missing Fields", { description: "Please fill out all fields and upload a screenshot." });
@@ -93,6 +93,7 @@ export default function DepositPage() {
 
             // 2. Call the cloud function with the URL
             setSubmitStep('Finalizing submission...');
+            const functions = getFunctions(regionalFunctions.app, 'us-east1');
             const requestDepositFn = httpsCallable(functions, 'requestDeposit');
             await requestDepositFn({
                 amount: Number(amount),
@@ -121,6 +122,12 @@ export default function DepositPage() {
     return (
         <div className="container mx-auto max-w-md py-8">
             <Card>
+                <CardHeader>
+                    <CardTitle>Request a Deposit</CardTitle>
+                    <CardDescription>
+                        Complete the payment using the details below, then submit this form with the transaction proof.
+                    </CardDescription>
+                </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
@@ -193,3 +200,5 @@ export default function DepositPage() {
         </div>
     );
 }
+
+    
