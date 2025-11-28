@@ -44,11 +44,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 const getAdminDashboardStats = httpsCallable(functions, 'getAdminDashboardStats');
                 try {
                     const result = await getAdminDashboardStats();
-                    const data = result.data as { stats: { pendingDeposits: number; pendingWithdrawals: number; } };
-                    setCounts({
-                        deposits: data.stats.pendingDeposits || 0,
-                        withdrawals: data.stats.pendingWithdrawals || 0,
-                    });
+                    const data = result.data as { stats?: { pendingDeposits: number; pendingWithdrawals: number; } };
+                    // Safeguard against malformed data
+                    if (data && data.stats) {
+                        setCounts({
+                            deposits: data.stats.pendingDeposits || 0,
+                            withdrawals: data.stats.pendingWithdrawals || 0,
+                        });
+                    }
                 } catch (err) {
                     console.error("Could not fetch notification counts:", err);
                 }
