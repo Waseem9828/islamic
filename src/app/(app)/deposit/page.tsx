@@ -7,12 +7,14 @@ import { uploadFile } from '@/firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
+import QRCode from 'qrcode.react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Copy, IndianRupee, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 export default function DepositPage() {
     const { user, isUserLoading } = useUser();
@@ -22,6 +24,7 @@ export default function DepositPage() {
     const [amount, setAmount] = useState('');
     const [transactionId, setTransactionId] = useState('');
     const [screenshot, setScreenshot] = useState<File | null>(null);
+    const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
     const [upiId, setUpiId] = useState('');
@@ -56,14 +59,24 @@ export default function DepositPage() {
     }, [firestore]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (!file.type.startsWith('image/')) {
-                toast.error("Invalid File", { description: "Please upload an image file." });
-                return;
-            }
+        const file = e.target.files?.[0];
+        if (file && file.type.startsWith('image/')) {
             setScreenshot(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setScreenshotPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            toast.error("Invalid File", { description: "Please upload a valid image file." });
+            setScreenshot(null);
+            setScreenshotPreview(null);
         }
+    };
+    
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(upiId);
+        toast.success("UPI ID copied to clipboard!");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -80,18 +93,14 @@ export default function DepositPage() {
         setSubmitProgress(0);
 
         try {
-            // 1. Upload the screenshot with progress tracking
             setSubmitStep('Uploading screenshot...');
             const downloadURL = await uploadFile(
-                screenshot, 
-                `deposits/${user.uid}`, 
-                transactionId,
-                (progress) => {
-                    setSubmitProgress(progress);
-                }
+                screenshot,
+                `deposits/${user.uid}`,
+                `${transactionId}-${Date.now()}`,
+                (progress) => setSubmitProgress(progress)
             );
 
-            // 2. Call the cloud function with the URL
             setSubmitStep('Finalizing submission...');
             const requestDepositFn = httpsCallable(functions, 'requestDeposit');
             const result = await requestDepositFn({
@@ -124,86 +133,100 @@ export default function DepositPage() {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
+    const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount || '0'}&cu=INR`;
+
     return (
-        <div className="container mx-auto max-w-md py-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Request a Deposit</CardTitle>
-                    <CardDescription>Complete the steps below to add funds to your wallet.</CardDescription>
-                </CardHeader>
-                <form onSubmit={handleSubmit}>
-                    <CardContent className="space-y-6 pt-6">
-                        <div className="space-y-2">
-                            <Label>1. Payment Details</Label>
-                            <div className="p-4 rounded-lg bg-muted/50 border">
-                                <p className="text-sm font-medium">Send payment to:</p>
-                                {upiId ? (
-                                    <>
-                                        <p className="text-lg font-semibold font-mono break-all">{upiId}</p>
-                                        <p className="text-xs text-muted-foreground">(Payee: {payeeName})</p>
-                                    </>
-                                ) : <Loader2 className="h-4 w-4 animate-spin mt-2" />}
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="amount">2. Amount &amp; Transaction ID</Label>
-                            <Input
-                                id="amount"
-                                type="number"
-                                placeholder="Enter amount (e.g., 500)"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                required
-                                className="text-base"
-                            />
-                            <Input
-                                id="transactionId"
-                                type="text"
-                                placeholder="Enter 12-digit UTR/Transaction ID"
-                                value={transactionId}
-                                onChange={(e) => setTransactionId(e.target.value)}
-                                required
-                                minLength={12}
-                                className="text-base"
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="screenshot">3. Upload Screenshot</Label>
-                            <div className="flex items-center space-x-2">
-                                <Input
-                                    id="screenshot"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                    required
-                                />
-                                <Label htmlFor="screenshot" className="flex-1 cursor-pointer rounded-md border-2 border-dashed border-muted p-4 text-center text-sm text-muted-foreground hover:border-primary">
-                                    <Upload className="mx-auto h-6 w-6 mb-1" />
-                                    {screenshot ? `${screenshot.name}` : 'Click to select an image'}
-                                </Label>
-                            </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? (
-                                <div className="flex items-center">
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    <span>
-                                        {submitStep}
-                                        {submitProgress > 0 && submitProgress < 100 && ` (${Math.round(submitProgress)}%)`}
-                                    </span>
+        <div className="container mx-auto py-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                {/* Left Column - Payment Info */}
+                <div className="lg:col-span-2 space-y-6">
+                    <Card className="border-t-4 border-primary">
+                        <CardHeader>
+                            <CardTitle>1. Make Payment</CardTitle>
+                            <CardDescription>Send the desired amount to the UPI ID or scan the QR code below.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {upiId ? (
+                                <div className="space-y-4 text-center">
+                                    <div className="bg-muted p-4 rounded-lg flex items-center justify-center">
+                                       <QRCode value={upiUri} size={200} level="M" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Payee Name: {payeeName}</p>
+                                        <div className="flex items-center justify-center gap-2 mt-2">
+                                            <p className="text-lg font-semibold font-mono break-all">{upiId}</p>
+                                            <Button variant="ghost" size="icon" onClick={copyToClipboard}><Copy className="h-4 w-4"/></Button>
+                                        </div>
+                                    </div>
                                 </div>
-                            ) : (
-                                'Submit for Verification'
-                            )}
-                        </Button>
-                    </CardFooter>
-                </form>
-            </Card>
+                            ) : <div className="flex justify-center"><Loader2 className="h-8 w-8 animate-spin mt-2" /></div>}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column - Form */}
+                <div className="lg:col-span-3">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>2. Submit Proof</CardTitle>
+                            <CardDescription>After payment, fill out this form with the correct details.</CardDescription>
+                        </CardHeader>
+                        <form onSubmit={handleSubmit}>
+                            <CardContent className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="amount" className="flex items-center"><IndianRupee className="mr-2 h-4 w-4"/>Amount Paid</Label>
+                                    <Input
+                                        id="amount" type="number" placeholder="e.g., 500"
+                                        value={amount} onChange={(e) => setAmount(e.target.value)}
+                                        required className="text-base"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="transactionId">12-digit UTR / Transaction ID</Label>
+                                    <Input
+                                        id="transactionId" type="text" placeholder="Found in your payment app's details"
+                                        value={transactionId} onChange={(e) => setTransactionId(e.target.value)}
+                                        required minLength={12} className="text-base font-mono"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="screenshot">Payment Screenshot</Label>
+                                    <Input id="screenshot" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required />
+                                    <Label htmlFor="screenshot" className="cursor-pointer">
+                                        <div className="flex items-center justify-center w-full h-48 border-2 border-dashed border-muted rounded-lg text-center hover:border-primary transition-colors">
+                                            {screenshotPreview ? (
+                                                <Image src={screenshotPreview} alt="Screenshot Preview" width={200} height={192} className="object-contain h-full w-full p-2" />
+                                            ) : (
+                                                <div className="text-muted-foreground">
+                                                    <ImageIcon className="mx-auto h-10 w-10 mb-2" />
+                                                    Click to select an image
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Label>
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <Button type="submit" size="lg" className="w-full text-base" disabled={isSubmitting}>
+                                    {isSubmitting ? (
+                                        <div className="flex items-center">
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            <span>
+                                                {submitStep}
+                                                {submitProgress > 0 && submitProgress < 100 && ` (${Math.round(submitProgress)}%)`}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        'Submit for Verification'
+                                    )}
+                                </Button>
+                            </CardFooter>
+                        </form>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 }
