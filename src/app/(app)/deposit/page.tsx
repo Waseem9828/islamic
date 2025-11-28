@@ -154,7 +154,7 @@ export default function DepositPage() {
                                 <Label htmlFor="amount" className="flex items-center"><IndianRupee className="mr-2 h-4 w-4"/>Amount to Deposit</Label>
                                 <Input
                                     id="amount" type="number" placeholder="e.g., 500"
-                                    value={amount} onChange={(e) => setAmount(e.target.value)}
+                                    value={amount || ''} onChange={(e) => setAmount(e.target.value)}
                                     required className="text-base"
                                     disabled={isLoadingSettings}
                                 />
@@ -238,5 +238,3 @@ export default function DepositPage() {
         </div>
     );
 }
-
-    
