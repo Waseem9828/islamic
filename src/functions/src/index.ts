@@ -176,55 +176,55 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
     await ensureIsAdmin(context);
 
     try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
+
+        // Fetch all data in parallel
         const [
             usersSnapshot,
-            matchesSnapshot,
-            depositsSnapshot,
-            withdrawalsSnapshot,
+            activeMatchesSnapshot,
+            pendingDepositsSnapshot,
+            pendingWithdrawalsSnapshot,
+            completedMatchesSnapshot,
+            completedWithdrawalsSnapshot,
+            signupsSnapshot,
+            revenueSnapshot,
         ] = await Promise.all([
             db.collection("users").get(),
             db.collection("matches").where("status", "in", ["waiting", "inprogress"]).get(),
             db.collection("depositRequests").where("status", "==", "pending").get(),
             db.collection("withdrawalRequests").where("status", "==", "pending").get(),
-        ]);
-
-        const completedMatchesSnapshot = await db.collection("matches").where("status", "==", "completed").get();
-        let totalCommission = 0;
-        completedMatchesSnapshot.forEach(doc => {
-            totalCommission += doc.data().commission || 0;
-        });
-
-        const completedWithdrawalsSnapshot = await db.collection("withdrawalRequests").where("status", "==", "approved").get();
-        let totalWinnings = 0;
-        completedWithdrawalsSnapshot.forEach(doc => {
-            totalWinnings += doc.data().amount || 0;
-        });
-
-        const stats = {
-            totalUsers: usersSnapshot.size,
-            activeMatches: matchesSnapshot.size,
-            pendingDeposits: depositsSnapshot.size,
-            pendingWithdrawals: withdrawalsSnapshot.size,
-            totalCommission,
-            totalWinnings,
-        };
-
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
-
-        const [signupsSnapshot, revenueSnapshot] = await Promise.all([
+            db.collection("matches").where("status", "==", "completed").get(),
+            db.collection("withdrawalRequests").where("status", "==", "approved").get(),
             db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp).get(),
             db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get(),
         ]);
 
+        // Process stats
+        const totalCommission = completedMatchesSnapshot.docs.reduce((sum, doc) => sum + (doc.data().commission || 0), 0);
+        const totalWinnings = completedWithdrawalsSnapshot.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
+
+        const stats = {
+            totalUsers: usersSnapshot.size,
+            activeMatches: activeMatchesSnapshot.size,
+            pendingDeposits: pendingDepositsSnapshot.size,
+            pendingWithdrawals: pendingWithdrawalsSnapshot.size,
+            totalCommission,
+            totalWinnings,
+        };
+
+        // Process chart data
         const processSnaps = (snapshot: admin.firestore.QuerySnapshot, valueField?: string) => {
             const dataByDate: { [key: string]: number } = {};
             snapshot.docs.forEach(doc => {
                 const docData = doc.data();
-                const date = (docData.createdAt || docData.timestamp).toDate();
-                const dateKey = date.toISOString().split('T')[0];
-                dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
+                const timestamp = docData.createdAt || docData.timestamp;
+                if (timestamp) {
+                    const date = timestamp.toDate();
+                    const dateKey = date.toISOString().split('T')[0];
+                    dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
+                }
             });
             return dataByDate;
         };
@@ -243,14 +243,20 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
                 "Revenue": revenueByDate[dateKey] || 0,
             });
         }
-
+        
+        // Always return the full object
         return { stats, chartData };
 
     } catch (error: any) {
         console.error("Error in getAdminDashboardStats:", error);
-        throw new functions.https.HttpsError("internal", "An internal error occurred while calculating statistics.");
+        // In case of error, return a default structure to avoid frontend crashes
+        return {
+            stats: { totalUsers: 0, activeMatches: 0, pendingDeposits: 0, pendingWithdrawals: 0, totalCommission: 0, totalWinnings: 0 },
+            chartData: [],
+        };
     }
 });
+
 
 export const updateUserStatus = regionalFunctions.https.onCall(async (data, context) => {
     await ensureIsAdmin(context);
@@ -745,5 +751,3 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
-
-    

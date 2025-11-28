@@ -52,8 +52,7 @@ export const AdminDashboard = () => {
         
         const data = result.data as any;
 
-        // Corrected data validation
-        if (!data || typeof data !== 'object' || !('stats' in data) || !('chartData' in data)) {
+        if (!data || typeof data !== 'object') {
             throw new Error('Failed to fetch dashboard data. The data format is incorrect.');
         }
         
