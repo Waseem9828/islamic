@@ -220,7 +220,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             snapshot.docs.forEach(doc => {
                 const docData = doc.data();
                 const timestamp = docData.createdAt || docData.timestamp;
-                if (timestamp) {
+                if (timestamp && typeof timestamp.toDate === 'function') { // SAFE CHECK
                     const date = timestamp.toDate();
                     const dateKey = date.toISOString().split('T')[0];
                     dataByDate[dateKey] = (dataByDate[dateKey] || 0) + (valueField ? docData[valueField] : 1);
