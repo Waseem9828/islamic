@@ -71,7 +71,7 @@ export function ProfileForm() {
         
         const file = event.target.files[0];
         const storage = getStorage();
-        const avatarRef = ref(storage, `avatars/${user.uid}`);
+        const avatarRef = ref(storage, `avatars/${user.uid}/${file.name}`);
 
         setIsUploading(true);
         const toastId = toast.loading('Uploading avatar...');

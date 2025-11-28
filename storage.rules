@@ -26,7 +26,7 @@ service firebase.storage {
     }
 
     // Rules for user avatars
-    match /avatars/{userId} {
+    match /avatars/{userId}/{allPaths=**} {
       // Allow anyone to read avatars, as they are public profile pictures.
       allow read: if true;
       // Allow a user to write (create, update, delete) to their own avatar folder.
@@ -39,5 +39,3 @@ service firebase.storage {
     }
   }
 }
-
-    

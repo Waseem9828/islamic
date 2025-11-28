@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,6 +28,7 @@ export default function DepositPage() {
     const [upiId, setUpiId] = useState('');
     const [payeeName, setPayeeName] = useState('Ludo Wizard');
     const [submitStep, setSubmitStep] = useState('');
+    const [submitProgress, setSubmitProgress] = useState(0);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -76,14 +78,22 @@ export default function DepositPage() {
         }
 
         setIsSubmitting(true);
+        setSubmitProgress(0);
 
         try {
-            // 1. Upload the screenshot
+            // 1. Upload the screenshot with progress tracking
             setSubmitStep('Uploading screenshot...');
-            const downloadURL = await uploadFile(screenshot, `deposits/${user.uid}`, transactionId);
+            const downloadURL = await uploadFile(
+                screenshot, 
+                `deposits/${user.uid}`, 
+                transactionId,
+                (progress) => {
+                    setSubmitProgress(progress);
+                }
+            );
 
             // 2. Call the cloud function with the URL
-            setSubmitStep('Submitting request...');
+            setSubmitStep('Finalizing submission...');
             const requestDeposit = httpsCallable(functions, 'requestDeposit');
             await requestDeposit({
                 amount: Number(amount),
@@ -101,6 +111,7 @@ export default function DepositPage() {
         } finally {
             setIsSubmitting(false);
             setSubmitStep('');
+            setSubmitProgress(0);
         }
     };
 
@@ -112,6 +123,10 @@ export default function DepositPage() {
         <div className="container mx-auto max-w-md py-8">
             <Card>
                 <form onSubmit={handleSubmit}>
+                     <CardHeader>
+                        <CardTitle>Request a Deposit</CardTitle>
+                        <CardDescription>Follow the steps below to add funds to your wallet.</CardDescription>
+                    </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
                             <Label>1. Payment Details</Label>
@@ -165,10 +180,17 @@ export default function DepositPage() {
                     </CardContent>
                     <CardFooter>
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? 
-                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {submitStep || 'Submitting...'}</> : 
+                            {isSubmitting ? (
+                                <div className="flex items-center">
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <span>
+                                        {submitStep}
+                                        {submitProgress > 0 && submitProgress < 100 && ` (${Math.round(submitProgress)}%)`}
+                                    </span>
+                                </div>
+                            ) : (
                                 'Submit for Verification'
-                            }
+                            )}
                         </Button>
                     </CardFooter>
                 </form>

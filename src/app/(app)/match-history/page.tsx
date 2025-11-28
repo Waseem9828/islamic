@@ -51,11 +51,7 @@ export default function MatchHistoryPage() {
     return (
         <div className="container mx-auto max-w-4xl py-6 animate-fade-in-up">
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center text-3xl"><History className="mr-2 h-8 w-8"/> Match History</CardTitle>
-                    <CardDescription>A record of all the matches you have participated in.</CardDescription>
-                </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                     {isLoading ? (
                         <div className="space-y-2">
                             <Skeleton className="h-12 w-full" />
