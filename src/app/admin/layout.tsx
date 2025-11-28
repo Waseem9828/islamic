@@ -37,14 +37,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     useEffect(() => {
         if (isAdmin && firestore) {
             const depositsQuery = query(collection(firestore, 'depositRequests'), where('status', '==', 'pending'));
-            const withdrawalsQuery = query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending'));
-
             const unsubDeposits = onSnapshot(depositsQuery, (snapshot) => {
                 setCounts(prev => ({ ...prev, deposits: snapshot.size }));
+            }, (error) => {
+                console.error("Could not fetch deposit counts:", error);
             });
 
+            const withdrawalsQuery = query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending'));
             const unsubWithdrawals = onSnapshot(withdrawalsQuery, (snapshot) => {
                 setCounts(prev => ({ ...prev, withdrawals: snapshot.size }));
+            }, (error) => {
+                console.error("Could not fetch withdrawal counts:", error);
             });
 
             return () => {

@@ -1,10 +1,6 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import * as cors from "cors";
-
-const corsHandler = cors({ origin: true });
-
 
 // Safely initialize the Firebase Admin SDK, preventing re-initialization.
 if (admin.apps.length === 0) {
@@ -113,7 +109,7 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
             throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
         }
 
-        const { userId, amount } = requestDoc.data()!;
+        const { userId, amount, screenshotUrl } = requestDoc.data()!;
 
         if (approve) {
             const rules = await getAppRules();

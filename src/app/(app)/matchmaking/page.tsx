@@ -3,17 +3,15 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { httpsCallable } from 'firebase/functions';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Gamepad2, Users, Flame, ChevronRight, Wallet, AlertTriangle, Info, SlidersHorizontal, Loader2, Star, IndianRupee, Trophy, Hourglass } from 'lucide-react';
-import { toast } from 'sonner';
-import { useCollection, useDoc, useFirebase, useUser } from '@/firebase';
-import { collection, doc, query, where, orderBy } from 'firebase/firestore';
+import { ChevronRight, Loader2, Star, IndianRupee, Trophy } from 'lucide-react';
+import { useCollection, useUser, useFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 
-const MatchCard = ({ match, isMyMatch }: { match: any, isMyMatch: boolean }) => {
+const MatchCard = ({ match }: { match: any }) => {
     const router = useRouter();
     const prizePool = match.entryFee * match.maxPlayers * 0.9; // Assuming 10% commission
 
@@ -96,7 +94,7 @@ export default function MatchmakingPage() {
 
   }, [allMatches, user]);
 
-  const renderMatchList = (matches: any[], isMyMatch: boolean) => {
+  const renderMatchList = (matches: any[]) => {
     if (isLoadingMatches) {
         return (
             <div className="space-y-3 pt-2">
@@ -110,8 +108,8 @@ export default function MatchmakingPage() {
     
     return (
         <div className="space-y-3 pt-2">
-            {matches.map((m, index) => (
-                <MatchCard key={m.id} match={m} isMyMatch={isMyMatch} />
+            {matches.map((m) => (
+                <MatchCard key={m.id} match={m} />
             ))}
         </div>
     );
@@ -124,11 +122,13 @@ export default function MatchmakingPage() {
   return (
     <div className="p-4 animate-fade-in-up">
         <section>
-            {renderMatchList(myMatches, true)}
+            <h2 className="text-lg font-semibold">Your Matches</h2>
+            {renderMatchList(myMatches)}
         </section>
 
         <section className="mt-6">
-            {renderMatchList(openMatches, false)}
+            <h2 className="text-lg font-semibold">Open Matches</h2>
+            {renderMatchList(openMatches)}
         </section>
 
         <div className="fixed bottom-20 right-4">

@@ -99,7 +99,7 @@ export default function PlayPage() {
             }
         } catch (error: any) {
             console.error("Error creating match: ", error);
-            toast.error("Failed to Create Match", { description: error.message || "An unknown error occurred." });
+            toast.error("Failed to Create Match", { description: error.message || "This Match ID is already in use." });
         } finally {
             setIsCreating(false);
         }

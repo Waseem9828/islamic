@@ -1,0 +1,12 @@
+
+[
+  {
+    "origin": [
+      "https://*.cloudworkstations.dev",
+      "https://*.firebaseapp.com",
+      "http://localhost:3000"
+    ],
+    "method": ["GET", "POST", "OPTIONS", "PUT"],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -24,12 +24,13 @@ export default function WalletPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isUserLoading || !firestore) {
+    if (isUserLoading) {
         setIsDataLoading(true);
         return;
     }
-    if (!user) {
+    if (!user || !firestore) {
         setIsDataLoading(false);
+        if (!isUserLoading && !user) router.push('/login');
         return;
     }
 
@@ -71,7 +72,7 @@ export default function WalletPage() {
       unsubscribeWallet();
       unsubscribeTransactions();
     };
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, router]);
 
   const totalBalance = useMemo(() => {
     if (!wallet) return 0;
@@ -166,13 +167,13 @@ function RecentTransactions({ transactions }: { transactions: DocumentData[] }) 
             <div key={tx.id} className="flex items-center">
               <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 mr-4">
                 {tx.type === 'deposit' || tx.type === 'credit' ? (
-                  <ArrowUpRight className="h-5 w-5 text-green-500" />
+                  <ArrowDownLeft className="h-5 w-5 text-green-500" />
                 ) : (
-                  <ArrowDownLeft className="h-5 w-5 text-red-500" />
+                  <ArrowUpRight className="h-5 w-5 text-red-500" />
                 )}
               </div>
               <div className="flex-grow">
-                <p className="font-semibold capitalize">{tx.description || tx.type}</p>
+                <p className="font-semibold capitalize">{tx.reason.replace(/_/g, ' ')}</p>
                 <p className="text-sm text-muted-foreground">
                   {isValidTimestamp(tx.timestamp) ? format(tx.timestamp.toDate(), 'PPpp') : 'Date not available'}
                 </p>
@@ -191,10 +192,6 @@ function RecentTransactions({ transactions }: { transactions: DocumentData[] }) 
 function WalletSkeleton() {
   return (
     <div className="container mx-auto p-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-9 w-48" />
-        <Skeleton className="h-10 w-44" />
-      </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
@@ -204,7 +201,6 @@ function WalletSkeleton() {
             </CardHeader>
             <CardContent>
               <Skeleton className="h-7 w-32 mb-2" />
-              <Skeleton className="h-3 w-20" />
             </CardContent>
           </Card>
         ))}

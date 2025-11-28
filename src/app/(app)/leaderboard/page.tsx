@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs, query, orderBy, limit, where, documentId } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -59,6 +59,7 @@ export default function LeaderboardPage() {
 
         if (userIds.length === 0) {
             setLeaderboard([]);
+            setIsLoading(false);
             return;
         }
 

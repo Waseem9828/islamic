@@ -94,8 +94,8 @@ export default function DepositPage() {
 
             // 2. Call the cloud function with the URL
             setSubmitStep('Finalizing submission...');
-            const requestDeposit = httpsCallable(functions, 'requestDeposit');
-            await requestDeposit({
+            const requestDepositFn = httpsCallable(functions, 'requestDeposit');
+            await requestDepositFn({
                 amount: Number(amount),
                 transactionId,
                 screenshotUrl: downloadURL,
