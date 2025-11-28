@@ -1,10 +1,6 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import * as cors from "cors";
-
-const corsHandler = cors({ origin: true });
-
 
 // Safely initialize the Firebase Admin SDK, preventing re-initialization.
 if (admin.apps.length === 0) {
@@ -390,7 +386,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
     return db.runTransaction(async (t) => {
         const [matchDoc, walletDoc, userDoc] = await Promise.all([t.get(matchRef), t.get(walletRef), t.get(userRef)]);
 
-        if (matchDoc.exists) throw new functions.https.HttpsError("already-exists", "Room code already exists.");
+        if (matchDoc.exists) throw new functions.https.HttpsError("already-exists", "This Match ID is already in use.");
         if (!walletDoc.exists) throw new functions.https.HttpsError("not-found", "Wallet not found.");
         if (!userDoc.exists) throw new functions.https.HttpsError("not-found", "User profile not found.");
 
