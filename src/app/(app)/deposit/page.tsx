@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
 import { uploadFile } from '@/firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
@@ -16,7 +16,7 @@ import { Loader2, Upload } from 'lucide-react';
 
 export default function DepositPage() {
     const { user, isUserLoading } = useUser();
-    const { functions: regionalFunctions, firestore } = useFirebase();
+    const { functions, firestore } = useFirebase();
     const router = useRouter();
 
     const [amount, setAmount] = useState('');
@@ -69,7 +69,7 @@ export default function DepositPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!user || !regionalFunctions) return;
+        if (!user || !functions) return;
 
         if (!amount || !transactionId || !screenshot) {
             toast.error("Missing Fields", { description: "Please fill out all fields and upload a screenshot." });
@@ -93,16 +93,21 @@ export default function DepositPage() {
 
             // 2. Call the cloud function with the URL
             setSubmitStep('Finalizing submission...');
-            const functions = getFunctions(regionalFunctions.app, 'us-east1');
             const requestDepositFn = httpsCallable(functions, 'requestDeposit');
-            await requestDepositFn({
+            const result = await requestDepositFn({
                 amount: Number(amount),
                 transactionId,
                 screenshotUrl: downloadURL,
             });
 
-            toast.success("Success", { description: "Your deposit request has been submitted for verification." });
-            router.push('/wallet');
+            const resultData = result.data as { status: string; message: string; };
+
+            if (resultData.status === 'success') {
+                 toast.success("Success", { description: "Your deposit request has been submitted for verification." });
+                 router.push('/wallet');
+            } else {
+                throw new Error(resultData.message || 'An unknown error occurred.');
+            }
 
         } catch (error: any) {
             console.error("Deposit request failed:", error);
@@ -122,20 +127,18 @@ export default function DepositPage() {
     return (
         <div className="container mx-auto max-w-md py-8">
             <Card>
-                <CardHeader>
-                    <CardTitle>Request a Deposit</CardTitle>
-                    <CardDescription>
-                        Complete the payment using the details below, then submit this form with the transaction proof.
-                    </CardDescription>
-                </CardHeader>
                 <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
                             <Label>1. Payment Details</Label>
                             <div className="p-4 rounded-lg bg-muted/50 border">
                                 <p className="text-sm font-medium">Send payment to:</p>
-                                <p className="text-lg font-semibold font-mono break-all">{upiId}</p>
-                                <p className="text-xs text-muted-foreground">(Payee: {payeeName})</p>
+                                {upiId ? (
+                                    <>
+                                        <p className="text-lg font-semibold font-mono break-all">{upiId}</p>
+                                        <p className="text-xs text-muted-foreground">(Payee: {payeeName})</p>
+                                    </>
+                                ) : <Loader2 className="h-4 w-4 animate-spin mt-2" />}
                             </div>
                         </div>
 

@@ -1,10 +1,6 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import * as cors from "cors";
-
-const corsHandler = cors({ origin: true });
-
 
 // Safely initialize the Firebase Admin SDK, preventing re-initialization.
 if (admin.apps.length === 0) {
@@ -62,46 +58,39 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
 
 
 // --- Deposit Functions ---
-export const requestDeposit = regionalFunctions.https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
-        const data = req.body.data; // onCall functions wrap data in a 'data' property
-        if (!data.context.auth) {
-             res.status(401).send({ error: { message: "You must be logged in to make a deposit request." }});
-             return;
-        }
+export const requestDeposit = regionalFunctions.https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a deposit request.");
+    }
 
-        const { amount, transactionId, screenshotUrl } = data;
-        const uid = data.context.auth.uid;
+    const { amount, transactionId, screenshotUrl } = data;
+    const uid = context.auth.uid;
 
-        if (!amount || typeof amount !== 'number' || amount <= 0) {
-             res.status(400).send({ error: { message: "A valid amount is required." }});
-             return;
-        }
-        if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length === 0) {
-             res.status(400).send({ error: { message: "A transaction ID is required." }});
-             return;
-        }
-        if (!screenshotUrl || typeof screenshotUrl !== 'string') {
-             res.status(400).send({ error: { message: "A screenshot URL is required." }});
-             return;
-        }
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A valid amount is required.");
+    }
+    if (!transactionId || typeof transactionId !== 'string' || transactionId.trim().length === 0) {
+        throw new functions.https.HttpsError("invalid-argument", "A transaction ID is required.");
+    }
+    if (!screenshotUrl || typeof screenshotUrl !== 'string') {
+        throw new functions.https.HttpsError("invalid-argument", "A screenshot URL is required.");
+    }
 
-        try {
-            await db.collection("depositRequests").add({
-                userId: uid,
-                amount: amount,
-                transactionId: transactionId,
-                screenshotUrl: screenshotUrl,
-                status: 'pending',
-                requestedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
+    try {
+        await db.collection("depositRequests").add({
+            userId: uid,
+            amount: amount,
+            transactionId: transactionId,
+            screenshotUrl: screenshotUrl,
+            status: 'pending',
+            requestedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
 
-            res.status(200).send({ data: { status: "success", message: "Deposit request submitted successfully." } });
-        } catch (error) {
-            console.error("Error creating deposit request:", error);
-            res.status(500).send({ error: { message: "Could not submit your deposit request at this time." }});
-        }
-    });
+        return { status: "success", message: "Deposit request submitted successfully." };
+    } catch (error) {
+        console.error("Error creating deposit request:", error);
+        throw new functions.https.HttpsError("internal", "Could not submit your deposit request at this time.");
+    }
 });
 
 export const processDeposit = regionalFunctions.https.onCall(async (data, context) => {
@@ -179,7 +168,7 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
 
 
 // --- Admin & Roles Functions ---
-export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data, context) => {
+export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
     if (!context.auth || !(await ensureIsAdmin(context).catch(() => false))) {
         throw new functions.https.HttpsError("permission-denied", "User is not an admin.");
     }
@@ -766,5 +755,3 @@ export const manageAdminRole = regionalFunctions.https.onCall(async (data, conte
         throw new functions.https.HttpsError('internal', 'An error occurred while managing the admin role.', error.message);
     }
 });
-
-    
