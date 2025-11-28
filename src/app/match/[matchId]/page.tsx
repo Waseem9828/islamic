@@ -3,8 +3,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { useUser, useFirebase } from '@/firebase/provider';
+import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useUser, useFirebase, useDoc } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -260,33 +260,13 @@ export default function MatchLobbyPage() {
   const router = useRouter();
   const { user } = useUser();
   const { firestore } = useFirebase();
-  const [match, setMatch] = useState<MatchData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!matchId || !firestore) return;
+  const matchRef = useMemo(() => {
+    if (!firestore || !matchId) return null;
+    return doc(firestore, 'matches', matchId as string);
+  }, [firestore, matchId]);
 
-    const matchRef = doc(firestore, 'matches', matchId as string);
-    const unsubscribe = onSnapshot(matchRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const matchData = { id: docSnap.id, ...docSnap.data() } as MatchData;
-        setMatch(matchData);
-      } else {
-        setError('Match not found.');
-        toast.error('Match not found');
-        router.push('/matchmaking');
-      }
-      setLoading(false);
-    }, (err) => {
-      console.error("Error fetching match:", err);
-      setError('Failed to load match details.');
-      toast.error('Error loading match');
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [matchId, firestore, router, user]);
+  const { data: match, isLoading: loading, error } = useDoc<MatchData>(matchRef);
 
   const handleJoinLeave = async (action: 'join' | 'leave') => {
     if (!user || !match || !firestore) return;
@@ -374,7 +354,7 @@ export default function MatchLobbyPage() {
   const canStart = isCreator && match && match.players.length >= 2 && allPlayersReady;
 
   if (loading) return <div className="flex justify-center items-center h-[80vh]"><Hourglass className="animate-spin h-8 w-8 text-primary" /></div>;
-  if (error) return <div className="flex justify-center items-center h-[80vh] text-red-500">Error: {error}</div>;
+  if (error) return <div className="flex justify-center items-center h-[80vh] text-red-500">Error: {error.message}</div>;
   if (!match) return <div className="flex justify-center items-center h-[80vh]">Match not found.</div>;
 
   const playersList: (Player | null)[] = Array.from({ length: match.maxPlayers }, (_, i) => {

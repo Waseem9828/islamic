@@ -65,14 +65,19 @@ export default function LeaderboardPage() {
 
         // 2. Fetch user data for the top players in batches (Firestore `in` query limit is 30)
         const usersData: { [key: string]: User } = {};
+        const userPromises = [];
         for (let i = 0; i < userIds.length; i += 30) {
             const batchIds = userIds.slice(i, i + 30);
             const usersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', batchIds));
-            const userSnap = await getDocs(usersQuery);
-            userSnap.docs.forEach(doc => {
+            userPromises.push(getDocs(usersQuery));
+        }
+
+        const userSnaps = await Promise.all(userPromises);
+        userSnaps.forEach(snap => {
+            snap.docs.forEach(doc => {
                 usersData[doc.id] = { id: doc.id, ...doc.data() } as User;
             });
-        }
+        });
 
         // 3. Combine wallet and user data
         const combinedData: LeaderboardEntry[] = topWallets

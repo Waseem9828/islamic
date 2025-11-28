@@ -36,7 +36,6 @@ interface User {
 interface UserStats {
     totalUsers: number;
     activeUsers: number;
-
     blockedUsers: number;
     newToday: number;
     kycVerifiedUsers: number;
@@ -75,6 +74,14 @@ export const UserClient = () => {
         setIsLoading(true);
         const usersQuery = query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
         const adminsQuery = collection(firestore, 'roles_admin');
+
+        const unsubAdmins = onSnapshot(adminsQuery, (adminSnapshot) => {
+            const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
+            setUsers(currentUsers => currentUsers.map(u => ({
+                ...u,
+                isAdmin: adminIds.has(u.id)
+            })));
+        });
 
         const unsubUsers = onSnapshot(usersQuery, async (usersSnapshot) => {
             const adminSnapshot = await getDocs(adminsQuery);
@@ -115,14 +122,6 @@ export const UserClient = () => {
             console.error(err);
             toast.error("Failed to load users", { description: err.message });
             setIsLoading(false);
-        });
-
-        const unsubAdmins = onSnapshot(adminsQuery, (adminSnapshot) => {
-            const adminIds = new Set(adminSnapshot.docs.map(doc => doc.id));
-            setUsers(currentUsers => currentUsers.map(u => ({
-                ...u,
-                isAdmin: adminIds.has(u.id)
-            })));
         });
 
         return () => {
