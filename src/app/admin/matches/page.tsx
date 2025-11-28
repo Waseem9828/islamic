@@ -22,21 +22,10 @@ const MatchClientFallback = () => {
 
 export default function ManageMatchesPage() {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center">
-                    <Trophy className="mr-2"/> 
-                    Match Command Center
-                </CardTitle>
-                <CardDescription>
-                    A real-time interface for viewing, managing, and resolving all game matches.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Suspense fallback={<MatchClientFallback />}>
-                    <MatchClient />
-                </Suspense>
-            </CardContent>
-        </Card>
+        <Suspense fallback={<MatchClientFallback />}>
+            <MatchClient />
+        </Suspense>
     );
 }
+
+    

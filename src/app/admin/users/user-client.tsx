@@ -20,6 +20,8 @@ import { MoreHorizontal, UserX, UserCheck, Eye, Wallet as WalletIcon, Loader2 } 
 import { Skeleton } from '@/components/ui/skeleton';
 import { UsersDashboard } from '@/components/admin/UsersDashboard';
 import { useRouter } from 'next/navigation';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { User } from 'lucide-react';
 
 
 // --- Type Definitions ---
@@ -195,46 +197,54 @@ export const UserClient = () => {
 
     // --- Render Method ---
     return (
-        <div>
-            {isLoading ? <Skeleton className="h-28 w-full mb-6" /> : <UsersDashboard stats={stats} />}
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center"><User className="mr-2"/>User Management</CardTitle>
+                <CardDescription>View, manage, and monitor all users on the platform.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? <Skeleton className="h-28 w-full mb-6" /> : <UsersDashboard stats={stats} />}
 
-            <div>
-                <div className="flex items-center justify-between py-4">
-                    <Input placeholder="Filter by name, email..." value={globalFilter ?? ''} onChange={(e) => setGlobalFilter(e.target.value)} className="max-w-sm" />
-                </div>
-                {isLoading ? (
-                    <div className="space-y-4">
-                        {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                <div>
+                    <div className="flex items-center justify-between py-4">
+                        <Input placeholder="Filter by name, email..." value={globalFilter ?? ''} onChange={(e) => setGlobalFilter(e.target.value)} className="max-w-sm" />
                     </div>
-                ) : (
-                    <DataTable table={table} columns={columns} />
-                )}
-            </div>
-            
-            {/* Wallet Details Dialog */}
-            <AlertDialog open={isWalletDialogOpen} onOpenChange={(open) => {
-                if (!open) setSelectedWallet(null);
-                setIsWalletDialogOpen(open);
-            }}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>User Wallet Balance</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            The current balances for the selected user.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {selectedWallet ? (
-                        <div className="grid gap-3 py-4">
-                           <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Deposit Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.depositBalance.toLocaleString()}</span></div>
-                           <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Winning Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.winningBalance.toLocaleString()}</span></div>
-                           <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Bonus Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.bonusBalance.toLocaleString()}</span></div>
+                    {isLoading ? (
+                        <div className="space-y-4">
+                            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
                         </div>
-                    ) : <Loader2 className="h-6 w-6 animate-spin mx-auto"/>}
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setIsWalletDialogOpen(false)}>Close</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </div>
+                    ) : (
+                        <DataTable table={table} columns={columns} />
+                    )}
+                </div>
+                
+                {/* Wallet Details Dialog */}
+                <AlertDialog open={isWalletDialogOpen} onOpenChange={(open) => {
+                    if (!open) setSelectedWallet(null);
+                    setIsWalletDialogOpen(open);
+                }}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>User Wallet Balance</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                The current balances for the selected user.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        {selectedWallet ? (
+                            <div className="grid gap-3 py-4">
+                               <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Deposit Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.depositBalance.toLocaleString()}</span></div>
+                               <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Winning Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.winningBalance.toLocaleString()}</span></div>
+                               <div className="flex justify-between items-center"><span className="font-medium text-muted-foreground">Bonus Balance:</span> <span className="font-bold text-lg">₹{selectedWallet.bonusBalance.toLocaleString()}</span></div>
+                            </div>
+                        ) : <Loader2 className="h-6 w-6 animate-spin mx-auto"/>}
+                        <AlertDialogFooter>
+                            <AlertDialogAction onClick={() => setIsWalletDialogOpen(false)}>Close</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+        </Card>
     );
 };
+
+    

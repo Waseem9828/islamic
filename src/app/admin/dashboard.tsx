@@ -98,6 +98,30 @@ export const AdminDashboard = () => {
           setStats((prev: any) => ({ ...prev, totalWinnings }));
       }),
 
+      onSnapshot(query(collection(firestore, 'users'), orderBy('createdAt', 'desc')), (snapshot) => {
+          const signupsByDate: { [key: string]: number } = {};
+          snapshot.docs.forEach(doc => {
+              const docData = doc.data();
+              const timestamp = docData.createdAt;
+              if (timestamp && typeof timestamp.toDate === 'function') {
+                  const date = timestamp.toDate();
+                  const dateKey = date.toISOString().split('T')[0];
+                  signupsByDate[dateKey] = (signupsByDate[dateKey] || 0) + 1;
+              }
+          });
+          setChartData(prev => {
+              const newChartData = [...prev];
+              let updated = false;
+              newChartData.forEach(cd => {
+                  if(signupsByDate[cd.dateKey]) {
+                      cd['New Users'] = signupsByDate[cd.dateKey];
+                      updated = true;
+                  }
+              });
+              return updated ? newChartData : prev;
+          });
+      }),
+
       onSnapshot(query(collection(firestore, 'transactions'), where('reason', '==', 'match_win_commission')), (snapshot) => {
          const revenueByDate: { [key: string]: number } = {};
          snapshot.docs.forEach(doc => {
@@ -110,13 +134,14 @@ export const AdminDashboard = () => {
             }
         });
 
-        const newChartData: { date: string; Revenue: number }[] = [];
+        const newChartData: any[] = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateKey = d.toISOString().split('T')[0];
             newChartData.push({
                 date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                dateKey: dateKey,
                 "Revenue": revenueByDate[dateKey] || 0,
             });
         }
@@ -162,7 +187,7 @@ export const AdminDashboard = () => {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Active Matches" value={stats?.activeMatches ?? 0} icon={Gamepad2} description="In-progress or waiting" />
-        <StatCard title="Completed Matches" value={stats?.completedMatches ?? 0} icon={Trophy} description="Finished matches today" />
+        <StatCard title="Completed Matches" value={stats?.completedMatches ?? 0} icon={Trophy} description="Finished matches total" />
         <StatCard title="Pending Deposits" value={stats?.pendingDeposits ?? 0} icon={TrendingUp} description="Requests needing approval" />
         <StatCard title="Pending Withdrawals" value={stats?.pendingWithdrawals ?? 0} icon={HandCoins} description="Requests needing approval" />
       </div>
@@ -173,23 +198,25 @@ export const AdminDashboard = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Revenue (Last 7 Days)</CardTitle>
+          <CardTitle>Growth & Revenue (Last 7 Days)</CardTitle>
         </CardHeader>
         <CardContent className="pl-2">
             <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                    <YAxis yAxisId="left" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₹${value}`} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: "hsl(var(--background))", 
                         border: "1px solid hsl(var(--border))" 
                       }}
-                      formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+                      formatter={(value: number, name: string) => [name === 'Revenue' ? formatCurrency(value) : value, name]}
                     />
                     <Legend />
-                    <Bar dataKey="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="New Users" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
             </ResponsiveContainer>
         </CardContent>
@@ -214,3 +241,5 @@ const DashboardSkeleton = () => (
         </Card>
     </div>
 );
+
+    

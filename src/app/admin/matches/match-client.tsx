@@ -18,6 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Trophy } from 'lucide-react';
 
 // Types
 interface Match {
@@ -247,16 +249,29 @@ export const MatchClient = () => {
     }
 
     return (
-         <div>
-            <div className="flex items-center py-4">
-                <Input
-                    placeholder="Search by title or ID..."
-                    value={globalFilter ?? ''}
-                    onChange={(event) => setGlobalFilter(event.target.value)}
-                    className="max-w-sm"
-                />
-            </div>
-            <DataTable table={table} columns={columns} />
-        </div>
+         <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center">
+                    <Trophy className="mr-2"/> 
+                    Match Command Center
+                </CardTitle>
+                <CardDescription>
+                    A real-time interface for viewing, managing, and resolving all game matches.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center py-4">
+                    <Input
+                        placeholder="Search by title or ID..."
+                        value={globalFilter ?? ''}
+                        onChange={(event) => setGlobalFilter(event.target.value)}
+                        className="max-w-sm"
+                    />
+                </div>
+                <DataTable table={table} columns={columns} />
+            </CardContent>
+        </Card>
     );
 };
+
+    
