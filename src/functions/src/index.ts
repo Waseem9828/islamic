@@ -176,10 +176,10 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
     try {
         await ensureIsAdmin(context);
 
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const sevenDaysAgoTimestamp = admin.firestore.Timestamp.fromDate(sevenDaysAgo);
-
+        
         const [
             usersSnapshot,
             activeMatchesSnapshot,
@@ -187,7 +187,6 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             pendingWithdrawalsSnapshot,
             completedMatchesSnapshot,
             completedWithdrawalsSnapshot,
-            signupsSnapshot,
             revenueSnapshot,
         ] = await Promise.all([
             db.collection("users").get(),
@@ -196,16 +195,34 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             db.collection("withdrawalRequests").where("status", "==", "pending").get(),
             db.collection("matches").where("status", "==", "completed").get(),
             db.collection("withdrawalRequests").where("status", "==", "approved").get(),
-            db.collection('users').where('createdAt', '>=', sevenDaysAgoTimestamp).get(),
-            db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', sevenDaysAgoTimestamp).get(),
+            db.collection('transactions').where('reason', '==', 'match_win_commission').where('timestamp', '>=', admin.firestore.Timestamp.fromDate(sevenDaysAgo)).get(),
         ]);
+        
+        let totalUsers = 0;
+        let activeUsers = 0;
+        let suspendedUsers = 0;
+        let newToday = 0;
+
+        usersSnapshot.forEach(doc => {
+            const user = doc.data();
+            totalUsers++;
+            if (user.status === 'active') activeUsers++;
+            if (user.status === 'suspended') suspendedUsers++;
+            if (user.createdAt && user.createdAt.toDate() > twentyFourHoursAgo) {
+                newToday++;
+            }
+        });
 
         const totalCommission = completedMatchesSnapshot.docs.reduce((sum, doc) => sum + (doc.data().commission || 0), 0);
         const totalWinnings = completedWithdrawalsSnapshot.docs.reduce((sum, doc) => sum + (doc.data().amount || 0), 0);
 
         const stats = {
-            totalUsers: usersSnapshot.size,
+            totalUsers,
+            activeUsers,
+            suspendedUsers,
+            newToday,
             activeMatches: activeMatchesSnapshot.size,
+            completedMatches: completedMatchesSnapshot.size,
             pendingDeposits: pendingDepositsSnapshot.size,
             pendingWithdrawals: pendingWithdrawalsSnapshot.size,
             totalCommission,
@@ -226,17 +243,15 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
             return dataByDate;
         };
 
-        const signupsByDate = processSnaps(signupsSnapshot);
         const revenueByDate = processSnaps(revenueSnapshot, 'amount');
 
-        const chartData: { date: string; "New Users": number; Revenue: number }[] = [];
+        const chartData: { date: string; Revenue: number }[] = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
             const dateKey = d.toISOString().split('T')[0];
             chartData.push({
                 date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                "New Users": signupsByDate[dateKey] || 0,
                 "Revenue": revenueByDate[dateKey] || 0,
             });
         }
