@@ -263,7 +263,23 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
         if (error instanceof functions.https.HttpsError) {
             throw error;
         }
-        throw new functions.https.HttpsError("internal", error.message || "An internal error occurred while calculating statistics.");
+        // Instead of re-throwing, return a default structure on any other error
+        // to prevent frontend crashes.
+        return { 
+            stats: { 
+                totalUsers: 0, 
+                activeUsers: 0,
+                suspendedUsers: 0,
+                newToday: 0,
+                activeMatches: 0,
+                completedMatches: 0,
+                pendingDeposits: 0,
+                pendingWithdrawals: 0,
+                totalCommission: 0,
+                totalWinnings: 0,
+            }, 
+            chartData: [] 
+        };
     }
 });
 

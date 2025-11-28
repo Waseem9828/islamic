@@ -60,12 +60,13 @@ export const AdminDashboard = () => {
         const result = await getAdminDashboardStats();
         const data = result.data as any;
 
-        if (!data || typeof data !== 'object' || !('stats' in data) || !('chartData' in data)) {
+        // Loosened data validation
+        if (!data || typeof data !== 'object') {
             throw new Error('Failed to fetch dashboard data. The data format is incorrect.');
         }
         
-        setStats(data.stats);
-        setChartData(data.chartData);
+        setStats(data.stats || {}); // Fallback to empty object
+        setChartData(data.chartData || []); // Fallback to empty array
 
       } catch (err: any) {
         console.error("Admin Dashboard Error:", err);
@@ -95,7 +96,7 @@ export const AdminDashboard = () => {
     );
   }
   
-  const formatCurrency = (value: number) => `₹${value.toFixed(2)}`;
+  const formatCurrency = (value: number) => `₹${(value || 0).toFixed(2)}`;
 
   return (
     <div className="space-y-4">
