@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,6 @@ import Link from 'next/link';
 import { useDoc, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
 
 interface Testimonial {
     name: string;
@@ -40,26 +40,29 @@ interface LandingPageContent {
 }
 
 const ClientButtons = () => {
-    const router = useRouter();
     return (
         <div className="mt-10 flex items-center gap-x-6">
-            <Button size="lg" onClick={() => router.push('/signup')}>Get Started <ArrowRight className="ml-2" /></Button>
-            <Button size="lg" variant="outline" onClick={() => router.push('/login')}><LogIn className="mr-2"/> Login</Button>
+            <Link href="/signup" passHref>
+              <Button size="lg">Get Started <ArrowRight className="ml-2" /></Button>
+            </Link>
+            <Link href="/login" passHref>
+              <Button size="lg" variant="outline"><LogIn className="mr-2"/> Login</Button>
+            </Link>
         </div>
     );
 };
 
 const CTAButton = () => {
-    const router = useRouter();
     return (
-        <Button 
-            size="lg" 
-            variant="secondary"
-            onClick={() => router.push('/signup')}
-            className="bg-white text-primary hover:bg-white/90"
-        >
-            Sign Up for Free <ArrowRight className="ml-2" />
-        </Button>
+        <Link href="/signup" passHref>
+            <Button 
+                size="lg" 
+                variant="secondary"
+                className="bg-white text-primary hover:bg-white/90"
+            >
+                Sign Up for Free <ArrowRight className="ml-2" />
+            </Button>
+        </Link>
     )
 }
 
