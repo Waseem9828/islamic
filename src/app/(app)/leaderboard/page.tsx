@@ -18,7 +18,7 @@ interface User {
   id: string;
   email?: string;
   displayName?: string;
-  photoURL?: string; // This was missing
+  photoURL?: string;
 }
 
 interface Wallet {
@@ -34,12 +34,12 @@ type LeaderboardEntry = User & {
 // --- Helper Components ---
 
 const TopPlayerCard = ({ player, rank }: { player: LeaderboardEntry; rank: number }) => {
-  const rankStyles = {
+  const rankStyles: { [key: number]: { icon: React.ElementType; color: string; bg: string; border: string } } = {
     1: { icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/50' },
     2: { icon: Medal, color: 'text-gray-400', bg: 'bg-gray-400/10', border: 'border-gray-400/50' },
     3: { icon: Award, color: 'text-amber-600', bg: 'bg-amber-600/10', border: 'border-amber-600/50' },
   };
-  const { icon: Icon, color, bg, border } = rankStyles[rank as keyof typeof rankStyles];
+  const { icon: Icon, color, bg, border } = rankStyles[rank];
 
   return (
     <Card className={cn('relative overflow-hidden shadow-lg border-2', bg, border)}>
@@ -87,6 +87,8 @@ export default function LeaderboardPage() {
       }
       
       const usersData: { [key: string]: User } = {};
+      
+      // Firestore 'in' queries are limited to 30 items, so we batch the user ID fetches
       const userPromises = [];
       for (let i = 0; i < userIds.length; i += 30) {
         const batchIds = userIds.slice(i, i + 30);
@@ -106,12 +108,17 @@ export default function LeaderboardPage() {
 
         const combinedData: LeaderboardEntry[] = topWallets
           .map((wallet, index) => {
-            const user = usersData[wallet.id];
-            if (!user) return null;
+            const userProfile = usersData[wallet.id];
+            // If user profile is not found, we can't display the entry
+            if (!userProfile) return null;
+            
             return {
-              ...user,
+              id: wallet.id,
               rank: index + 1,
               winningBalance: wallet.winningBalance || 0,
+              displayName: userProfile.displayName,
+              email: userProfile.email,
+              photoURL: userProfile.photoURL,
             };
           })
           .filter((entry): entry is LeaderboardEntry => entry !== null);
@@ -119,11 +126,13 @@ export default function LeaderboardPage() {
         setLeaderboard(combinedData);
       } catch (error) {
         console.error("Error fetching user data for leaderboard:", error);
+        toast.error("Could not load user profiles for the leaderboard.");
       } finally {
         setIsLoading(false);
       }
     }, (error) => {
       console.error("Error fetching leaderboard data:", error);
+      toast.error("Failed to load leaderboard data.", { description: error.message });
       setIsLoading(false);
     });
 
