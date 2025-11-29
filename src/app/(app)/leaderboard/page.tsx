@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs, query, orderBy, limit, where, documentId } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, where, documentId, onSnapshot } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Trophy, Medal, Award } from 'lucide-react';
@@ -44,16 +44,14 @@ export default function LeaderboardPage() {
   useEffect(() => {
     if (!firestore) return;
 
-    const fetchLeaderboardData = async () => {
-      setIsLoading(true);
-      try {
-        // 1. Fetch top 100 wallets sorted by winningBalance
-        const walletsQuery = query(
-          collection(firestore, 'wallets'), 
-          orderBy('winningBalance', 'desc'), 
-          limit(100)
-        );
-        const walletSnap = await getDocs(walletsQuery);
+    const walletsQuery = query(
+      collection(firestore, 'wallets'), 
+      orderBy('winningBalance', 'desc'), 
+      limit(100)
+    );
+
+    const unsubscribe = onSnapshot(walletsQuery, async (walletSnap) => {
+        setIsLoading(true);
         const topWallets = walletSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
         const userIds = topWallets.map(w => w.id);
 
@@ -63,7 +61,6 @@ export default function LeaderboardPage() {
             return;
         }
 
-        // 2. Fetch user data for the top players in batches (Firestore `in` query limit is 30)
         const usersData: { [key: string]: User } = {};
         const userPromises = [];
         for (let i = 0; i < userIds.length; i += 30) {
@@ -79,7 +76,6 @@ export default function LeaderboardPage() {
             });
         });
 
-        // 3. Combine wallet and user data
         const combinedData: LeaderboardEntry[] = topWallets
           .map((wallet, index) => {
             const user = usersData[wallet.id];
@@ -93,14 +89,13 @@ export default function LeaderboardPage() {
           .filter((entry): entry is LeaderboardEntry => entry !== null);
         
         setLeaderboard(combinedData);
-      } catch (error) {
-        console.error("Error fetching leaderboard data:", error);
-      } finally {
         setIsLoading(false);
-      }
-    };
+    }, (error) => {
+        console.error("Error fetching leaderboard data:", error);
+        setIsLoading(false);
+    });
 
-    fetchLeaderboardData();
+    return () => unsubscribe();
   }, [firestore]);
 
   // Skeleton loader component for better UX

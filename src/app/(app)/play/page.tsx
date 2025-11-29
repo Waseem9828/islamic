@@ -8,8 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronRight, Loader2, IndianRupee, Trophy, PlusCircle } from 'lucide-react';
-import { useCollection, useUser, useFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useUser, useFirebase } from '@/firebase';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 const MatchCard = ({ match }: { match: any }) => {
     const router = useRouter();
@@ -66,6 +66,9 @@ export default function PlayPage() {
   const router = useRouter();
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const [allMatches, setAllMatches] =
+   useState<any[]>([]);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -73,17 +76,27 @@ export default function PlayPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const matchesQuery = useMemo(() => {
-    if (!firestore) return null;
-    return query(
+  useEffect(() => {
+    if (!firestore) return;
+
+    const matchesQuery = query(
         collection(firestore, 'matches'), 
         where('status', 'in', ['waiting', 'inprogress']),
         orderBy('createdAt', 'desc')
     );
+
+    const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
+      const matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllMatches(matches);
+      setIsLoadingMatches(false);
+    }, (error) => {
+      console.error("Failed to fetch matches:", error);
+      setIsLoadingMatches(false);
+    });
+
+    return () => unsubscribe();
   }, [firestore]);
   
-  const { data: allMatches, isLoading: isLoadingMatches } = useCollection(matchesQuery);
-
   const { myMatches, openMatches } = useMemo(() => {
     if (!allMatches || !user) return { myMatches: [], openMatches: [] };
 

@@ -108,9 +108,9 @@ export default function WalletPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <BalanceCard title="Total Balance" amount={totalBalance} icon={Wallet} />
-        <BalanceCard title="Deposit Balance" amount={wallet?.depositBalance} icon={PiggyBank} />
-        <BalanceCard title="Winning Balance" amount={wallet?.winningBalance} icon={Trophy} />
-        <BalanceCard title="Bonus Balance" amount={wallet?.bonusBalance} icon={PiggyBank} className="text-purple-600"/>
+        <BalanceCard title="Deposit Balance" amount={wallet?.depositBalance || 0} icon={PiggyBank} />
+        <BalanceCard title="Winning Balance" amount={wallet?.winningBalance || 0} icon={Trophy} />
+        <BalanceCard title="Bonus Balance" amount={wallet?.bonusBalance || 0} icon={PiggyBank} className="text-purple-600"/>
       </div>
       
       <div className="flex space-x-4">
