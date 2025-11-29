@@ -4,20 +4,21 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { collection, getDocs, query, orderBy, limit, where, documentId, onSnapshot } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Medal, Award, Crown } from 'lucide-react';
+import { Trophy, Medal, Award, Crown, Share2 } from 'lucide-react';
 import { LoadingScreen } from '@/components/ui/loading';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 // --- Type Definitions ---
 interface User {
   id: string;
   email?: string;
   displayName?: string;
-  photoURL?: string;
+  photoURL?: string; // This was missing
 }
 
 interface Wallet {
@@ -32,7 +33,6 @@ type LeaderboardEntry = User & {
 
 // --- Helper Components ---
 
-// A component for the top 3 player cards
 const TopPlayerCard = ({ player, rank }: { player: LeaderboardEntry; rank: number }) => {
   const rankStyles = {
     1: { icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/50' },
@@ -62,6 +62,7 @@ const TopPlayerCard = ({ player, rank }: { player: LeaderboardEntry; rank: numbe
 // --- Main Leaderboard Component ---
 export default function LeaderboardPage() {
   const { firestore } = useFirebase();
+  const { user: currentUser } = useUser();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -77,7 +78,7 @@ export default function LeaderboardPage() {
     const unsubscribe = onSnapshot(walletsQuery, async (walletSnap) => {
       setIsLoading(true);
       const topWallets = walletSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
-      const userIds = topWallets.map(w => w.id).filter(id => id); // Filter out any potential undefined IDs
+      const userIds = topWallets.map(w => w.id).filter(id => id);
 
       if (userIds.length === 0) {
         setLeaderboard([]);
@@ -87,7 +88,6 @@ export default function LeaderboardPage() {
       
       const usersData: { [key: string]: User } = {};
       const userPromises = [];
-      // Firestore 'in' query supports up to 30 elements
       for (let i = 0; i < userIds.length; i += 30) {
         const batchIds = userIds.slice(i, i + 30);
         if (batchIds.length > 0) {
@@ -107,7 +107,7 @@ export default function LeaderboardPage() {
         const combinedData: LeaderboardEntry[] = topWallets
           .map((wallet, index) => {
             const user = usersData[wallet.id];
-            if (!user) return null; // Skip if user data not found
+            if (!user) return null;
             return {
               ...user,
               rank: index + 1,
@@ -130,8 +130,28 @@ export default function LeaderboardPage() {
     return () => unsubscribe();
   }, [firestore]);
   
+  const handleShare = (rank: number, winnings: number) => {
+    const shareText = `I'm rank #${rank} on Ludo Arena with ₹${winnings.toLocaleString()} in winnings! Come challenge me.`;
+    const shareUrl = window.location.origin;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'My Ludo Arena Rank!',
+        text: shareText,
+        url: shareUrl,
+      })
+      .then(() => toast.success('Rank shared successfully!'))
+      .catch((error) => console.log('Error sharing:', error));
+    } else {
+      navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      toast.info('Share feature not available. Rank info copied to clipboard!');
+    }
+  };
+
   const topThree = leaderboard.slice(0, 3);
   const others = leaderboard.slice(3);
+  const currentUserRank = currentUser ? leaderboard.find(p => p.id === currentUser.uid) : null;
+
 
   return (
     <div className="container mx-auto max-w-4xl py-6 sm:py-8">
@@ -144,14 +164,39 @@ export default function LeaderboardPage() {
         <LoadingScreen text="Fetching Leaderboard..." />
       ) : leaderboard.length > 0 ? (
         <div className="space-y-12">
-            {/* Top 3 Players */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 items-end">
-                {topThree[1] && <div className="order-2 md:order-1"><TopPlayerCard player={topThree[1]} rank={2} /></div>}
-                {topThree[0] && <div className="order-1 md:order-2"><TopPlayerCard player={topThree[0]} rank={1} /></div>}
-                {topThree[2] && <div className="order-3 md:order-3"><TopPlayerCard player={topThree[2]} rank={3} /></div>}
-            </div>
+            {topThree.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 items-end">
+                  {topThree[1] && <div className="order-2 md:order-1"><TopPlayerCard player={topThree[1]} rank={2} /></div>}
+                  {topThree[0] && <div className="order-1 md:order-2"><TopPlayerCard player={topThree[0]} rank={1} /></div>}
+                  {topThree[2] && <div className="order-3 md:order-3"><TopPlayerCard player={topThree[2]} rank={3} /></div>}
+              </div>
+            )}
 
-            {/* Other Players Table */}
+            {currentUserRank && (
+                <Card className="bg-primary/10 border-primary/50 border-2 shadow-lg">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Your Rank</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <p className="text-2xl font-bold w-12 text-center">#{currentUserRank.rank}</p>
+                            <Avatar className="h-12 w-12 border">
+                                <AvatarImage src={currentUserRank.photoURL || undefined} alt={currentUserRank.displayName || 'U'} />
+                                <AvatarFallback>{currentUserRank.displayName?.[0] || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{currentUserRank.displayName}</p>
+                                <p className="text-emerald-600 dark:text-emerald-500 font-bold">₹{currentUserRank.winningBalance.toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <Button onClick={() => handleShare(currentUserRank.rank, currentUserRank.winningBalance)}>
+                            <Share2 className="mr-2 h-4 w-4"/>
+                            Share Rank
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {others.length > 0 && (
             <Card>
                 <Table>
@@ -164,7 +209,7 @@ export default function LeaderboardPage() {
                     </TableHeader>
                     <TableBody>
                         {others.map((player) => (
-                        <TableRow key={player.id}>
+                        <TableRow key={player.id} className={cn(player.id === currentUser?.uid && 'bg-muted/50')}>
                             <TableCell className="text-center font-bold text-lg text-muted-foreground">{player.rank}</TableCell>
                             <TableCell>
                             <div className="flex items-center gap-3">
