@@ -1,7 +1,5 @@
-
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, LogIn, Gamepad2, Wallet, Users, Trophy, Heart, Star, Facebook, Twitter, Instagram } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -10,6 +8,7 @@ import Link from 'next/link';
 import { useDoc, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 interface Testimonial {
     name: string;
@@ -40,9 +39,32 @@ interface LandingPageContent {
     socialLinks: SocialLink[];
 }
 
+const ClientButtons = () => {
+    const router = useRouter();
+    return (
+        <div className="mt-10 flex items-center gap-x-6">
+            <Button size="lg" onClick={() => router.push('/signup')}>Get Started <ArrowRight className="ml-2" /></Button>
+            <Button size="lg" variant="outline" onClick={() => router.push('/login')}><LogIn className="mr-2"/> Login</Button>
+        </div>
+    );
+};
+
+const CTAButton = () => {
+    const router = useRouter();
+    return (
+        <Button 
+            size="lg" 
+            variant="secondary"
+            onClick={() => router.push('/signup')}
+            className="bg-white text-primary hover:bg-white/90"
+        >
+            Sign Up for Free <ArrowRight className="ml-2" />
+        </Button>
+    )
+}
+
 
 export default function LandingPage() {
-  const router = useRouter();
   const { firestore } = useFirebase();
   const { data: content, isLoading } = useDoc<LandingPageContent>(firestore ? doc(firestore, 'landingPage', 'content') : null);
 
@@ -116,10 +138,7 @@ export default function LandingPage() {
                   <p className="mt-6 text-lg leading-8 text-muted-foreground">
                       Challenge players, create matches, and climb the leaderboard. Your ultimate Ludo experience starts here.
                   </p>
-                  <div className="mt-10 flex items-center gap-x-6">
-                      <Button size="lg" onClick={() => router.push('/signup')}>Get Started <ArrowRight className="ml-2" /></Button>
-                      <Button size="lg" variant="outline" onClick={() => router.push('/login')}><LogIn className="mr-2"/> Login</Button>
-                  </div>
+                  <ClientButtons />
               </div>
           </div>
       </main>
@@ -250,14 +269,7 @@ export default function LandingPage() {
                 Join thousands of players and start your journey to become a Ludo champion today.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
-                <Button 
-                    size="lg" 
-                    variant="secondary"
-                    onClick={() => router.push('/signup')}
-                    className="bg-white text-primary hover:bg-white/90"
-                >
-                    Sign Up for Free <ArrowRight className="ml-2" />
-                </Button>
+                <CTAButton />
             </div>
             <div className="absolute -top-24 left-1/2 -z-10 h-[50rem] w-[50rem] -translate-x-1/2 [mask-image:radial-gradient(closest-side,white,transparent)]" aria-hidden="true">
                 <svg className="absolute inset-0 h-full w-full stroke-primary-foreground/20" fill="none">
@@ -318,7 +330,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    
-
-    
