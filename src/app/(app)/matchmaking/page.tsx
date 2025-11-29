@@ -131,7 +131,7 @@ export default function MatchmakingPage() {
             {renderMatchList(openMatches)}
         </section>
 
-        <div className="fixed bottom-20 right-4">
+        <div className="fixed bottom-20 right-4 z-10">
             <Button size="lg" className="rounded-full h-16 w-16 shadow-lg" onClick={() => router.push('/play')}><Star className="h-7 w-7"/></Button>
         </div>
     </div>

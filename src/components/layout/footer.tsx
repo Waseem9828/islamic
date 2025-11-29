@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -28,10 +29,10 @@ const Footer = () => {
   }
 
   return (
-    <footer className="sticky bottom-0 z-50 bg-background/95 border-t backdrop-blur-sm md:hidden">
+    <footer className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 border-t backdrop-blur-sm md:hidden">
       <nav className="flex justify-around items-center h-16">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href === '/matchmaking' && pathname.startsWith('/match/'));
+          const isActive = pathname.startsWith(item.href);
           return (
             <Link href={item.href} key={item.label} className="flex-1">
               <div
