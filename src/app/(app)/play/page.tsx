@@ -1,229 +1,133 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Slider } from "@/components/ui/slider";
-import { toast } from 'sonner';
-import { httpsCallable } from 'firebase/functions';
-import { useFirebase, useUser } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, Loader2, Share2, Copy, CheckCircle, ArrowRight, Info, Wallet } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronRight, Loader2, IndianRupee, Trophy, PlusCircle } from 'lucide-react';
+import { useCollection, useUser, useFirebase } from '@/firebase';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 
-export default function PlayPage() {
+const MatchCard = ({ match }: { match: any }) => {
     const router = useRouter();
-    const { user, isUserLoading } = useUser();
-    const { functions, firestore } = useFirebase();
+    const prizePool = match.entryFee * match.maxPlayers * 0.9; // Assuming 10% commission
 
-    const [matchTitle, setMatchTitle] = useState('');
-    const [entryFee, setEntryFee] = useState([50]);
-    const [maxPlayers, setMaxPlayers] = useState('2');
-    const [privacy, setPrivacy] = useState('public');
-    const [timeLimit, setTimeLimit] = useState('15');
-    const [createdMatchId, setCreatedMatchId] = useState('');
-
-    const [wallet, setWallet] = useState<{ depositBalance: number, winningBalance: number, bonusBalance: number } | null>(null);
-    const [isLoadingWallet, setIsLoadingWallet] = useState(true);
-    const [isCreating, setIsCreating] = useState(false);
-    const [isMatchCreated, setIsMatchCreated] = useState(false);
-
-    const totalBalance = useMemo(() => {
-        if (!wallet) return 0;
-        return wallet.depositBalance + wallet.winningBalance + wallet.bonusBalance;
-    }, [wallet]);
-    
-    useEffect(() => {
-        if (user && firestore) {
-            const walletRef = doc(firestore, 'wallets', user.uid);
-            getDoc(walletRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    setWallet(docSnap.data() as any);
-                } else {
-                    setWallet({ depositBalance: 0, winningBalance: 0, bonusBalance: 0 });
-                }
-                setIsLoadingWallet(false);
-            }).catch(err => {
-                toast.error("Failed to load wallet.");
-                setIsLoadingWallet(false);
-            });
-        } else if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, firestore, isUserLoading, router]);
-
-    const createMatchFunction = useMemo(() => {
-        if (!functions) return null;
-        return httpsCallable(functions, 'createMatch');
-    }, [functions]);
-
-
-    const handleCreateMatch = async () => {
-        if (!user || !createMatchFunction) {
-            toast.error("User or Firebase Functions not available.");
-            return;
+    const getPlayerAvatars = () => {
+        const playerIds = match.players;
+        if (!playerIds || playerIds.length === 0) {
+            return <div className="flex -space-x-4"><Avatar><AvatarFallback>?</AvatarFallback></Avatar></div>;
         }
 
-        if (totalBalance < entryFee[0]) {
-            toast.error("Insufficient Balance", { description: `You need at least ₹${entryFee[0]} to create this match.` });
-            return;
-        }
-        
-        setIsCreating(true);
-        try {
-            // Generate a unique match ID on the client
-            const newMatchId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const avatars = playerIds.slice(0, 2).map((pid: string) => {
+            const playerInfo = match.playerInfo[pid];
+            return (
+                <Avatar key={pid} className="border-2 border-background">
+                    <AvatarImage src={playerInfo?.photoURL} />
+                    <AvatarFallback>{playerInfo?.name?.[0] || '?'}</AvatarFallback>
+                </Avatar>
+            );
+        });
 
-            const result = await createMatchFunction({
-                matchId: newMatchId,
-                matchTitle: matchTitle || `Match ${newMatchId}`,
-                entryFee: entryFee[0],
-                maxPlayers: parseInt(maxPlayers),
-                privacy,
-                timeLimit: `${timeLimit} mins`
-            });
-            
-            const data = (result.data as any);
-
-            if (data.status === 'success') {
-                toast.success("Match Created!", { description: data.message });
-                setCreatedMatchId(data.matchId);
-                setIsMatchCreated(true);
-            } else {
-                throw new Error(data.message);
-            }
-        } catch (error: any) {
-            console.error("Error creating match: ", error);
-            toast.error("Failed to Create Match", { description: error.message || "This Match ID is already in use." });
-        } finally {
-            setIsCreating(false);
+        if (playerIds.length < 2) {
+             avatars.push(
+                <Avatar key="placeholder" className="border-2 border-background bg-muted">
+                    <AvatarFallback>?</AvatarFallback>
+                </Avatar>
+            );
         }
+
+        return <div className="flex -space-x-4 rtl:space-x-reverse">{avatars}</div>;
     };
-    
-    const handleCopyCode = () => {
-        navigator.clipboard.writeText(createdMatchId);
-        toast.success("Match ID Copied!");
-    };
-    
-    const handleShare = () => {
-        if (navigator.share) {
-            navigator.share({
-                title: `Join my Ludo match: ${matchTitle || `Match ${createdMatchId}`}`,
-                text: `Join my Ludo match!\nMatch ID: ${createdMatchId}\nEntry Fee: ₹${entryFee[0]}`,
-                url: window.location.origin + `/match/${createdMatchId}`,
-            }).catch(err => console.log('Error sharing', err));
-        } else {
-            handleCopyCode();
-            toast.info("Sharing not supported. Room code copied instead.");
-        }
-    };
-
-    if (isUserLoading || isLoadingWallet) {
-        return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-    }
-    
-    if (isMatchCreated) {
-        return (
-            <div className="container mx-auto max-w-md py-8">
-                <Card>
-                    <CardHeader className="text-center">
-                        <CheckCircle className="mx-auto w-12 h-12 text-green-500" />
-                        <CardTitle className="text-2xl font-bold mt-4">Match Created!</CardTitle>
-                        <CardDescription>Your match is ready. Share the Match ID with other players.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="text-center space-y-2">
-                            <Label className="text-muted-foreground">Match ID</Label>
-                            <div className="p-4 bg-muted rounded-lg border-2 border-dashed">
-                                <p className="text-4xl font-bold tracking-[0.3em]">{createdMatchId}</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                             <Button onClick={handleCopyCode} variant="outline" className="w-full"><Copy className="mr-2 h-4 w-4"/>Copy</Button>
-                             <Button onClick={handleShare} className="w-full"><Share2 className="mr-2 h-4 w-4"/>Share</Button>
-                        </div>
-                         <Card className="bg-muted/50">
-                            <CardHeader className='p-4'>
-                                <CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5"/> Match Details</CardTitle>
-                            </CardHeader>
-                            <CardContent className="text-sm text-muted-foreground p-4 pt-0">
-                               <ul className="space-y-2">
-                                  <li className="flex justify-between"><span>Entry Fee:</span> <span className="font-semibold">₹{entryFee[0]}</span></li>
-                                  <li className="flex justify-between"><span>Players:</span> <span className="font-semibold">{maxPlayers}</span></li>
-                                  <li className="flex justify-between"><span>Time Limit:</span> <span className="font-semibold">{timeLimit} mins</span></li>
-                               </ul>
-                            </CardContent>
-                        </Card>
-                         <Button onClick={() => router.push(`/match/${createdMatchId}`)} className="w-full" size="lg">Go to Lobby <ArrowRight className="ml-2 h-4 w-4"/></Button>
-                    </CardContent>
-                </Card>
-            </div>
-        )
-    }
 
     return (
-        <div className="container mx-auto max-w-2xl py-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Create a New Match</CardTitle>
-                    <CardDescription>Set up a new Ludo match for others to join.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <Alert variant={totalBalance < entryFee[0] ? "destructive" : "default"}>
-                        <Wallet className="h-4 w-4" />
-                        <AlertTitle>Wallet Balance</AlertTitle>
-                        <AlertDescription>
-                            Your total balance is ₹{totalBalance.toFixed(2)}. The entry fee of ₹{entryFee[0]} will be deducted upon creation.
-                        </AlertDescription>
-                    </Alert>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="match-title">Match Title (Optional)</Label>
-                        <Input id="match-title" placeholder="e.g., Weekend Ludo Clash" value={matchTitle} onChange={(e) => setMatchTitle(e.target.value)} />
+        <Card 
+            className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in-up cursor-pointer"
+            onClick={() => router.push(`/match/${match.id}`)}
+        >
+            <CardContent className="p-3 flex items-center gap-4">
+                {getPlayerAvatars()}
+                <div className="flex-1">
+                    <p className="font-semibold truncate">{match.creatorName}'s Game</p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1"><IndianRupee className="h-4 w-4 text-amber-500"/>{match.entryFee}</span>
+                        <span className="flex items-center gap-1"><Trophy className="h-4 w-4 text-yellow-500"/>{prizePool.toFixed(0)}</span>
                     </div>
-
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <Label>Entry Fee</Label>
-                            <span className="text-xl font-bold text-primary">₹{entryFee[0]}</span>
-                        </div>
-                        <Slider value={entryFee} onValueChange={setEntryFee} min={50} max={5000} step={10} />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            <Label>Max Players</Label>
-                             <RadioGroup value={maxPlayers} onValueChange={setMaxPlayers} className="flex gap-4">
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="2" id="p2" /><Users className="h-4 w-4"/> 2</Label>
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="4" id="p4" /><Users className="h-4 w-4"/> 4</Label>
-                            </RadioGroup>
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Privacy</Label>
-                             <RadioGroup value={privacy} onValueChange={setPrivacy} className="flex gap-4">
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="public" id="public" /><Unlock className="h-4 w-4"/> Public</Label>
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="private" id="private" /><Lock className="h-4 w-4"/> Private</Label>
-                            </RadioGroup>
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Time Limit</Label>
-                            <RadioGroup value={timeLimit} onValueChange={setTimeLimit} className="flex gap-4">
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="15" id="t15" /><Clock className="h-4 w-4"/> 15m</Label>
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="30" id="t30" /><Clock className="h-4 w-4"/> 30m</Label>
-                            </RadioGroup>
-                        </div>
-                    </div>
-                    
-                    <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isCreating || isLoadingWallet}>
-                        {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
-                        Create Match &amp; Deduct ₹{entryFee[0]}
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </CardContent>
+        </Card>
     );
+};
+
+export default function PlayPage() {
+  const router = useRouter();
+  const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  const matchesQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(
+        collection(firestore, 'matches'), 
+        where('status', 'in', ['waiting', 'inprogress']),
+        orderBy('createdAt', 'desc')
+    );
+  }, [firestore]);
+  
+  const { data: allMatches, isLoading: isLoadingMatches } = useCollection(matchesQuery);
+
+  const { myMatches, openMatches } = useMemo(() => {
+    if (!allMatches || !user) return { myMatches: [], openMatches: [] };
+
+    const my = allMatches.filter(m => m.players.includes(user.uid));
+    const open = allMatches.filter(m => m.status === 'waiting' && !m.players.includes(user.uid));
+    
+    return { myMatches: my, openMatches: open };
+
+  }, [allMatches, user]);
+
+  const renderMatchList = (matches: any[], title: string) => {
+    return (
+        <section className="mb-6">
+             <h2 className="text-lg font-semibold">{title}</h2>
+             {isLoadingMatches ? (
+                <div className="space-y-3 pt-2">
+                    {[1,2,3].map(i => <Skeleton key={i} className="h-[76px] w-full" />)}
+                </div>
+            ) : matches.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8 text-sm">No matches found.</p>
+            ) : (
+                <div className="space-y-3 pt-2">
+                    {matches.map((m) => (
+                        <MatchCard key={m.id} match={m} />
+                    ))}
+                </div>
+            )}
+        </section>
+    );
+  };
+
+  if (isUserLoading || !user) {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <div className="p-4 animate-fade-in-up">
+        <Button size="lg" className="w-full mb-6" onClick={() => router.push('/play/new')}>
+            <PlusCircle className="mr-2 h-5 w-5" />
+            Create New Match
+        </Button>
+
+        {renderMatchList(myMatches, "Your Active Matches")}
+        {renderMatchList(openMatches, "Open Public Matches")}
+    </div>
+  );
 }

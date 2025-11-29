@@ -13,7 +13,7 @@ const Footer = () => {
   const { user } = useUser();
   
   const navItems = [
-    { href: '/matchmaking', label: 'Play', icon: Swords },
+    { href: '/play', label: 'Play', icon: Swords },
     { href: '/leaderboard', label: 'Ranks', icon: Trophy },
     { href: '/wallet', label: 'Wallet', icon: Landmark },
     { href: '/profile', label: 'Profile', icon: User },
