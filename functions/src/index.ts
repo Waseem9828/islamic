@@ -1,6 +1,9 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import * as cors from "cors";
+
+const corsHandler = cors({ origin: true });
 
 // Safely initialize the Firebase Admin SDK, preventing re-initialization.
 if (admin.apps.length === 0) {
@@ -41,7 +44,39 @@ const ensureIsAdmin = async (context: functions.https.CallableContext) => {
     }
 };
 
-export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
+const wrapInCors = (handler: (data: any, context: functions.https.CallableContext) => any) => {
+    return regionalFunctions.https.onRequest((req, res) => {
+        corsHandler(req, res, async () => {
+            if (req.method !== 'POST') {
+                res.status(405).send('Method Not Allowed');
+                return;
+            }
+            try {
+                // Manually construct the CallableContext
+                const context: functions.https.CallableContext = {
+                    // Check for auth token. The client SDK sends it in the Authorization header.
+                    auth: req.headers.authorization ? await admin.auth().verifyIdToken(req.headers.authorization.split('Bearer ')[1]) : undefined,
+                    instanceIdToken: req.headers['firebase-instance-id-token'] as string | undefined,
+                    rawRequest: req,
+                };
+                
+                const result = await handler(req.body.data, context);
+                res.status(200).json({ data: result });
+
+            } catch (error: any) {
+                console.error("Function error:", error);
+                 if (error instanceof functions.https.HttpsError) {
+                    res.status(error.httpErrorCode.status).json({ error: { code: error.code, message: error.message, details: error.details } });
+                } else {
+                    res.status(500).json({ error: { code: 'internal', message: 'An internal error occurred.' } });
+                }
+            }
+        });
+    });
+};
+
+
+export const checkAdminStatus = wrapInCors(async (_, context) => {
     if (!context.auth) {
         return { isAdmin: false };
     }
@@ -58,7 +93,7 @@ export const checkAdminStatus = regionalFunctions.https.onCall(async (_, context
 
 
 // --- Deposit Functions ---
-export const requestDeposit = regionalFunctions.https.onCall(async (data, context) => {
+export const requestDeposit = wrapInCors(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to make a deposit request.");
     }
@@ -93,7 +128,7 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
     }
 });
 
-export const processDeposit = regionalFunctions.https.onCall(async (data, context) => {
+export const processDeposit = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { requestId, approve } = data;
     if (!requestId) throw new functions.https.HttpsError('invalid-argument', 'Request ID is required.');
@@ -105,11 +140,12 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
         if (!requestDoc.exists) {
             throw new functions.https.HttpsError('not-found', 'Deposit request not found.');
         }
-        if (requestDoc.data()!.status !== 'pending') {
+        const requestData = requestDoc.data();
+        if (!requestData || requestData.status !== 'pending') {
             throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
         }
 
-        const { userId, amount } = requestDoc.data()!;
+        const { userId, amount } = requestData;
 
         if (approve) {
             const rules = await getAppRules();
@@ -168,7 +204,7 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
 
 
 // --- Admin & Roles Functions ---
-export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data, context) => {
+export const getAdminDashboardStats = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
 
     try {
@@ -250,7 +286,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (data
     }
 });
 
-export const updateUserStatus = regionalFunctions.https.onCall(async (data, context) => {
+export const updateUserStatus = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { uid, status } = data;
     if (!uid || !['active', 'suspended'].includes(status)) {
@@ -260,7 +296,7 @@ export const updateUserStatus = regionalFunctions.https.onCall(async (data, cont
     return { success: true };
 });
 
-export const getWalletInfo = regionalFunctions.https.onCall(async (data, context) => {
+export const getWalletInfo = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { uid } = data;
     if (!uid) {
@@ -278,7 +314,7 @@ export const getWalletInfo = regionalFunctions.https.onCall(async (data, context
     };
 });
 
-export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) => {
+export const analyzeStorage = wrapInCors(async (_, context) => {
     await ensureIsAdmin(context);
     try {
         const bucket = storage.bucket(); 
@@ -310,7 +346,7 @@ export const analyzeStorage = regionalFunctions.https.onCall(async (_, context) 
 });
 
 
-export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, context) => {
+export const cancelMatchByAdmin = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { matchId } = data;
     if (typeof matchId !== 'string' || matchId.length === 0) {
@@ -369,7 +405,7 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
 });
 
 // --- Match Functions ---
-export const createMatch = regionalFunctions.https.onCall(async (data, context) => {
+export const createMatch = wrapInCors(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
     
     const { matchId, matchTitle, entryFee, maxPlayers, privacy, timeLimit } = data;
@@ -441,7 +477,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
     });
 });
 
-export const joinMatch = regionalFunctions.https.onCall(async (data, context) => {
+export const joinMatch = wrapInCors(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
 
     const { matchId } = data;
@@ -511,7 +547,7 @@ export const joinMatch = regionalFunctions.https.onCall(async (data, context) =>
     });
 });
 
-export const cancelMatch = regionalFunctions.https.onCall(async (data, context) => {
+export const cancelMatch = wrapInCors(async (data, context) => {
     if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Login required.");
     const { matchId } = data;
     const userId = context.auth.uid;
@@ -561,7 +597,7 @@ export const cancelMatch = regionalFunctions.https.onCall(async (data, context) 
     });
   });
 
-export const distributeWinnings = regionalFunctions.https.onCall(async (data, context) => {
+export const distributeWinnings = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { matchId, winnerId } = data;
     if (!matchId || !winnerId) {
@@ -613,7 +649,7 @@ export const distributeWinnings = regionalFunctions.https.onCall(async (data, co
 
 
 // --- Withdrawal Functions ---
-export const requestWithdrawal = regionalFunctions.https.onCall(async (data, context) => {
+export const requestWithdrawal = wrapInCors(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "You must be logged in to request a withdrawal.");
     }
@@ -667,7 +703,7 @@ export const requestWithdrawal = regionalFunctions.https.onCall(async (data, con
 });
 
 
-export const processWithdrawal = regionalFunctions.https.onCall(async (data, context) => {
+export const processWithdrawal = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { requestId, approve } = data;
     if (!requestId) {
@@ -708,7 +744,7 @@ export const processWithdrawal = regionalFunctions.https.onCall(async (data, con
     });
 });
 
-export const manageAdminRole = regionalFunctions.https.onCall(async (data, context) => {
+export const manageAdminRole = wrapInCors(async (data, context) => {
     await ensureIsAdmin(context);
     const { uid, action } = data; // action can be 'grant' or 'revoke'
 
