@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { FirebaseProvider } from '@/firebase/provider';
 import { Toaster } from 'sonner';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -16,10 +16,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 enableSystem
                 disableTransitionOnChange
             >
-                <FirebaseClientProvider>
+                <FirebaseProvider>
                     {children}
                     <Toaster richColors position="top-center" />
-                </FirebaseClientProvider>
+                </FirebaseProvider>
             </ThemeProvider>
         </QueryClientProvider>
     );

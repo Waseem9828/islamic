@@ -6,6 +6,7 @@ import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { Functions, httpsCallable } from 'firebase/functions';
+import { initializeFirebase } from './core';
 
 interface UserAuthState {
   user: User | null;
@@ -22,25 +23,13 @@ export interface FirebaseContextState extends UserAuthState {
   functions: Functions | null;
 }
 
-interface FirebaseProviderProps {
-  children: ReactNode;
-  firebaseApp: FirebaseApp | null;
-  firestore: Firestore | null;
-  auth: Auth | null;
-  storage: FirebaseStorage | null;
-  functions: Functions | null;
-}
-
 const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
+export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
-  firebaseApp,
-  firestore,
-  auth,
-  storage,
-  functions,
 }) => {
+  const { firebaseApp, auth, firestore, storage, functions } = useMemo(() => initializeFirebase(), []);
+
   const [authState, setAuthState] = useState<UserAuthState>({
     user: null,
     isAdmin: false,

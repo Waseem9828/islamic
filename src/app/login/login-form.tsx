@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase/client-provider';
+import { useFirebase } from '@/firebase';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword, 
@@ -301,3 +301,4 @@ export function LoginForm() {
     );
 }
 
+    
