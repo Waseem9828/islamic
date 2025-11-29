@@ -1,6 +1,5 @@
 import './globals.css';
 import { Providers } from './providers';
-import { Toaster } from 'sonner';
 import { Poppins } from 'next/font/google';
 
 const poppins = Poppins({
@@ -15,19 +14,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <head>
-        <title>Islamic Random Selector</title>
+        <title>Ludo Arena</title>
         <meta
           name="description"
-          content="A fair and random number selector with an Islamic theme."
+          content="Challenge your friends and win real cash in Ludo Arena battles!"
         />
+         <meta name="keywords" content="Ludo Arena, real cash, online gaming, ludo challenge, play and earn" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
       <body>
         <Providers>
           {children}
         </Providers>
-        <Toaster />
       </body>
     </html>
   );

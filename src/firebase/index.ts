@@ -1,4 +1,3 @@
-
 'use client';
 
 export * from './core';
@@ -7,4 +6,3 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './errors';
-    

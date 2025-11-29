@@ -2,15 +2,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
-import { collection, onSnapshot, query, where, Timestamp, orderBy } from 'firebase/firestore';
-import { useFirebase } from '@/firebase';
+import { useUser, useFirebase } from '@/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Users, Gamepad2, AlertCircle, TrendingUp, HandCoins, UserCheck, UserX, UserPlus, Trophy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 
+// ... (StatCard and UserStatCard components remain the same)
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -42,118 +42,34 @@ const UserStatCard: React.FC<Omit<StatCardProps, 'description'>> = ({ title, val
     </div>
 )
 
+
 export const AdminDashboard = () => {
-  const { user } = useUser();
-  const { firestore } = useFirebase();
+  const { functions } = useFirebase();
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!firestore) return;
+    if (!functions) return;
 
     setLoading(true);
+    const getStats = httpsCallable(functions, 'getAdminDashboardStats');
 
-    const unsubscribers = [
-      onSnapshot(collection(firestore, 'users'), (snapshot) => {
-        const twentyFourHoursAgo = Timestamp.now().toMillis() - (24 * 60 * 60 * 1000);
-        let total = 0, active = 0, suspended = 0, newToday = 0;
-        snapshot.forEach(doc => {
-            const user = doc.data();
-            total++;
-            if (user.status === 'active') active++;
-            if (user.status === 'suspended') suspended++;
-            if (user.createdAt && user.createdAt.toMillis() > twentyFourHoursAgo) newToday++;
-        });
-        setStats((prev: any) => ({ ...prev, totalUsers: total, activeUsers: active, suspendedUsers: suspended, newToday: newToday }));
-      }),
-
-      onSnapshot(collection(firestore, 'matches'), (snapshot) => {
-        let activeMatches = 0, completedMatches = 0, totalCommission = 0;
-        snapshot.forEach(doc => {
-            const match = doc.data();
-            if (match.status === 'waiting' || match.status === 'inprogress') activeMatches++;
-            if (match.status === 'completed') {
-                completedMatches++;
-                totalCommission += match.commission || 0;
-            }
-        });
-        setStats((prev: any) => ({ ...prev, activeMatches, completedMatches, totalCommission }));
-      }),
-      
-      onSnapshot(query(collection(firestore, 'depositRequests'), where('status', '==', 'pending')), (snapshot) => {
-        setStats((prev: any) => ({ ...prev, pendingDeposits: snapshot.size }));
-      }),
-
-      onSnapshot(query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'pending')), (snapshot) => {
-        setStats((prev: any) => ({ ...prev, pendingWithdrawals: snapshot.size }));
-      }),
-      
-      onSnapshot(query(collection(firestore, 'withdrawalRequests'), where('status', '==', 'approved')), (snapshot) => {
-          let totalWinnings = 0;
-          snapshot.forEach(doc => {
-              totalWinnings += doc.data().amount || 0;
-          });
-          setStats((prev: any) => ({ ...prev, totalWinnings }));
-      }),
-
-      onSnapshot(query(collection(firestore, 'users'), orderBy('createdAt', 'desc')), (snapshot) => {
-          const signupsByDate: { [key: string]: number } = {};
-          snapshot.docs.forEach(doc => {
-              const docData = doc.data();
-              const timestamp = docData.createdAt;
-              if (timestamp && typeof timestamp.toDate === 'function') {
-                  const date = timestamp.toDate();
-                  const dateKey = date.toISOString().split('T')[0];
-                  signupsByDate[dateKey] = (signupsByDate[dateKey] || 0) + 1;
-              }
-          });
-          setChartData(prev => {
-              const newChartData = [...prev];
-              let updated = false;
-              newChartData.forEach(cd => {
-                  if(signupsByDate[cd.dateKey]) {
-                      cd['New Users'] = signupsByDate[cd.dateKey];
-                      updated = true;
-                  }
-              });
-              return updated ? newChartData : prev;
-          });
-      }),
-
-      onSnapshot(query(collection(firestore, 'transactions'), where('reason', '==', 'match_win_commission')), (snapshot) => {
-         const revenueByDate: { [key: string]: number } = {};
-         snapshot.docs.forEach(doc => {
-            const docData = doc.data();
-            const timestamp = docData.timestamp;
-            if (timestamp && typeof timestamp.toDate === 'function') {
-                const date = timestamp.toDate();
-                const dateKey = date.toISOString().split('T')[0];
-                revenueByDate[dateKey] = (revenueByDate[dateKey] || 0) + (docData['amount'] || 0);
-            }
-        });
-
-        const newChartData: any[] = [];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateKey = d.toISOString().split('T')[0];
-            newChartData.push({
-                date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                dateKey: dateKey,
-                "Revenue": revenueByDate[dateKey] || 0,
-            });
-        }
-        setChartData(newChartData);
+    getStats()
+      .then((result: any) => {
+        const data = result.data;
+        setStats(data.stats);
+        setChartData(data.chartData);
+        setLoading(false);
       })
-    ];
-    
-    setLoading(false);
+      .catch((err) => {
+        console.error(err);
+        setError("Could not load dashboard data.");
+        setLoading(false);
+      });
 
-    return () => unsubscribers.forEach(unsub => unsub());
-
-  }, [firestore]);
+  }, [functions]);
 
   if (loading && !stats) {
     return <DashboardSkeleton />;
@@ -241,5 +157,3 @@ const DashboardSkeleton = () => (
         </Card>
     </div>
 );
-
-    

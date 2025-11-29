@@ -1,107 +1,155 @@
-
 'use client';
-
-import { useState } from 'react';
-import { useFirebase } from '@/firebase';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Mail, KeyRound, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { useFirebase } from '@/firebase/client-provider';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    GoogleAuthProvider, 
+    signInWithPopup, 
+    fetchSignInMethodsForEmail, 
+    updateProfile
+} from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 
-// A simple SVG for the Google icon
-const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px" {...props}>
-        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.022,35.242,44,30.038,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-    </svg>
-);
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from 'sonner';
 
+// Debounce function
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+    let timeout: NodeJS.Timeout;
+    return (...args: P<F>): void => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), waitFor);
+    };
+}
+
+type P<T> = T extends (...args: infer P) => any ? P : never;
 
 export function LoginForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    
-    const { auth, functions } = useFirebase();
+    const { auth } = useFirebase();
     const router = useRouter();
 
-    const handleEmailSignIn = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [displayName, setDisplayName] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    
+    const [authMode, setAuthMode] = useState('unknown'); 
+    const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+    const [isClient, setIsClient] = useState(false);
 
-        if (!auth || !functions) {
-            setError("Firebase is not initialized. Please try again later.");
-            setIsLoading(false);
-            return;
-        }
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
+    // --- Email Checking Logic ---
+    const checkEmailExists = async (email: string) => {
+        if (!auth || !email) return;
+        setIsCheckingEmail(true);
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
+            const methods = await fetchSignInMethodsForEmail(auth, email);
+            setAuthMode(methods.length > 0 ? 'login' : 'signup');
+        } catch (error: any) {
+            setAuthMode('unknown'); 
+        }
+        setIsCheckingEmail(false);
+    };
 
-            if (user) {
-                const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
-                const result = await checkAdmin();
-                const isAdmin = (result.data as { isAdmin: boolean }).isAdmin;
+    const debouncedCheckEmail = debounce(checkEmailExists, 500);
 
-                if (isAdmin) {
-                    router.push('/admin');
-                } else {
-                    router.push('/play');
-                }
-            } else {
-                 router.push('/play');
+    useEffect(() => {
+        if (email && isClient) {
+            debouncedCheckEmail(email);
+        }
+    }, [email, isClient]);
+
+    // --- Form Submission Logic ---
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!auth) return;
+
+        setError(null);
+        setIsLoading(true);
+
+        if (authMode === 'signup') {
+            if (password !== confirmPassword) {
+                setError("Passwords do not match.");
+                setIsLoading(false);
+                return;
+            }
+            if (!displayName) {
+                setError("Please enter your name.");
+                setIsLoading(false);
+                return;
+            }
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName });
+                toast.success('Account created successfully!');
+                router.push('/play');
+            } catch (error: any) {
+                handleAuthError(error);
             }
 
-        } catch (error: any) {
-            handleAuthError(error);
-        } finally {
-            setIsLoading(false);
+        } else {
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                toast.success('Logged in successfully!');
+                router.push('/play');
+            } catch (error: any) {
+                handleAuthError(error);
+            }
         }
+
+        setIsLoading(false);
     };
-    
+
+    // --- Google Sign-In Logic ---
     const handleGoogleSignIn = async () => {
         if (!auth) return;
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
+            toast.success('Signed in with Google successfully!');
             router.push('/play');
         } catch (error: any) {
             handleAuthError(error);
         }
     }
-    
+
+    // --- Error Handling ---
     const handleAuthError = (error: any) => {
         console.error("Auth Error:", error);
         let errorMessage = "An unknown error occurred. Please try again.";
         if (error instanceof FirebaseError) {
             switch (error.code) {
-                case 'auth/user-not-found':
-                    errorMessage = "No account found with this email. Please sign up.";
-                    break;
-                case 'auth/wrong-password':
-                    errorMessage = "Incorrect password. Please try again.";
-                    break;
                 case 'auth/invalid-email':
                     errorMessage = "The email address is not valid.";
                     break;
-                 case 'auth/invalid-credential':
+                case 'auth/invalid-credential':
                     errorMessage = "Invalid credentials. Please check your email and password.";
+                    if (authMode === 'login') {
+                        fetchSignInMethodsForEmail(auth!, email).then(methods => {
+                            if (methods.includes('google.com')) {
+                                setError('This email is registered with Google. Please use the "Continue with Google" button.');
+                            }
+                        });
+                    }
                     break;
                 case 'auth/popup-closed-by-user':
                     errorMessage = "Sign-in popup closed. Please try again.";
+                    break;
+                case 'auth/email-already-in-use':
+                    errorMessage = "This email is already in use by another account.";
+                    setAuthMode('login');
+                    break;
+                case 'auth/weak-password':
+                    errorMessage = "The password is too weak. Please choose a stronger password.";
                     break;
                 default:
                     errorMessage = error.message;
@@ -109,74 +157,92 @@ export function LoginForm() {
             }
         }
         setError(errorMessage);
+        toast.error('Authentication Failed', { description: errorMessage });
+    };
+
+    const renderButtonContent = () => {
+        if (!isClient || isLoading || isCheckingEmail) {
+            return 'Loading...';
+        }
+        if (authMode === 'signup') {
+            return 'Sign Up';
+        }
+        return 'Login';
     }
 
     return (
-        <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-white/20 animate-fade-in-up">
-            <CardHeader className="text-center">
-                <CardTitle className="text-3xl font-bold text-card-foreground">Welcome Back!</CardTitle>
-                <CardDescription className="text-card-foreground/80">Sign in to enter the Ludo arena.</CardDescription>
-            </CardHeader>
-            <form onSubmit={handleEmailSignIn}>
-                <CardContent className="space-y-6">
-                    <div className="space-y-4">
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="Email address"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={isLoading}
-                                className="pl-10 h-12 text-base"
-                            />
-                        </div>
-                        <div className="relative">
-                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                            <Input
-                                id="password"
-                                type="password"
-                                placeholder="Password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={isLoading}
-                                className="pl-10 h-12 text-base"
-                            />
-                        </div>
-                    </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            
+            <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
+            </div>
 
-                    {error && (
-                        <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-300">
-                             <AlertDescription className="text-center">{error}</AlertDescription>
-                        </Alert>
-                    )}
-                    
-                    <Button type="submit" size="lg" className="w-full h-12 text-base" disabled={isLoading}>
-                        {isLoading ? <Loader2 className="animate-spin" /> : 'Sign In'}
-                    </Button>
-                    
-                    <div className="relative">
-                        <Separator />
-                        <span className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 bg-card px-2 text-sm text-muted-foreground">OR</span>
+            {isClient && authMode === 'signup' && (
+                <>
+                    <div className="space-y-2">
+                        <Label htmlFor="displayName">Your Name</Label>
+                        <Input
+                            id="displayName"
+                            type="text"
+                            placeholder="John Doe"
+                            required
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                        />
                     </div>
-
-                     <Button type="button" variant="outline" size="lg" className="w-full h-12 text-base" onClick={handleGoogleSignIn} disabled={isLoading}>
-                        <GoogleIcon className="mr-2"/> Sign in with Google
-                    </Button>
-
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                    <div className="text-center text-sm text-card-foreground/80">
-                        Don&apos;t have an account?{" "}
-                        <Link href="/signup" className="font-semibold text-primary hover:underline">
-                            Sign up here
-                        </Link>
+                    <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Confirm Password</Label>
+                        <Input
+                            id="confirm-password"
+                            type="password"
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
                     </div>
-                </CardFooter>
-            </form>
-        </Card>
-      );
+                </>
+            )}
+
+            {isClient && authMode !== 'unknown' && (
+                 <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={!isClient || isLoading || isCheckingEmail || authMode === 'unknown'}>
+                {renderButtonContent()}
+            </Button>
+
+            <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t"></span>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                        Or continue with
+                    </span>
+                </div>
+            </div>
+
+            <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+                Continue with Google
+            </Button>
+        </form>
+    );
 }

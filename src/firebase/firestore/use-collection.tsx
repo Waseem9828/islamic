@@ -8,6 +8,8 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  limit as firestoreLimit, // Renaming to avoid conflict
+  query as firestoreQuery, // Renaming to avoid conflict
 } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase/errors';
 
@@ -35,10 +37,12 @@ export interface UseCollectionResult<T> {
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
+ * @param {number} [limit] - Optional limit for the number of documents to fetch.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
     memoizedTargetRefOrQuery: (CollectionReference<DocumentData> | Query<DocumentData>)  | null | undefined,
+    limit?: number
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -55,11 +59,16 @@ export function useCollection<T = any>(
       return;
     }
 
+    // Apply the limit to the query if provided
+    const finalQuery = limit
+      ? firestoreQuery(memoizedTargetRefOrQuery, firestoreLimit(limit))
+      : memoizedTargetRefOrQuery;
+
     setIsLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
-      memoizedTargetRefOrQuery,
+      finalQuery, // Use the potentially limited query
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = [];
         for (const doc of snapshot.docs) {
@@ -84,7 +93,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
+  }, [memoizedTargetRefOrQuery, limit]); // Re-run if the target query/reference or limit changes.
 
   return { data, isLoading, error };
 }
