@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, useFirebase } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { DollarSign, Users, Gamepad2, AlertCircle, TrendingUp, HandCoins, UserCh
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 
-// ... (StatCard and UserStatCard components remain the same)
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -45,8 +44,7 @@ const UserStatCard: React.FC<Omit<StatCardProps, 'description'>> = ({ title, val
 
 export const AdminDashboard = () => {
   const { functions } = useFirebase();
-  const [stats, setStats] = useState<any>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [data, setData] = useState<{ stats: any, chartData: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,20 +56,18 @@ export const AdminDashboard = () => {
 
     getStats()
       .then((result: any) => {
-        const data = result.data;
-        setStats(data.stats);
-        setChartData(data.chartData);
+        setData(result.data);
         setLoading(false);
       })
       .catch((err) => {
         console.error(err);
-        setError("Could not load dashboard data.");
+        setError("Could not load dashboard data. " + err.message);
         setLoading(false);
       });
 
   }, [functions]);
 
-  if (loading && !stats) {
+  if (loading && !data) {
     return <DashboardSkeleton />;
   }
 
@@ -86,6 +82,8 @@ export const AdminDashboard = () => {
   }
   
   const formatCurrency = (value: number) => `₹${(value || 0).toFixed(2)}`;
+  const stats = data?.stats;
+  const chartData = data?.chartData || [];
 
   return (
     <div className="space-y-4">
