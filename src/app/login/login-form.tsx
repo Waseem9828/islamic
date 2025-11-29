@@ -59,10 +59,10 @@ export function LoginForm() {
                 if (isAdmin) {
                     router.push('/admin');
                 } else {
-                    router.push('/matchmaking');
+                    router.push('/play');
                 }
             } else {
-                 router.push('/matchmaking');
+                 router.push('/play');
             }
 
         } catch (error: any) {
@@ -77,7 +77,7 @@ export function LoginForm() {
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
-            router.push('/matchmaking');
+            router.push('/play');
         } catch (error: any) {
             handleAuthError(error);
         }

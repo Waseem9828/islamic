@@ -70,7 +70,7 @@ export function SignUpForm() {
       });
 
       toast.success('Account created successfully!');
-      router.push('/matchmaking');
+      router.push('/play');
     } catch (error) {
       handleAuthError(error);
     } finally {
@@ -84,7 +84,7 @@ export function SignUpForm() {
         try {
             await signInWithPopup(auth, provider);
             // The onAuthStateChanged listener in FirebaseProvider will handle profile creation
-            router.push('/matchmaking');
+            router.push('/play');
         } catch (error: any) {
             handleAuthError(error);
         }
