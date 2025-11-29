@@ -8,6 +8,7 @@ import { collection, getDocs, query, orderBy, limit, where, documentId, onSnapsh
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Trophy, Medal, Award } from 'lucide-react';
+import { LoadingScreen } from '@/components/ui/loading';
 
 // Define interfaces for our data structures
 interface User {
@@ -98,23 +99,6 @@ export default function LeaderboardPage() {
     return () => unsubscribe();
   }, [firestore]);
 
-  // Skeleton loader component for better UX
-  const LeaderboardSkeleton = () => (
-    <div className="space-y-3 pt-4">
-        {[...Array(8)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 p-4 rounded-lg border">
-                <Skeleton className="h-6 w-6 rounded-md" />
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/4" />
-                </div>
-                <Skeleton className="h-6 w-1/4" />
-            </div>
-        ))}
-    </div>
-  );
-
   return (
     <div className="container mx-auto max-w-3xl py-6 sm:py-8 animate-fade-in-up">
       <Card className="shadow-lg">
@@ -124,7 +108,7 @@ export default function LeaderboardPage() {
         </CardHeader>
         <CardContent className="p-2 sm:p-4">
           {isLoading ? (
-            <LeaderboardSkeleton />
+            <LoadingScreen text="Fetching Leaderboard..." />
           ) : (
             leaderboard.length > 0 ? (
                 <div className="flow-root">

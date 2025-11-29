@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Upload, Copy, IndianRupee, Image as ImageIcon } from 'lucide-react';
+import { Copy, IndianRupee, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
+import { LoadingScreen } from '@/components/ui/loading';
 
 export default function DepositPage() {
     const { user, isUserLoading } = useUser();
@@ -133,8 +134,8 @@ export default function DepositPage() {
         }
     };
 
-    if (isUserLoading) {
-        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    if (isUserLoading || isLoadingSettings) {
+        return <LoadingScreen />;
     }
 
     const upiUri = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount || '0'}&cu=INR`;
@@ -160,7 +161,7 @@ export default function DepositPage() {
                                     disabled={isLoadingSettings}
                                 />
                             </div>
-                            {isLoadingSettings ? <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin mt-2" /></div> : upiId ? (
+                            {isLoadingSettings ? <LoadingScreen /> : upiId ? (
                                 <div className="space-y-4 text-center">
                                     <div className="bg-white p-4 rounded-lg flex items-center justify-center">
                                        <QRCode value={upiUri} size={200} level="M" />
@@ -212,8 +213,8 @@ export default function DepositPage() {
                                     </div>
                                     <Button type="submit" size="lg" className="w-full text-base" disabled={isSubmitting || !amount}>
                                         {isSubmitting ? (
-                                            <div className="flex items-center">
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            <div className="flex items-center justify-center">
+                                                <div className="loader mr-2"></div>
                                                 <span>
                                                     {submitStep}
                                                     {submitProgress > 0 && submitProgress < 100 && ` (${Math.round(submitProgress)}%)`}

@@ -5,7 +5,7 @@ import { AdminDashboard } from './dashboard';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/ui/loading';
 
 export default function AdminPage() {
     const { isAdmin, isUserLoading } = useUser();
@@ -18,11 +18,7 @@ export default function AdminPage() {
     }, [isAdmin, isUserLoading, router]);
 
     if (isUserLoading) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
+        return <LoadingScreen text="Verifying credentials..."/>;
     }
     
     if (!isAdmin) {

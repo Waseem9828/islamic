@@ -4,22 +4,15 @@
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
-import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { LoadingScreen } from '@/components/ui/loading';
 
 interface NotificationCounts {
     deposits: number;
     withdrawals: number;
 }
-
-const LoadingScreen = () => (
-    <div className="flex flex-col items-center justify-center h-screen bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Verifying credentials...</p>
-    </div>
-);
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, isAdmin, isUserLoading } = useUser();
@@ -58,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }, [isAdmin, firestore]);
 
     if (isUserLoading || !isAdmin) {
-        return <LoadingScreen />;
+        return <LoadingScreen text="Verifying credentials..." />;
     }
 
     return (

@@ -1,15 +1,16 @@
 
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronRight, Loader2, IndianRupee, Trophy, PlusCircle } from 'lucide-react';
+import { ChevronRight, IndianRupee, Trophy, PlusCircle } from 'lucide-react';
 import { useUser, useFirebase } from '@/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { LoadingScreen } from '@/components/ui/loading';
 
 const MatchCard = ({ match }: { match: any }) => {
     const router = useRouter();
@@ -66,8 +67,7 @@ export default function PlayPage() {
   const router = useRouter();
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const [allMatches, setAllMatches] =
-   useState<any[]>([]);
+  const [allMatches, setAllMatches] = useState<any[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(true);
 
   useEffect(() => {
@@ -128,8 +128,8 @@ export default function PlayPage() {
     );
   };
 
-  if (isUserLoading || !user) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isUserLoading || isLoadingMatches || !user) {
+    return <LoadingScreen />;
   }
 
   return (

@@ -8,13 +8,14 @@ import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, Copy, Banknote, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle, XCircle, Copy, Banknote, Image as ImageIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import Image from 'next/image';
+import { LoadingScreen } from '@/components/ui/loading';
 
 // --- Type Definitions ---
 interface User {
@@ -62,10 +63,10 @@ const RequestCard = ({ request, onProcess, isSubmitting }: { request: RequestWit
                 </div>
                 <div className="flex gap-2">
                      <Button variant="outline" size="sm" className="w-full" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <><XCircle className="mr-2 h-4 w-4 text-red-500"/> Reject</>}
+                        {isSubmitting ? <div className="loader"></div> : <><XCircle className="mr-2 h-4 w-4 text-red-500"/> Reject</>}
                     </Button>
                     <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => onProcess(request.id, true)} disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : <><CheckCircle className="mr-2 h-4 w-4"/> Approve</>}
+                        {isSubmitting ? <div className="loader"></div> : <><CheckCircle className="mr-2 h-4 w-4"/> Approve</>}
                     </Button>
                 </div>
             </CardContent>
@@ -186,9 +187,7 @@ export default function ManageDepositsPage() {
       </CardHeader>
       <CardContent>
           {loading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 w-full" />)}
-            </div>
+            <LoadingScreen text="Loading Requests..." />
           ) : isMobile ? (
               <div className="space-y-4">
                   {filteredRequests.length > 0 ? (
@@ -212,5 +211,3 @@ export default function ManageDepositsPage() {
     </Card>
   );
 }
-
-    
