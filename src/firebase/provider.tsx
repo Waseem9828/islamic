@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -42,29 +43,39 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({
       setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: new Error("Auth not initialized") });
       return;
     }
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (user) => {
-        if (user) {
-            setAuthState({ user, isAdmin: false, isUserLoading: true, userError: null });
-             if (functions) {
-                const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
-                checkAdmin().then(result => {
-                    const isAdminResult = (result.data as { isAdmin: boolean }).isAdmin;
-                    setAuthState({ user, isAdmin: isAdminResult, isUserLoading: false, userError: null });
-                }).catch(error => {
-                    console.error("Admin check failed:", error);
-                    setAuthState({ user, isAdmin: false, isUserLoading: false, userError: error });
-                });
-            } else {
-                 setAuthState({ user, isAdmin: false, isUserLoading: false, userError: null });
-            }
-        } else {
-             setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: null });
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // User is signed in. First, set the user and loading state.
+        setAuthState({ user, isAdmin: false, isUserLoading: true, userError: null });
+
+        // Now, check for admin status.
+        try {
+          if (functions) {
+            const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
+            const result = await checkAdmin();
+            const isAdminResult = (result.data as { isAdmin: boolean }).isAdmin;
+            // Final state with user and admin status
+            setAuthState({ user, isAdmin: isAdminResult, isUserLoading: false, userError: null });
+          } else {
+             // Fallback if functions aren't ready for some reason
+            setAuthState({ user, isAdmin: false, isUserLoading: false, userError: new Error("Functions not available for admin check.") });
+          }
+        } catch (error: any) {
+          console.error("Admin check failed:", error);
+          // Set user but indicate admin check failed.
+          setAuthState({ user, isAdmin: false, isUserLoading: false, userError: error });
         }
-      },
-      (error) => setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: error })
-    );
+      } else {
+        // User is signed out.
+        setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: null });
+      }
+    }, (error) => {
+      // Handle errors in the auth listener itself.
+      console.error("onAuthStateChanged error:", error);
+      setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: error });
+    });
+
     return () => unsubscribe();
   }, [auth, functions]);
 
