@@ -1,6 +1,5 @@
 import './globals.css';
 import { Providers } from './providers';
-import ClientLayout from '@/components/layout/ClientLayout';
 import { Toaster } from 'sonner';
 
 export default function RootLayout({
@@ -22,7 +21,7 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>
-          <ClientLayout>{children}</ClientLayout>
+          {children}
         </Providers>
         <Toaster />
       </body>
