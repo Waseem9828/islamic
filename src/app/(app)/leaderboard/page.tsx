@@ -3,14 +3,16 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs, query, orderBy, limit, where, documentId, onSnapshot } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Medal, Award } from 'lucide-react';
+import { Trophy, Medal, Award, Crown } from 'lucide-react';
 import { LoadingScreen } from '@/components/ui/loading';
+import { cn } from '@/lib/utils';
 
-// Define interfaces for our data structures
+// --- Type Definitions ---
 interface User {
   id: string;
   email?: string;
@@ -28,15 +30,36 @@ type LeaderboardEntry = User & {
   winningBalance: number;
 };
 
-// A component to display rank icons
-const RankIcon = ({ rank }: { rank: number }) => {
-  if (rank === 1) return <Trophy className="h-6 w-6 text-yellow-400" />;
-  if (rank === 2) return <Medal className="h-6 w-6 text-gray-400" />;
-  if (rank === 3) return <Award className="h-6 w-6 text-yellow-600" />;
-  return <span className="font-bold text-lg w-6 text-center text-muted-foreground">{rank}</span>;
+// --- Helper Components ---
+
+// A component for the top 3 player cards
+const TopPlayerCard = ({ player, rank }: { player: LeaderboardEntry; rank: number }) => {
+  const rankStyles = {
+    1: { icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/50' },
+    2: { icon: Medal, color: 'text-gray-400', bg: 'bg-gray-400/10', border: 'border-gray-400/50' },
+    3: { icon: Award, color: 'text-amber-600', bg: 'bg-amber-600/10', border: 'border-amber-600/50' },
+  };
+  const { icon: Icon, color, bg, border } = rankStyles[rank as keyof typeof rankStyles];
+
+  return (
+    <Card className={cn('relative overflow-hidden shadow-lg border-2', bg, border)}>
+        <div className="absolute top-0 right-0 p-2">
+            <Icon className={cn('h-8 w-8 opacity-50', color)} />
+        </div>
+      <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+        <Avatar className="w-20 h-20 border-4 border-background mb-3">
+          <AvatarImage src={player.photoURL || undefined} alt={player.displayName || 'User'} />
+          <AvatarFallback>{player.displayName?.[0] || 'U'}</AvatarFallback>
+        </Avatar>
+        <p className="font-bold text-lg truncate w-full">{player.displayName || 'Anonymous'}</p>
+        <p className="text-sm text-muted-foreground truncate w-full">₹{player.winningBalance.toLocaleString()}</p>
+      </CardContent>
+    </Card>
+  );
 };
 
-// The main Leaderboard Page component
+
+// --- Main Leaderboard Component ---
 export default function LeaderboardPage() {
   const { firestore } = useFirebase();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -52,24 +75,28 @@ export default function LeaderboardPage() {
     );
 
     const unsubscribe = onSnapshot(walletsQuery, async (walletSnap) => {
-        setIsLoading(true);
-        const topWallets = walletSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
-        const userIds = topWallets.map(w => w.id);
+      setIsLoading(true);
+      const topWallets = walletSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Wallet));
+      const userIds = topWallets.map(w => w.id).filter(id => id); // Filter out any potential undefined IDs
 
-        if (userIds.length === 0) {
-            setLeaderboard([]);
-            setIsLoading(false);
-            return;
+      if (userIds.length === 0) {
+        setLeaderboard([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      const usersData: { [key: string]: User } = {};
+      const userPromises = [];
+      // Firestore 'in' query supports up to 30 elements
+      for (let i = 0; i < userIds.length; i += 30) {
+        const batchIds = userIds.slice(i, i + 30);
+        if (batchIds.length > 0) {
+          const usersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', batchIds));
+          userPromises.push(getDocs(usersQuery));
         }
+      }
 
-        const usersData: { [key: string]: User } = {};
-        const userPromises = [];
-        for (let i = 0; i < userIds.length; i += 30) {
-            const batchIds = userIds.slice(i, i + 30);
-            const usersQuery = query(collection(firestore, 'users'), where(documentId(), 'in', batchIds));
-            userPromises.push(getDocs(usersQuery));
-        }
-
+      try {
         const userSnaps = await Promise.all(userPromises);
         userSnaps.forEach(snap => {
             snap.docs.forEach(doc => {
@@ -90,51 +117,82 @@ export default function LeaderboardPage() {
           .filter((entry): entry is LeaderboardEntry => entry !== null);
         
         setLeaderboard(combinedData);
+      } catch (error) {
+        console.error("Error fetching user data for leaderboard:", error);
+      } finally {
         setIsLoading(false);
+      }
     }, (error) => {
-        console.error("Error fetching leaderboard data:", error);
-        setIsLoading(false);
+      console.error("Error fetching leaderboard data:", error);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, [firestore]);
+  
+  const topThree = leaderboard.slice(0, 3);
+  const others = leaderboard.slice(3);
 
   return (
-    <div className="container mx-auto max-w-3xl py-6 sm:py-8 animate-fade-in-up">
-      <Card className="shadow-lg">
-        <CardHeader>
-            <CardTitle>Global Leaderboard</CardTitle>
-            <CardDescription>See how you rank against the top players worldwide.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-4">
-          {isLoading ? (
-            <LoadingScreen text="Fetching Leaderboard..." />
-          ) : (
-            leaderboard.length > 0 ? (
-                <div className="flow-root">
-                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {leaderboard.map((player, index) => (
-                      <li key={player.id} className="flex items-center gap-4 p-3 sm:p-4 hover:bg-muted/50 transition-colors rounded-lg animate-fade-in-up" style={{ animationDelay: `${index * 30}ms` }}>
-                        <RankIcon rank={player.rank} />
-                        <Avatar className="h-12 w-12 border">
-                            <AvatarImage src={player.photoURL || undefined} alt={player.displayName || 'User'} />
-                            <AvatarFallback>{player.displayName?.[0] || player.email?.[0] || 'U'}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                            <p className="text-base font-semibold truncate">{player.displayName || 'Anonymous User'}</p>
-                            <p className="text-sm text-muted-foreground truncate">@{player.email || `user_${player.id.substring(0,6)}`}</p>
-                        </div>
-                        <p className="font-bold text-lg text-emerald-600 dark:text-emerald-500">₹{player.winningBalance.toLocaleString()}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-            ) : (
-              <p className="text-center py-12 text-muted-foreground">The leaderboard is currently empty.</p>
-            )
-          )}
-        </CardContent>
-      </Card>
+    <div className="container mx-auto max-w-4xl py-6 sm:py-8">
+      <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold tracking-tight">Global Leaderboard</h1>
+          <p className="mt-2 text-lg text-muted-foreground">See how you rank against the top players worldwide.</p>
+      </div>
+
+      {isLoading ? (
+        <LoadingScreen text="Fetching Leaderboard..." />
+      ) : leaderboard.length > 0 ? (
+        <div className="space-y-12">
+            {/* Top 3 Players */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 items-end">
+                {topThree[1] && <div className="order-2 md:order-1"><TopPlayerCard player={topThree[1]} rank={2} /></div>}
+                {topThree[0] && <div className="order-1 md:order-2"><TopPlayerCard player={topThree[0]} rank={1} /></div>}
+                {topThree[2] && <div className="order-3 md:order-3"><TopPlayerCard player={topThree[2]} rank={3} /></div>}
+            </div>
+
+            {/* Other Players Table */}
+            {others.length > 0 && (
+            <Card>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead className="w-16 text-center">Rank</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead className="text-right">Winnings</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {others.map((player) => (
+                        <TableRow key={player.id}>
+                            <TableCell className="text-center font-bold text-lg text-muted-foreground">{player.rank}</TableCell>
+                            <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10 border">
+                                    <AvatarImage src={player.photoURL || undefined} alt={player.displayName || 'U'} />
+                                    <AvatarFallback>{player.displayName?.[0] || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <p className="font-semibold">{player.displayName || 'Anonymous User'}</p>
+                                    <p className="text-xs text-muted-foreground">{player.email || `user_${player.id.substring(0,6)}`}</p>
+                                </div>
+                            </div>
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-500">₹{player.winningBalance.toLocaleString()}</TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </Card>
+            )}
+        </div>
+      ) : (
+        <div className="text-center py-16 text-muted-foreground border-2 border-dashed rounded-lg">
+            <Trophy className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4"/>
+            <h3 className="text-xl font-semibold">The Leaderboard is Empty</h3>
+            <p>Be the first to make your mark!</p>
+        </div>
+      )}
     </div>
   );
 }
