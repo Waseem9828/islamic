@@ -13,7 +13,7 @@ type ToasterToast = ToastProps & {
 
 type ToastState = {
   toasts: ToasterToast[];
-  addToast: (toast: Omit<ToasterToast, "id">) => void;
+  addToast: (toast: ToasterToast) => void;
   updateToast: (id: string, toast: Partial<ToasterToast>) => void;
   dismissToast: (id: string) => void;
   removeToast: (id: string) => void;
@@ -30,7 +30,7 @@ export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
   addToast: (toast) =>
     set((state) => {
-      const newToasts = [...state.toasts, { ...toast, id: genId() }];
+      const newToasts = [...state.toasts, toast];
       const slicedToasts = newToasts.slice(-TOAST_LIMIT);
       return { toasts: slicedToasts };
     }),

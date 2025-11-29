@@ -1,17 +1,15 @@
 {
   "name": "functions",
   "scripts": {
-    "build": "npm run-script-if-present build:ts",
-    "build:ts": "tsc",
-    "deploy": "firebase deploy --only functions",
-    "lint": "npm run-script-if-present lint:ts",
-    "lint:ts": "eslint \"-c\" \".eslintrc.js\" \"--ext\" \".ts\" \"src/\"",
+    "build": "tsc",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
-    "start": "npm run shell"
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "lint": "eslint --ext .js,.ts ."
   },
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "lib/index.js",
   "dependencies": {

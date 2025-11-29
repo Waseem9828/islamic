@@ -1,0 +1,10 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^5.0.1",
+    "firebase-admin": "^12.1.0",
+    "cors": "^2.8.5"
+  }
+}
