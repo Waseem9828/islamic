@@ -12,9 +12,10 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from 'sonner';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase, useUser } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, Loader2, Share2, Copy, CheckCircle, ArrowRight, Info, Wallet } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { LoadingScreen } from '@/components/ui/loading';
 
 export default function CreateMatchPage() {
     const router = useRouter();
@@ -35,25 +36,32 @@ export default function CreateMatchPage() {
 
     const totalBalance = useMemo(() => {
         if (!wallet) return 0;
-        return wallet.depositBalance + wallet.winningBalance + wallet.bonusBalance;
+        // Only deposit and winning balance can be used for entry fees
+        return wallet.depositBalance + wallet.winningBalance;
     }, [wallet]);
     
     useEffect(() => {
-        if (user && firestore) {
+        if (isUserLoading) return;
+        if (!user) {
+            router.push('/login');
+            return;
+        }
+        if (firestore) {
+            setIsLoadingWallet(true);
             const walletRef = doc(firestore, 'wallets', user.uid);
-            getDoc(walletRef).then(docSnap => {
+            const unsubscribe = onSnapshot(walletRef, (docSnap) => {
                 if (docSnap.exists()) {
                     setWallet(docSnap.data() as any);
                 } else {
                     setWallet({ depositBalance: 0, winningBalance: 0, bonusBalance: 0 });
                 }
                 setIsLoadingWallet(false);
-            }).catch(err => {
+            }, err => {
                 toast.error("Failed to load wallet.");
+                console.error(err);
                 setIsLoadingWallet(false);
             });
-        } else if (!isUserLoading && !user) {
-            router.push('/login');
+            return () => unsubscribe();
         }
     }, [user, firestore, isUserLoading, router]);
 
@@ -71,13 +79,14 @@ export default function CreateMatchPage() {
 
         if (totalBalance < entryFee[0]) {
             toast.error("Insufficient Balance", { description: `You need at least ₹${entryFee[0]} to create this match.` });
+            router.push('/deposit');
             return;
         }
         
         setIsCreating(true);
         try {
             // Generate a unique match ID on the client
-            const newMatchId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const newMatchId = doc(collection(firestore!, 'matches')).id.substring(0, 8).toUpperCase();
 
             const result = await createMatchFunction({
                 matchId: newMatchId,
@@ -99,7 +108,7 @@ export default function CreateMatchPage() {
             }
         } catch (error: any) {
             console.error("Error creating match: ", error);
-            toast.error("Failed to Create Match", { description: error.message || "This Match ID is already in use." });
+            toast.error("Failed to Create Match", { description: error.message || "An internal error occurred." });
         } finally {
             setIsCreating(false);
         }
@@ -111,25 +120,28 @@ export default function CreateMatchPage() {
     };
     
     const handleShare = () => {
+        const shareUrl = `${window.location.origin}/match/${createdMatchId}`;
+        const shareText = `Join my Ludo match on Ludo Arena!\nMatch ID: ${createdMatchId}\nEntry Fee: ₹${entryFee[0]}`;
+        
         if (navigator.share) {
             navigator.share({
                 title: `Join my Ludo match: ${matchTitle || `Match ${createdMatchId}`}`,
-                text: `Join my Ludo match!\nMatch ID: ${createdMatchId}\nEntry Fee: ₹${entryFee[0]}`,
-                url: window.location.origin + `/match/${createdMatchId}`,
+                text: shareText,
+                url: shareUrl,
             }).catch(err => console.log('Error sharing', err));
         } else {
-            handleCopyCode();
-            toast.info("Sharing not supported. Room code copied instead.");
+            navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+            toast.info("Sharing not supported. Invite link copied instead.");
         }
     };
 
     if (isUserLoading || isLoadingWallet) {
-        return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+        return <LoadingScreen text="Loading wallet..." />;
     }
     
     if (isMatchCreated) {
         return (
-            <div className="container mx-auto max-w-md py-8">
+            <div className="container mx-auto max-w-md py-8 animate-fade-in-up">
                 <Card>
                     <CardHeader className="text-center">
                         <CheckCircle className="mx-auto w-12 h-12 text-green-500" />
@@ -144,8 +156,8 @@ export default function CreateMatchPage() {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                             <Button onClick={handleCopyCode} variant="outline" className="w-full"><Copy className="mr-2 h-4 w-4"/>Copy</Button>
-                             <Button onClick={handleShare} className="w-full"><Share2 className="mr-2 h-4 w-4"/>Share</Button>
+                             <Button onClick={handleCopyCode} variant="outline" className="w-full"><Copy className="mr-2 h-4 w-4"/>Copy ID</Button>
+                             <Button onClick={handleShare} className="w-full"><Share2 className="mr-2 h-4 w-4"/>Share Invite</Button>
                         </div>
                          <Card className="bg-muted/50">
                             <CardHeader className='p-4'>
@@ -176,9 +188,9 @@ export default function CreateMatchPage() {
                 <CardContent className="space-y-6 pt-6">
                     <Alert variant={totalBalance < entryFee[0] ? "destructive" : "default"}>
                         <Wallet className="h-4 w-4" />
-                        <AlertTitle>Wallet Balance</AlertTitle>
+                        <AlertTitle>Available Balance</AlertTitle>
                         <AlertDescription>
-                            Your total balance is ₹{totalBalance.toFixed(2)}. The entry fee of ₹{entryFee[0]} will be deducted upon creation.
+                            Your usable balance is ₹{totalBalance.toFixed(2)}. The entry fee of ₹{entryFee[0]} will be deducted upon creation.
                         </AlertDescription>
                     </Alert>
 
