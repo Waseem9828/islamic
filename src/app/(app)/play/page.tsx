@@ -14,6 +14,7 @@ import { useUser, useFirebase } from '@/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { LoadingScreen } from '@/components/ui/loading';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 
 const MatchCard = ({ match }: { match: any }) => {
