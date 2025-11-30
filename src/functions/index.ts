@@ -1,3 +1,4 @@
+// Triggering a redeployment to apply all recent fixes.
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
@@ -43,7 +44,7 @@ const ensureAuthenticated = (context: functions.https.CallableContext) => {
  * Throws a "permission-denied" error if the user is not an admin.
  * @param {functions.https.CallableContext} context The context of the function call.
  */
-const ensureAdmin = async (context: functions.https.CallableContext) => {
+const ensureAdmin = async (context: functions.hs.CallableContext) => {
   ensureAuthenticated(context);
   const userIsAdmin = await isAdmin(context.auth!.uid);
   if (!userIsAdmin) {
