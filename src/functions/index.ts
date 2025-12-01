@@ -44,7 +44,7 @@ const ensureAuthenticated = (context: functions.https.CallableContext) => {
  * Throws a "permission-denied" error if the user is not an admin.
  * @param {functions.https.CallableContext} context The context of the function call.
  */
-const ensureAdmin = async (context: functions.hs.CallableContext) => {
+const ensureAdmin = async (context: functions.https.CallableContext) => {
   ensureAuthenticated(context);
   const userIsAdmin = await isAdmin(context.auth!.uid);
   if (!userIsAdmin) {
@@ -410,6 +410,7 @@ export const processDeposit = regionalFunctions.https.onCall(async (data, contex
             const walletRef = db.collection('wallets').doc(requestData.userId);
             transaction.update(walletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
             
+            // Create a corresponding transaction record
             const transactionRef = db.collection('transactions').doc();
             transaction.set(transactionRef, {
                 userId: requestData.userId,
