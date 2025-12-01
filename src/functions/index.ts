@@ -1,3 +1,4 @@
+
 // Triggering a redeployment to apply all recent fixes.
 
 import * as functions from "firebase-functions";
