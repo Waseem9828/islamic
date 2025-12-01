@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowDownLeft, ArrowUpRight, Wallet, PiggyBank, Trophy, History } from 'lucide-react';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 // Main component for the Wallet Page
 export default function WalletPage() {
@@ -142,6 +143,23 @@ function BalanceCard({ title, amount, icon: Icon, className }: { title: string, 
   );
 }
 
+const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+      case 'success':
+      case 'completed':
+        return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>;
+      case 'rejected':
+      case 'failed':
+      case 'cancelled':
+        return <Badge variant="destructive">Failed</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+};
+
 function RecentTransactions({ transactions }: { transactions: DocumentData[] }) {
   const isValidTimestamp = (timestamp: any): timestamp is Timestamp => {
       return timestamp && typeof timestamp.toDate === 'function';
@@ -171,7 +189,7 @@ function RecentTransactions({ transactions }: { transactions: DocumentData[] }) 
           {transactions.map((tx) => (
             <div key={tx.id} className="flex items-center">
               <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 mr-4">
-                {tx.type === 'deposit' || tx.type === 'credit' ? (
+                {tx.type === 'credit' ? (
                   <ArrowDownLeft className="h-5 w-5 text-green-500" />
                 ) : (
                   <ArrowUpRight className="h-5 w-5 text-red-500" />
@@ -180,11 +198,14 @@ function RecentTransactions({ transactions }: { transactions: DocumentData[] }) 
               <div className="flex-grow">
                 <p className="font-semibold capitalize">{tx.reason.replace(/_/g, ' ')}</p>
                 <p className="text-sm text-muted-foreground">
-                  {isValidTimestamp(tx.timestamp) ? format(tx.timestamp.toDate(), 'PPpp') : 'Date not available'}
+                  {isValidTimestamp(tx.timestamp) ? format(tx.timestamp.toDate(), 'PPp') : 'Date not available'}
                 </p>
               </div>
-              <div className={`font-bold ${tx.type === 'deposit' || tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                {tx.type === 'deposit' || tx.type === 'credit' ? '+' : '-'}₹{tx.amount.toFixed(2)}
+              <div className="flex flex-col items-end">
+                <div className={`font-bold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                  {tx.type === 'credit' ? '+' : '-'}₹{tx.amount.toFixed(2)}
+                </div>
+                {getStatusBadge(tx.status)}
               </div>
             </div>
           ))}
@@ -239,3 +260,4 @@ function WalletSkeleton() {
     </div>
   );
 }
+

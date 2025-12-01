@@ -8,16 +8,18 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Eye, XCircle, Crown, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Eye, XCircle, Crown, Loader2, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
 
@@ -33,6 +35,12 @@ interface Match {
     winner?: string;
 }
 
+interface NewMatchState {
+    title: string;
+    entryFee: string;
+    maxPlayers: string;
+}
+
 // --- Client Component ---
 export const MatchClient = () => {
     const { firestore, functions } = useFirebase();
@@ -43,6 +51,9 @@ export const MatchClient = () => {
     const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
     const [actionState, setActionState] = useState<{ matchId: string | null; winnerId: string | null; type: 'win' | 'cancel' | null }>({ matchId: null, winnerId: null, type: null });
     const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [newMatch, setNewMatch] = useState<NewMatchState>({ title: '', entryFee: '', maxPlayers: '' });
+    const [isCreatingMatch, setIsCreatingMatch] = useState(false);
 
     useEffect(() => {
         if (!firestore) return;
@@ -61,6 +72,34 @@ export const MatchClient = () => {
 
         return () => unsubscribe();
     }, [firestore]);
+
+    const handleCreateMatch = async () => {
+        if (!firestore) return;
+        const { title, entryFee, maxPlayers } = newMatch;
+        if (!title || !entryFee || !maxPlayers) {
+            toast.error("All fields are required.");
+            return;
+        }
+
+        setIsCreatingMatch(true);
+        try {
+            await addDoc(collection(firestore, "matches"), {
+                matchTitle: title,
+                entryFee: parseInt(entryFee, 10),
+                maxPlayers: parseInt(maxPlayers, 10),
+                status: 'waiting',
+                players: [],
+                createdAt: Timestamp.now(),
+            });
+            toast.success("Match created successfully!");
+            setIsCreateDialogOpen(false);
+            setNewMatch({ title: '', entryFee: '', maxPlayers: '' });
+        } catch (error: any) {
+            toast.error("Error creating match:", { description: error.message });
+        } finally {
+            setIsCreatingMatch(false);
+        }
+    };
     
     const handleAction = async () => {
         if (!actionState.matchId || !actionState.type || !functions) return;
@@ -260,13 +299,45 @@ export const MatchClient = () => {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex items-center py-4">
+                 <div className="flex items-center justify-between py-4">
                     <Input
                         placeholder="Search by title or ID..."
                         value={globalFilter ?? ''}
                         onChange={(event) => setGlobalFilter(event.target.value)}
                         className="max-w-sm"
                     />
+                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button><PlusCircle className="mr-2 h-4 w-4"/> Create Match</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Create New Match</DialogTitle>
+                                <DialogDescription>Fill in the details below to create a new match.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="title" className="text-right">Title</Label>
+                                    <Input id="title" value={newMatch.title} onChange={(e) => setNewMatch(prev => ({...prev, title: e.target.value}))} className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="entry-fee" className="text-right">Entry Fee</Label>
+                                    <Input id="entry-fee" type="number" value={newMatch.entryFee} onChange={(e) => setNewMatch(prev => ({...prev, entryFee: e.target.value}))} className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="max-players" className="text-right">Max Players</Label>
+                                    <Input id="max-players" type="number" value={newMatch.maxPlayers} onChange={(e) => setNewMatch(prev => ({...prev, maxPlayers: e.target.value}))} className="col-span-3" />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button variant={'outline'} disabled={isCreatingMatch}>Cancel</Button></DialogClose>
+                                <Button onClick={handleCreateMatch} disabled={isCreatingMatch}>
+                                    {isCreatingMatch && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                    Create
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
                 <DataTable table={table} columns={columns} />
             </CardContent>

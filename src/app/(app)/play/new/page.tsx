@@ -12,7 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from 'sonner';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase, useUser } from '@/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, Loader2, Share2, Copy, CheckCircle, ArrowRight, Info, Wallet } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { LoadingScreen } from '@/components/ui/loading';

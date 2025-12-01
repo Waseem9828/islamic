@@ -25,18 +25,19 @@ const formatDate = (timestamp: any) => {
 };
 
 const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'approved':
       case 'success':
       case 'completed':
-        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Completed</Badge>;
+        return <Badge variant="default" className="bg-green-600 hover:bg-green-700">Completed</Badge>;
       case 'pending':
         return <Badge variant="secondary">Pending</Badge>;
       case 'rejected':
+      case 'failed':
       case 'cancelled':
         return <Badge variant="destructive">Failed</Badge>;
       default:
-        return <Badge>{status}</Badge>;
+        return <Badge variant="outline">{status}</Badge>;
     }
 };
 

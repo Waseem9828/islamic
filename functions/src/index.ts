@@ -170,3 +170,84 @@ export const requestDeposit = regionalFunctions.https.onCall(async (data, contex
     throw new functions.https.HttpsError("internal", "Error processing deposit request.");
   }
 });
+
+export const createMatch = regionalFunctions.https.onCall(async (data, context) => {
+    ensureAuthenticated(context);
+    const uid = context.auth!.uid;
+  
+    const { matchId, matchTitle, entryFee, maxPlayers, privacy, timeLimit } = data;
+  
+    // Basic validation
+    if (!matchId || !entryFee || !maxPlayers || !privacy || !timeLimit) {
+      throw new functions.https.HttpsError("invalid-argument", "Missing required match parameters.");
+    }
+  
+    const walletRef = db.collection("wallets").doc(uid);
+    const matchRef = db.collection("matches").doc(matchId);
+  
+    try {
+      await db.runTransaction(async (transaction) => {
+        const walletDoc = await transaction.get(walletRef);
+  
+        if (!walletDoc.exists) {
+          throw new functions.https.HttpsError("not-found", "User wallet does not exist.");
+        }
+  
+        const walletData = walletDoc.data()!;
+        const usableBalance = walletData.depositBalance + walletData.winningBalance;
+  
+        if (usableBalance < entryFee) {
+          throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create the match.");
+        }
+  
+        // Deduct from winning balance first, then deposit
+        let remainingFee = entryFee;
+        let winningDeduction = 0;
+        let depositDeduction = 0;
+  
+        if (walletData.winningBalance > 0) {
+          winningDeduction = Math.min(walletData.winningBalance, remainingFee);
+          remainingFee -= winningDeduction;
+        }
+  
+        if (remainingFee > 0) {
+          depositDeduction = Math.min(walletData.depositBalance, remainingFee);
+          remainingFee -= depositDeduction;
+        }
+  
+        if (remainingFee > 0) {
+          // This should theoretically not be reached if the initial check passes
+          throw new functions.https.HttpsError("internal", "Balance calculation error.");
+        }
+  
+        // Create the match document
+        transaction.set(matchRef, {
+          title: matchTitle,
+          entryFee: entryFee,
+          maxPlayers: maxPlayers,
+          privacy: privacy,
+          timeLimit: timeLimit,
+          hostId: uid,
+          players: [uid],
+          status: "waiting", // Initial status
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+  
+        // Update the wallet balance
+        transaction.update(walletRef, {
+          winningBalance: admin.firestore.FieldValue.increment(-winningDeduction),
+          depositBalance: admin.firestore.FieldValue.increment(-depositDeduction),
+        });
+      });
+  
+      return { status: "success", message: "Match created successfully!", matchId: matchId };
+    } catch (error) {
+      console.error("Error creating match:", error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+      throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
+    }
+  });
+
