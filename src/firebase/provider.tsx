@@ -8,7 +8,18 @@ import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseStorage } from 'firebase/storage';
 import { Functions, httpsCallable } from 'firebase/functions';
 import { initializeFirebase } from './core';
+import { Loader2 } from 'lucide-react';
 
+// 1. Service Initialization State
+interface FirebaseServices {
+  firebaseApp: FirebaseApp;
+  auth: Auth;
+  firestore: Firestore;
+  storage: FirebaseStorage;
+  functions: Functions;
+}
+
+// 2. User Authentication State
 interface UserAuthState {
   user: User | null;
   isAdmin: boolean;
@@ -16,20 +27,16 @@ interface UserAuthState {
   userError: Error | null;
 }
 
-export interface FirebaseContextState extends UserAuthState {
-  firebaseApp: FirebaseApp | null;
-  firestore: Firestore | null;
-  auth: Auth | null;
-  storage: FirebaseStorage | null;
-  functions: Functions | null;
-}
+// 3. Combined Context State
+export interface FirebaseContextState extends Partial<FirebaseServices>, UserAuthState {}
 
+// Create the context
 const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const { firebaseApp, auth, firestore, storage, functions } = useMemo(() => initializeFirebase(), []);
+// The Provider Component
+export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [services, setServices] = useState<FirebaseServices | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const [authState, setAuthState] = useState<UserAuthState>({
     user: null,
@@ -38,55 +45,70 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({
     userError: null,
   });
 
+  // Effect for initializing Firebase services
   useEffect(() => {
-    if (!auth) {
-      setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: new Error("Auth not initialized") });
+    try {
+      const initializedServices = initializeFirebase();
+      setServices(initializedServices);
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+      // Handle initialization error, maybe set an error state
+    } finally {
+      setIsInitializing(false);
+    }
+  }, []);
+
+  // Effect for handling authentication state
+  useEffect(() => {
+    if (!services?.auth) {
+      // If services aren't ready, or auth is specifically missing.
+      const error = services === null ? undefined : new Error("Auth not initialized");
+      setAuthState(prevState => ({ ...prevState, isUserLoading: false, userError: error || null }));
       return;
     }
 
+    const { auth, functions } = services;
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User is signed in. First, set the user and loading state.
         setAuthState({ user, isAdmin: false, isUserLoading: true, userError: null });
-
-        // Now, check for admin status.
         try {
           if (functions) {
             const checkAdmin = httpsCallable(functions, 'checkAdminStatus');
             const result = await checkAdmin();
             const isAdminResult = (result.data as { isAdmin: boolean }).isAdmin;
-            // Final state with user and admin status
             setAuthState({ user, isAdmin: isAdminResult, isUserLoading: false, userError: null });
           } else {
-             // Fallback if functions aren't ready for some reason
-            setAuthState({ user, isAdmin: false, isUserLoading: false, userError: new Error("Functions not available for admin check.") });
+            throw new Error("Functions not available for admin check.");
           }
         } catch (error: any) {
           console.error("Admin check failed:", error);
-          // Set user but indicate admin check failed.
           setAuthState({ user, isAdmin: false, isUserLoading: false, userError: error });
         }
       } else {
-        // User is signed out.
         setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: null });
       }
     }, (error) => {
-      // Handle errors in the auth listener itself.
       console.error("onAuthStateChanged error:", error);
       setAuthState({ user: null, isAdmin: false, isUserLoading: false, userError: error });
     });
 
     return () => unsubscribe();
-  }, [auth, functions]);
+  }, [services]); // Rerun when services are initialized
 
+  // Memoize the context value
   const contextValue = useMemo(() => ({
-    firebaseApp,
-    firestore,
-    auth,
-    storage,
-    functions,
+    ...(services || {}),
     ...authState,
-  }), [firebaseApp, firestore, auth, storage, functions, authState]);
+  }), [services, authState]);
+
+  // Render a loading indicator while services are initializing
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -95,6 +117,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+// Custom Hooks
 export const useFirebase = () => {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
@@ -104,18 +127,14 @@ export const useFirebase = () => {
 };
 
 export const useAuth = () => {
-  const { auth } = useFirebase();
-  if (!auth) {
-    throw new Error('Auth has not been initialized.');
-  }
-  return auth;
+  const { auth, user, isUserLoading, userError } = useFirebase();
+  if (!auth) throw new Error('Auth has not been initialized.');
+  return { auth, user, isUserLoading, userError };
 };
 
 export const useFirestore = () => {
   const { firestore } = useFirebase();
-  if (!firestore) {
-    throw new Error('Firestore has not been initialized.');
-  }
+  if (!firestore) throw new Error('Firestore has not been initialized.');
   return firestore;
 };
 

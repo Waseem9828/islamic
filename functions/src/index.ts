@@ -46,11 +46,19 @@ const ensureAuthenticated = (context: functions.https.CallableContext) => {
  */
 const ensureAdmin = async (context: functions.https.CallableContext) => {
   ensureAuthenticated(context);
-  const userIsAdmin = await isAdmin(context.auth!.uid);
-  if (!userIsAdmin) {
+  try {
+    const userIsAdmin = await isAdmin(context.auth!.uid);
+    if (!userIsAdmin) {
+      throw new functions.https.HttpsError(
+        "permission-denied",
+        "This function must be called by an admin.",
+      );
+    }
+  } catch (error) {
+    console.error(`Ensure admin check failed for UID: ${context.auth!.uid}`, error);
     throw new functions.https.HttpsError(
-      "permission-denied",
-      "This function must be called by an admin.",
+      "internal",
+      "An internal error occurred while checking for admin permissions.",
     );
   }
 };
