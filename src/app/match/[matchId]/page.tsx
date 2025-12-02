@@ -349,7 +349,7 @@ export default function MatchLobbyPage() {
 
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
-  const readyPlayerCount = match ? match.players.filter(p => match.playerInfo[p]?.isReady).length : 0;
+  const readyPlayerCount = match && match.playerInfo ? match.players.filter(p => match.playerInfo[p]?.isReady).length : 0;
   const allPlayersReady = match ? readyPlayerCount === match.players.length : false;
   const canStart = isCreator && match && match.players.length >= 2 && allPlayersReady;
 
@@ -359,7 +359,7 @@ export default function MatchLobbyPage() {
 
   const playersList: (Player | null)[] = Array.from({ length: match.maxPlayers }, (_, i) => {
       const uid = match.players[i];
-      if (!uid) return null;
+      if (!uid || !match.playerInfo) return null;
       return {
           uid,
           name: match.playerInfo[uid]?.name || 'Unknown',
@@ -454,8 +454,8 @@ export default function MatchLobbyPage() {
                         </Button>
                     )}
                     
-                    <Button size="lg" onClick={handleReadyToggle} className={cn("text-base h-12", isCreator ? '' : 'col-span-2')} variant={match.playerInfo[user!.uid]?.isReady ? 'secondary' : 'default'}>
-                        <CheckCircle className="mr-2 h-5 w-5"/>{match.playerInfo[user!.uid]?.isReady ? 'Set Not Ready' : 'Set Ready'}
+                    <Button size="lg" onClick={handleReadyToggle} className={cn("text-base h-12", isCreator ? '' : 'col-span-2')} variant={match.playerInfo?.[user!.uid]?.isReady ? 'secondary' : 'default'}>
+                        <CheckCircle className="mr-2 h-5 w-5"/>{match.playerInfo?.[user!.uid]?.isReady ? 'Set Not Ready' : 'Set Ready'}
                     </Button>
 
                      {(!isCreator || (isCreator && match.players.length === 1)) && (
