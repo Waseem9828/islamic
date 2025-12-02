@@ -404,13 +404,14 @@ export const processDepositRequest = regionalFunctions.https.onCall(async (data,
             const userWalletRef = db.collection("wallets").doc(requestData.userId);
             transaction.update(userWalletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
             
-            const userTransactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
+            // Create a record in the top-level 'transactions' collection
+            const userTransactionRef = db.collection('transactions').doc();
             transaction.set(userTransactionRef, { 
+                userId: requestData.userId,
                 amount: requestData.amount, 
                 reason: "deposit_approved", 
                 type: 'credit',
-                status: 'completed',
-                userId: requestData.userId,
+                status: 'completed', // Set the status to completed
                 depositId: requestId, 
                 timestamp: admin.firestore.FieldValue.serverTimestamp() 
             });
