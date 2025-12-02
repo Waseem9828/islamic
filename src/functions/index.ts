@@ -1,7 +1,4 @@
 
-
-// Triggering a redeployment to apply all recent fixes.
-
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 
@@ -316,6 +313,17 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
     if (!matchId) {
         throw new functions.https.HttpsError('invalid-argument', 'A match ID is required.');
     }
+
+    // Check user's active match count
+    const activeMatchesQuery = db.collection('matches')
+        .where('players', 'array-contains', uid)
+        .where('status', 'in', ['waiting', 'inprogress']);
+    
+    const activeMatchesSnap = await activeMatchesQuery.get();
+
+    if (activeMatchesSnap.size >= 3) {
+        throw new functions.https.HttpsError('failed-precondition', 'You can only have a maximum of 3 active matches.');
+    }
     
     const walletRef = db.collection('wallets').doc(uid);
     const matchRef = db.collection('matches').doc(matchId);
@@ -411,7 +419,7 @@ export const processDepositRequest = regionalFunctions.https.onCall(async (data,
                 amount: requestData.amount, 
                 reason: "deposit_approved", 
                 type: 'credit',
-                status: 'completed', // Set the status to completed
+                status: 'completed',
                 depositId: requestId, 
                 timestamp: admin.firestore.FieldValue.serverTimestamp() 
             });

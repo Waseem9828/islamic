@@ -302,6 +302,7 @@ export default function MatchLobbyPage() {
 
     } else { // leave action
         try {
+            const isCreator = user && match?.createdBy === user.uid;
             if (isCreator && match.players.length === 1) {
                  await updateDoc(matchRef, { status: "cancelled" });
                  toast.info('You left and the match was cancelled.');
@@ -392,7 +393,7 @@ export default function MatchLobbyPage() {
         {match.status === 'waiting' &&
             <div className="grid grid-cols-2 gap-4 mb-4">
                 {playersList.map((player, index) => (
-                    <PlayerSlot key={player?.uid || index} player={player} isCreator={player?.uid === match.createdBy} />
+                    <PlayerSlot key={player?.uid || index} player={player} isCreator={!!player && player.uid === match.createdBy} />
                 ))}
             </div>
         }
@@ -477,4 +478,3 @@ export default function MatchLobbyPage() {
   );
 }
 
-    

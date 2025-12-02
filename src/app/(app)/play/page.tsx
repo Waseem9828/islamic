@@ -6,8 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ChevronRight, IndianRupee, Trophy, PlusCircle, Gamepad2, Search, ListFilter, Flame, Hourglass, XCircle, User } from 'lucide-react';
 import { useUser, useFirebase } from '@/firebase';
@@ -15,6 +13,7 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { LoadingScreen } from '@/components/ui/loading';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 
 
 const MatchCard = ({ match }: { match: any }) => {
@@ -124,7 +123,7 @@ export default function PlayPage() {
 
     const my = allMatches.filter(m => m.players.includes(user.uid) && (m.status === 'waiting' || m.status === 'inprogress'));
     const open = allMatches.filter(m => m.status === 'waiting' && !m.players.includes(user.uid) && m.privacy === 'public');
-    const ongoing = allMatches.filter(m => m.status === 'inprogress');
+    const ongoing = allMatches.filter(m => m.status === 'inprogress' && !m.players.includes(user.uid));
     const cancelled = allMatches.filter(m => m.status === 'cancelled');
     
     return { myMatches: my, openMatches: open, ongoingMatches: ongoing, cancelledMatches: cancelled };
@@ -162,7 +161,7 @@ export default function PlayPage() {
         <Accordion type="multiple" defaultValue={['item-1', 'item-2']} className="w-full space-y-3">
             <AccordionItem value="item-1" className="border-b-0">
                 <AccordionTrigger className={cn(triggerClasses, "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200/70")}>
-                    <span className="flex items-center gap-2"><User className="h-4 w-4 text-blue-600 dark:text-blue-400"/> My Active</span>
+                    <span className="flex items-center gap-2"><User className="h-4 w-4 text-blue-600 dark:text-blue-400"/> My Active Matches</span>
                     <Badge variant="secondary">{myMatches.length}</Badge>
                 </AccordionTrigger>
                 <AccordionContent className="p-1">
@@ -171,7 +170,7 @@ export default function PlayPage() {
             </AccordionItem>
              <AccordionItem value="item-2" className="border-b-0">
                 <AccordionTrigger className={cn(triggerClasses, "bg-green-100 dark:bg-green-900/30 hover:bg-green-200/70")}>
-                    <span className="flex items-center gap-2"><Flame className="h-4 w-4 text-green-600 dark:text-green-400"/> Open</span>
+                    <span className="flex items-center gap-2"><Flame className="h-4 w-4 text-green-600 dark:text-green-400"/> Open Matches</span>
                      <Badge variant="secondary">{openMatches.length}</Badge>
                 </AccordionTrigger>
                 <AccordionContent className="p-1">
@@ -180,7 +179,7 @@ export default function PlayPage() {
             </AccordionItem>
              <AccordionItem value="item-3" className="border-b-0">
                 <AccordionTrigger className={cn(triggerClasses, "bg-orange-100 dark:bg-orange-900/30 hover:bg-orange-200/70")}>
-                    <span className="flex items-center gap-2"><Hourglass className="h-4 w-4 text-orange-600 dark:text-orange-400"/> Ongoing</span>
+                    <span className="flex items-center gap-2"><Hourglass className="h-4 w-4 text-orange-600 dark:text-orange-400"/> Live Matches</span>
                      <Badge variant="secondary">{ongoingMatches.length}</Badge>
                 </AccordionTrigger>
                 <AccordionContent className="p-1">
@@ -189,7 +188,7 @@ export default function PlayPage() {
             </AccordionItem>
              <AccordionItem value="item-4" className="border-b-0">
                 <AccordionTrigger className={cn(triggerClasses, "bg-red-100 dark:bg-red-900/30 hover:bg-red-200/70")}>
-                    <span className="flex items-center gap-2"><XCircle className="h-4 w-4 text-red-600 dark:text-red-400"/> Cancelled</span>
+                    <span className="flex items-center gap-2"><XCircle className="h-4 w-4 text-red-600 dark:text-red-400"/> Cancelled Matches</span>
                     <Badge variant="secondary">{cancelledMatches.length}</Badge>
                 </AccordionTrigger>
                 <AccordionContent className="p-1">
@@ -200,4 +199,3 @@ export default function PlayPage() {
     </div>
   );
 }
-
