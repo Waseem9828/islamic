@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, where, orderBy, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LoadingScreen } from '@/components/ui/loading';
+import { Badge } from '@/components/ui/badge';
 
 
 // --- Type Definitions ---
@@ -30,6 +31,7 @@ interface WithdrawalRequest {
     upiId: string;
     userId: string;
     requestedAt: { toDate: () => Date };
+    status: 'pending' | 'approved' | 'rejected';
 }
 type RequestWithUser = WithdrawalRequest & { user?: User };
 
@@ -46,6 +48,9 @@ const WithdrawalCard = ({ request, onProcess, isSubmitting }: { request: Request
                     <p className="font-semibold text-sm">{user?.displayName || 'Unknown'}</p>
                     <p className="text-xs text-muted-foreground">{formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true })}</p>
                 </div>
+                 <Badge variant={request.status === 'pending' ? 'secondary' : request.status === 'approved' ? 'default' : 'destructive'} className="ml-auto capitalize">
+                    {request.status}
+                </Badge>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-3">
                 <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
@@ -58,14 +63,16 @@ const WithdrawalCard = ({ request, onProcess, isSubmitting }: { request: Request
                         <Copy className="h-4 w-4"/>
                     </Button>
                 </div>
-                <div className="flex gap-2">
-                     <Button variant="outline" size="sm" className="w-full" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
-                        {isSubmitting ? <div className="loader"></div> : <><XCircle className="mr-2 h-4 w-4 text-red-500"/> Reject</>}
-                    </Button>
-                    <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => onProcess(request.id, true)} disabled={isSubmitting}>
-                        {isSubmitting ? <div className="loader"></div> : <><CheckCircle className="mr-2 h-4 w-4"/> Approve</>}
-                    </Button>
-                </div>
+                {request.status === 'pending' && (
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="w-full" onClick={() => onProcess(request.id, false)} disabled={isSubmitting}>
+                            {isSubmitting ? <div className="loader"></div> : <><XCircle className="mr-2 h-4 w-4 text-red-500"/> Reject</>}
+                        </Button>
+                        <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => onProcess(request.id, true)} disabled={isSubmitting}>
+                            {isSubmitting ? <div className="loader"></div> : <><CheckCircle className="mr-2 h-4 w-4"/> Approve</>}
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
@@ -93,8 +100,7 @@ export default function ManageWithdrawalsPage() {
         return;
     }
     const q = query(
-      collection(firestore, 'withdrawalRequests'), 
-      where('status', '==', 'pending'), 
+      collection(firestore, 'withdrawalRequests'),
       orderBy('requestedAt', 'desc')
     );
 
