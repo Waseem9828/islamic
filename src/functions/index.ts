@@ -1,4 +1,5 @@
 
+
 // Triggering a redeployment to apply all recent fixes.
 
 import * as functions from "firebase-functions";
@@ -362,7 +363,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
                 [uid]: {
                     name: context.auth?.token.name || 'Anonymous',
                     photoURL: context.auth?.token.picture || '',
-                    isReady: false, // Creator is not ready by default
+                    isReady: false, 
                 }
             },
             createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -573,3 +574,6 @@ export const analyzeStorage = regionalFunctions.https.onCall(async (data, contex
         throw new functions.https.HttpsError('internal', 'Failed to analyze storage bucket.');
     }
 });
+
+
+    
