@@ -1,19 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createMatch = exports.requestDeposit = exports.getWalletInfo = exports.updateUserStatus = exports.getAdminDashboardStats = exports.checkAdminStatus = void 0;
-const functions = require("firebase-functions");
+exports.getAdminDashboardStats = exports.adjustUserWallet = exports.cancelMatch = exports.getAllMatches = exports.getAllUsers = exports.processWithdrawalRequest = exports.processDepositRequest = exports.checkAdminStatus = exports.getUserTransactions = exports.declareMatchWinner = exports.joinMatch = exports.createMatch = exports.requestWithdrawal = exports.processDeposit = void 0;
 const admin = require("firebase-admin");
+const https_1 = require("firebase-functions/v2/https");
+const logger = require("firebase-functions/logger");
 admin.initializeApp();
 const db = admin.firestore();
-const regionalFunctions = functions.region("us-east1");
 // =====================================================================
-//  Helper Functions
+// Helper Functions
 // =====================================================================
-/**
- * Checks if a user has the admin role.
- * @param {string} uid The user's UID.
- * @return {Promise<boolean>} A promise that resolves to true if the user is an admin.
- */
 const isAdmin = async (uid) => {
     if (!uid)
         return false;
@@ -22,194 +17,290 @@ const isAdmin = async (uid) => {
         return adminDoc.exists;
     }
     catch (error) {
-        console.error(`Error checking admin status for UID: ${uid}`, error);
+        logger.error(`Error checking admin status for UID: ${uid}`, error);
         return false;
     }
 };
-/**
- * Throws an "unauthenticated" error if the user is not logged in.
- * @param {functions.https.CallableContext} context The context of the function call.
- */
 const ensureAuthenticated = (context) => {
     if (!context.auth) {
-        throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
+        logger.error("Authentication check failed: user not authenticated.");
+        throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
 };
-/**
- * Throws a "permission-denied" error if the user is not an admin.
- * @param {functions.https.CallableContext} context The context of the function call.
- */
 const ensureAdmin = async (context) => {
     ensureAuthenticated(context);
-    try {
-        const userIsAdmin = await isAdmin(context.auth.uid);
-        if (!userIsAdmin) {
-            throw new functions.https.HttpsError("permission-denied", "This function must be called by an admin.");
-        }
-    }
-    catch (error) {
-        console.error(`Ensure admin check failed for UID: ${context.auth.uid}`, error);
-        throw new functions.https.HttpsError("internal", "An internal error occurred while checking for admin permissions.");
+    const userIsAdmin = await isAdmin(context.auth.uid);
+    if (!userIsAdmin) {
+        logger.error("Admin check failed: user is not an admin.", { uid: context.auth.uid });
+        throw new https_1.HttpsError("permission-denied", "This function must be called by an admin.");
     }
 };
 // =====================================================================
-//  Callable Functions
+// USER-FACING Callable Functions
 // =====================================================================
-exports.checkAdminStatus = regionalFunctions.https.onCall(async (_, context) => {
-    ensureAuthenticated(context);
-    const userIsAdmin = await isAdmin(context.auth.uid);
-    return { isAdmin: userIsAdmin };
+const region = "us-east1";
+exports.processDeposit = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    const { amount, transactionId, screenshotUrl } = request.data;
+    const uid = request.auth.uid;
+    if (!amount || typeof amount !== 'number' || amount <= 0 || !transactionId || !screenshotUrl) {
+        throw new https_1.HttpsError("invalid-argument", "Valid amount, transaction ID, and screenshot URL are required.");
+    }
+    const depositRequest = {
+        userId: uid,
+        amount,
+        transactionId,
+        screenshotUrl,
+        status: "pending",
+        requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    await db.collection("depositRequests").add(depositRequest);
+    return { status: "success", message: "Your deposit request has been submitted." };
 });
-exports.getAdminDashboardStats = regionalFunctions.https.onCall(async (_, context) => {
-    await ensureAdmin(context);
-    try {
-        const usersSnapshot = await db.collection("users").get();
-        const matchesSnapshot = await db.collection("matches").get();
-        const depositsSnapshot = await db.collection("depositRequests").where("status", "==", "pending").get();
-        const withdrawalsSnapshot = await db.collection("withdrawalRequests").where("status", "==", "pending").get();
-        const totalCommission = matchesSnapshot.docs.reduce((sum, doc) => sum + (doc.data().commission || 0), 0);
-        const winningsPaidSnapshot = await db.collection("transactions").where("reason", "==", "match_win").get();
-        const totalWinnings = winningsPaidSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
-        return {
-            totalUsers: usersSnapshot.size,
-            activeMatches: matchesSnapshot.docs.filter(doc => doc.data().status === "inprogress").length,
-            pendingDeposits: depositsSnapshot.size,
-            pendingWithdrawals: withdrawalsSnapshot.size,
-            totalCommission,
-            totalWinnings,
-        };
+exports.requestWithdrawal = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    const { amount } = request.data;
+    const uid = request.auth.uid;
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+        throw new https_1.HttpsError("invalid-argument", "A valid amount is required.");
     }
-    catch (error) {
-        console.error("Error in getAdminDashboardStats:", error);
-        throw new functions.https.HttpsError("internal", "Error fetching admin dashboard stats.");
-    }
-});
-exports.updateUserStatus = regionalFunctions.https.onCall(async (data, context) => {
-    await ensureAdmin(context);
-    const { uid, status } = data;
-    if (!uid || !['active', 'suspended'].includes(status)) {
-        throw new functions.https.HttpsError("invalid-argument", "Invalid UID or status provided.");
-    }
-    try {
-        await db.collection("users").doc(uid).update({ status });
-        return { success: true, message: `User ${uid} status updated to ${status}.` };
-    }
-    catch (error) {
-        console.error("Error in updateUserStatus:", error);
-        throw new functions.https.HttpsError("internal", "Error updating user status.");
-    }
-});
-exports.getWalletInfo = regionalFunctions.https.onCall(async (data, context) => {
-    await ensureAdmin(context);
-    const { uid } = data;
-    if (!uid) {
-        throw new functions.https.HttpsError("invalid-argument", "Invalid UID provided.");
-    }
-    try {
-        const walletDoc = await db.collection("wallets").doc(uid).get();
+    const walletRef = db.collection("wallets").doc(uid);
+    return db.runTransaction(async (transaction) => {
+        const walletDoc = await transaction.get(walletRef);
         if (!walletDoc.exists) {
-            return { depositBalance: 0, winningBalance: 0, bonusBalance: 0 };
+            throw new https_1.HttpsError("not-found", "User wallet not found.");
         }
         const walletData = walletDoc.data();
-        return {
-            depositBalance: (walletData === null || walletData === void 0 ? void 0 : walletData.depositBalance) || 0,
-            winningBalance: (walletData === null || walletData === void 0 ? void 0 : walletData.winningBalance) || 0,
-            bonusBalance: (walletData === null || walletData === void 0 ? void 0 : walletData.bonusBalance) || 0,
-        };
-    }
-    catch (error) {
-        console.error("Error in getWalletInfo:", error);
-        throw new functions.https.HttpsError("internal", "Error fetching wallet info.");
-    }
-});
-exports.requestDeposit = regionalFunctions.https.onCall(async (data, context) => {
-    ensureAuthenticated(context);
-    const uid = context.auth.uid;
-    const { amount, transactionId, screenshotUrl } = data;
-    if (!amount || typeof amount !== 'number' || amount <= 0 || !transactionId || !screenshotUrl) {
-        throw new functions.https.HttpsError("invalid-argument", "Valid amount, transaction ID, and screenshot URL are required.");
-    }
-    try {
-        const depositRequest = {
+        if (walletData.winningBalance < amount) {
+            throw new https_1.HttpsError("failed-precondition", "Insufficient winning balance.");
+        }
+        transaction.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-amount) });
+        const withdrawalRequestRef = db.collection("withdrawalRequests").doc();
+        transaction.set(withdrawalRequestRef, {
             userId: uid,
-            amount: amount,
-            transactionId: transactionId,
-            screenshotUrl: screenshotUrl,
+            amount,
             status: "pending",
             requestedAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        await db.collection("depositRequests").add(depositRequest);
-        return { status: "success", message: "Your deposit request has been submitted." };
-    }
-    catch (error) {
-        console.error("Error in requestDeposit:", error);
-        throw new functions.https.HttpsError("internal", "Error processing deposit request.");
-    }
+        });
+        return { status: "success", message: "Withdrawal request submitted." };
+    });
 });
-exports.createMatch = regionalFunctions.https.onCall(async (data, context) => {
-    ensureAuthenticated(context);
-    const uid = context.auth.uid;
-    const { matchId, matchTitle, entryFee, maxPlayers, privacy, timeLimit } = data;
-    // Basic validation
-    if (!matchId || !entryFee || !maxPlayers || !privacy || !timeLimit) {
-        throw new functions.https.HttpsError("invalid-argument", "Missing required match parameters.");
+exports.createMatch = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    const { matchId, matchTitle, entryFee } = request.data;
+    const uid = request.auth.uid;
+    if (!matchId || !matchTitle || !entryFee) {
+        throw new https_1.HttpsError("invalid-argument", "Missing required match parameters.");
     }
     const walletRef = db.collection("wallets").doc(uid);
     const matchRef = db.collection("matches").doc(matchId);
-    try {
-        await db.runTransaction(async (transaction) => {
-            const walletDoc = await transaction.get(walletRef);
-            if (!walletDoc.exists) {
-                throw new functions.https.HttpsError("not-found", "User wallet does not exist.");
-            }
-            const walletData = walletDoc.data();
-            const usableBalance = walletData.depositBalance + walletData.winningBalance;
-            if (usableBalance < entryFee) {
-                throw new functions.https.HttpsError("failed-precondition", "Insufficient funds to create the match.");
-            }
-            // Deduct from winning balance first, then deposit
-            let remainingFee = entryFee;
-            let winningDeduction = 0;
-            let depositDeduction = 0;
-            if (walletData.winningBalance > 0) {
-                winningDeduction = Math.min(walletData.winningBalance, remainingFee);
-                remainingFee -= winningDeduction;
-            }
-            if (remainingFee > 0) {
-                depositDeduction = Math.min(walletData.depositBalance, remainingFee);
-                remainingFee -= depositDeduction;
-            }
-            if (remainingFee > 0) {
-                // This should theoretically not be reached if the initial check passes
-                throw new functions.https.HttpsError("internal", "Balance calculation error.");
-            }
-            // Create the match document
-            transaction.set(matchRef, {
-                title: matchTitle,
-                entryFee: entryFee,
-                maxPlayers: maxPlayers,
-                privacy: privacy,
-                timeLimit: timeLimit,
-                hostId: uid,
-                players: [uid],
-                status: "waiting", // Initial status
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            // Update the wallet balance
-            transaction.update(walletRef, {
-                winningBalance: admin.firestore.FieldValue.increment(-winningDeduction),
-                depositBalance: admin.firestore.FieldValue.increment(-depositDeduction),
-            });
-        });
-        return { status: "success", message: "Match created successfully!", matchId: matchId };
-    }
-    catch (error) {
-        console.error("Error creating match:", error);
-        if (error instanceof functions.https.HttpsError) {
-            throw error;
+    return db.runTransaction(async (transaction) => {
+        const walletDoc = await transaction.get(walletRef);
+        if (!walletDoc.exists)
+            throw new https_1.HttpsError("not-found", "User wallet does not exist.");
+        const walletData = walletDoc.data();
+        if ((walletData.depositBalance + walletData.winningBalance) < entryFee) {
+            throw new https_1.HttpsError("failed-precondition", "Insufficient funds.");
         }
-        throw new functions.https.HttpsError("internal", "An unexpected error occurred while creating the match.");
+        const winningDeduction = Math.min(walletData.winningBalance, entryFee);
+        const depositDeduction = entryFee - winningDeduction;
+        transaction.set(matchRef, { title: matchTitle, entryFee, hostId: uid, players: [uid], status: "waiting", createdAt: admin.firestore.FieldValue.serverTimestamp() });
+        transaction.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-winningDeduction), depositBalance: admin.firestore.FieldValue.increment(-depositDeduction) });
+        const userTransactionRef = db.collection(`users/${uid}/transactions`).doc();
+        transaction.set(userTransactionRef, { amount: -entryFee, reason: "match_entry", matchId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+        return { status: "success", message: "Match created successfully.", matchId };
+    });
+});
+exports.joinMatch = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    const { matchId } = request.data;
+    const uid = request.auth.uid;
+    if (!matchId)
+        throw new https_1.HttpsError("invalid-argument", "Match ID is required.");
+    const walletRef = db.collection("wallets").doc(uid);
+    const matchRef = db.collection("matches").doc(matchId);
+    return db.runTransaction(async (transaction) => {
+        const matchDoc = await transaction.get(matchRef);
+        const walletDoc = await transaction.get(walletRef);
+        if (!matchDoc.exists)
+            throw new https_1.HttpsError("not-found", "Match not found.");
+        if (!walletDoc.exists)
+            throw new https_1.HttpsError("not-found", "User wallet not found.");
+        const matchData = matchDoc.data();
+        const walletData = walletDoc.data();
+        if (matchData.status !== 'waiting')
+            throw new https_1.HttpsError("failed-precondition", "Match not open for joining.");
+        if (matchData.players.includes(uid))
+            throw new https_1.HttpsError("failed-precondition", "You already joined.");
+        const { entryFee } = matchData;
+        if ((walletData.depositBalance + walletData.winningBalance) < entryFee) {
+            throw new https_1.HttpsError("failed-precondition", "Insufficient funds.");
+        }
+        const winningDeduction = Math.min(walletData.winningBalance, entryFee);
+        const depositDeduction = entryFee - winningDeduction;
+        transaction.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-winningDeduction), depositBalance: admin.firestore.FieldValue.increment(-depositDeduction) });
+        transaction.update(matchRef, { players: admin.firestore.FieldValue.arrayUnion(uid) });
+        const userTransactionRef = db.collection(`users/${uid}/transactions`).doc();
+        transaction.set(userTransactionRef, { amount: -entryFee, reason: "match_entry", matchId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+        return { status: "success", message: "Successfully joined match." };
+    });
+});
+exports.declareMatchWinner = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    const { matchId, winnerId } = request.data;
+    const uid = request.auth.uid;
+    if (!matchId || !winnerId)
+        throw new https_1.HttpsError("invalid-argument", "Match ID and Winner ID are required.");
+    const matchRef = db.collection("matches").doc(matchId);
+    return db.runTransaction(async (transaction) => {
+        const matchDoc = await transaction.get(matchRef);
+        if (!matchDoc.exists)
+            throw new https_1.HttpsError("not-found", "Match not found.");
+        const matchData = matchDoc.data();
+        const userIsAdmin = await isAdmin(uid);
+        if (matchData.hostId !== uid && !userIsAdmin) {
+            throw new https_1.HttpsError("permission-denied", "Only the host or an admin can declare the winner.");
+        }
+        if (matchData.status !== 'waiting')
+            throw new https_1.HttpsError("failed-precondition", "Match already completed or canceled.");
+        if (!matchData.players.includes(winnerId))
+            throw new https_1.HttpsError("not-found", "Winner is not a player in this match.");
+        const prizePool = matchData.players.length * matchData.entryFee;
+        const winnerWalletRef = db.collection("wallets").doc(winnerId);
+        transaction.update(winnerWalletRef, { winningBalance: admin.firestore.FieldValue.increment(prizePool) });
+        transaction.update(matchRef, { status: "completed", winnerId, completedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const winnerTransactionRef = db.collection(`users/${winnerId}/transactions`).doc();
+        transaction.set(winnerTransactionRef, { amount: prizePool, reason: "match_win", matchId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+        return { status: "success", message: "Winner declared successfully." };
+    });
+});
+exports.getUserTransactions = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    const uid = request.auth.uid;
+    const transactionsSnap = await db.collection(`users/${uid}/transactions`).orderBy("timestamp", "desc").get();
+    return transactionsSnap.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+});
+// =====================================================================
+// ADMIN-FACING Callable Functions
+// =====================================================================
+exports.checkAdminStatus = (0, https_1.onCall)({ region }, async (request) => {
+    ensureAuthenticated(request);
+    return { isAdmin: await isAdmin(request.auth.uid) };
+});
+exports.processDepositRequest = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const { requestId, action } = request.data;
+    if (!requestId || !['approve', 'reject'].includes(action)) {
+        throw new https_1.HttpsError("invalid-argument", "Request ID and a valid action are required.");
     }
+    const requestRef = db.collection("depositRequests").doc(requestId);
+    return db.runTransaction(async (transaction) => {
+        var _a;
+        const requestDoc = await transaction.get(requestRef);
+        if (!requestDoc.exists || ((_a = requestDoc.data()) === null || _a === void 0 ? void 0 : _a.status) !== 'pending') {
+            throw new https_1.HttpsError("not-found", "Pending deposit request not found.");
+        }
+        const requestData = requestDoc.data();
+        if (action === 'approve') {
+            const userWalletRef = db.collection("wallets").doc(requestData.userId);
+            transaction.update(userWalletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
+            const userTransactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
+            transaction.set(userTransactionRef, { amount: requestData.amount, reason: "deposit_approved", depositId: requestId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            transaction.update(requestRef, { status: "approved" });
+        }
+        else {
+            transaction.update(requestRef, { status: "rejected" });
+        }
+        return { status: "success", message: `Request ${action}ed.` };
+    });
+});
+exports.processWithdrawalRequest = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const { requestId, action } = request.data;
+    if (!requestId || !['approve', 'reject'].includes(action)) {
+        throw new https_1.HttpsError("invalid-argument", "Request ID and action are required.");
+    }
+    const requestRef = db.collection("withdrawalRequests").doc(requestId);
+    return db.runTransaction(async (transaction) => {
+        var _a;
+        const requestDoc = await transaction.get(requestRef);
+        if (!requestDoc.exists || ((_a = requestDoc.data()) === null || _a === void 0 ? void 0 : _a.status) !== 'pending') {
+            throw new https_1.HttpsError("not-found", "Pending withdrawal request not found.");
+        }
+        const requestData = requestDoc.data();
+        if (action === 'approve') {
+            const userTransactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
+            transaction.set(userTransactionRef, { amount: -requestData.amount, reason: "withdrawal_approved", withdrawalId: requestId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            transaction.update(requestRef, { status: "approved" });
+        }
+        else {
+            const userWalletRef = db.collection("wallets").doc(requestData.userId);
+            transaction.update(userWalletRef, { winningBalance: admin.firestore.FieldValue.increment(requestData.amount) });
+            transaction.update(requestRef, { status: "rejected" });
+        }
+        return { status: "success", message: `Request ${action}ed.` };
+    });
+});
+exports.getAllUsers = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const usersSnap = await admin.auth().listUsers();
+    return usersSnap.users.map(user => user.toJSON());
+});
+exports.getAllMatches = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const matchesSnap = await db.collection("matches").orderBy("createdAt", "desc").get();
+    return matchesSnap.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+});
+exports.cancelMatch = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const { matchId } = request.data;
+    if (!matchId)
+        throw new https_1.HttpsError("invalid-argument", "Match ID is required.");
+    const matchRef = db.collection("matches").doc(matchId);
+    return db.runTransaction(async (transaction) => {
+        const matchDoc = await transaction.get(matchRef);
+        if (!matchDoc.exists)
+            throw new https_1.HttpsError("not-found", "Match not found.");
+        const matchData = matchDoc.data();
+        if (matchData.status !== 'waiting')
+            throw new https_1.HttpsError("failed-precondition", "Only a waiting match can be canceled.");
+        const { entryFee } = matchData;
+        for (const playerId of matchData.players) {
+            const playerWalletRef = db.collection("wallets").doc(playerId);
+            transaction.update(playerWalletRef, { depositBalance: admin.firestore.FieldValue.increment(entryFee) });
+            const userTransactionRef = db.collection(`users/${playerId}/transactions`).doc();
+            transaction.set(userTransactionRef, { amount: entryFee, reason: "match_canceled_refund", matchId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+        }
+        transaction.update(matchRef, { status: "canceled", completedAt: admin.firestore.FieldValue.serverTimestamp() });
+        return { status: "success", message: "Match canceled and players refunded." };
+    });
+});
+exports.adjustUserWallet = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const { userId, amount, balanceType, reason } = request.data;
+    if (!userId || !amount || !balanceType || !reason) {
+        throw new https_1.HttpsError("invalid-argument", "User ID, amount, balance type, and reason are required.");
+    }
+    if (!['depositBalance', 'winningBalance', 'bonusBalance'].includes(balanceType)) {
+        throw new https_1.HttpsError("invalid-argument", "Invalid balance type.");
+    }
+    const walletRef = db.collection("wallets").doc(userId);
+    await walletRef.update({ [balanceType]: admin.firestore.FieldValue.increment(amount) });
+    const transactionRef = db.collection(`users/${userId}/transactions`).doc();
+    await transactionRef.set({ amount, reason: `admin_adjustment: ${reason}`, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+    return { success: true };
+});
+exports.getAdminDashboardStats = (0, https_1.onCall)({ region }, async (request) => {
+    await ensureAdmin(request);
+    const usersSnapshot = await db.collection("users").get();
+    const matchesSnapshot = await db.collection("matches").get();
+    const depositsSnapshot = await db.collection("depositRequests").where("status", "==", "pending").get();
+    const withdrawalsSnapshot = await db.collection("withdrawalRequests").where("status", "==", "pending").get();
+    return {
+        totalUsers: usersSnapshot.size,
+        activeMatches: matchesSnapshot.docs.filter(doc => doc.data().status === "inprogress").length,
+        pendingDeposits: depositsSnapshot.size,
+        pendingWithdrawals: withdrawalsSnapshot.size,
+    };
 });
 //# sourceMappingURL=index.js.map
