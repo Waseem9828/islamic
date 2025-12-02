@@ -145,7 +145,7 @@ export default function ManageDepositsPage() {
 
   const processDepositFunction = useMemo(() => {
       if (!functions) return null;
-      return httpsCallable(functions, 'processDeposit');
+      return httpsCallable(functions, 'processDepositRequest');
   }, [functions]);
 
   // --- Actions ---
@@ -211,3 +211,5 @@ export default function ManageDepositsPage() {
     </Card>
   );
 }
+
+    
