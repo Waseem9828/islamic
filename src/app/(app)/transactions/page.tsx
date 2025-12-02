@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useUser, useFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -10,8 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, IndianRupee, Trophy, TrendingUp, TrendingDown, History } from 'lucide-react';
 import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataTable } from '@/components/ui/data-table';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
 
 // Helper to format currency
 const formatCurrency = (amount: number) => {
@@ -23,6 +28,18 @@ const formatDate = (timestamp: any) => {
   if (!timestamp) return 'N/A';
   return format(timestamp.toDate(), "PPp");
 };
+
+const StatCard = ({ title, value, icon: Icon, className }: { title: string, value: string, icon: React.ElementType, className?: string }) => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <Icon className={`h-4 w-4 text-muted-foreground ${className}`} />
+        </CardHeader>
+        <CardContent>
+            <div className="text-2xl font-bold">{value}</div>
+        </CardContent>
+    </Card>
+);
 
 const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -43,7 +60,7 @@ const getStatusBadge = (status: string) => {
 
 const getReasonText = (reason: string, matchId?: string) => {
     const reasonMap: {[key: string]: string} = {
-        'deposit': 'Deposit',
+        'deposit_approved': 'Deposit Approved',
         'withdrawal_request': 'Withdrawal',
         'match_creation': 'Match Entry Fee',
         'match_join': 'Match Entry Fee',
@@ -54,8 +71,8 @@ const getReasonText = (reason: string, matchId?: string) => {
     const text = reasonMap[reason] || reason.replace(/_/g, ' ');
     return (
         <div className='flex flex-col'>
-            <span className='capitalize'>{text}</span>
-            {matchId && <Link href={`/match/${matchId}`} className='text-xs text-muted-foreground hover:underline font-mono'>{matchId}</Link>}
+            <span className='capitalize font-medium'>{text}</span>
+            {matchId && <Link href={`/match/${matchId}`} className='text-xs text-muted-foreground hover:underline font-mono'>Match: {matchId}</Link>}
         </div>
     )
 }
@@ -63,6 +80,8 @@ const getReasonText = (reason: string, matchId?: string) => {
 export default function AllTransactionsPage() {
   const { user } = useUser();
   const { firestore } = useFirebase();
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'timestamp', desc: true }]);
 
   const transactionsQuery = useMemo(() => {
     if (!user || !firestore) return null;
@@ -74,13 +93,98 @@ export default function AllTransactionsPage() {
   }, [user, firestore]);
 
   const { data: transactions, isLoading } = useCollection(transactionsQuery);
+  
+  const stats = useMemo(() => {
+      if (!transactions) return { totalCredit: 0, totalDebit: 0, netBalance: 0, totalWinnings: 0 };
+      
+      const totalCredit = transactions.filter(t => t.type === 'credit').reduce((acc, t) => acc + t.amount, 0);
+      const totalDebit = transactions.filter(t => t.type === 'debit').reduce((acc, t) => acc + t.amount, 0);
+      const totalWinnings = transactions.filter(t => t.reason === 'match_win').reduce((acc, t) => acc + t.amount, 0);
+
+      return {
+          totalCredit,
+          totalDebit,
+          netBalance: totalCredit - totalDebit,
+          totalWinnings
+      }
+  }, [transactions]);
+
+
+  const columns: ColumnDef<any>[] = useMemo(() => [
+    {
+        accessorKey: 'reason',
+        header: 'Details',
+        cell: ({ row }) => (
+            <div className="flex items-center gap-3">
+                 {row.original.type === 'credit' ? <ArrowDownLeft className="h-5 w-5 text-green-500"/> : <ArrowUpRight className="h-5 w-5 text-red-500"/>}
+                 {getReasonText(row.original.reason, row.original.matchId)}
+            </div>
+        )
+    },
+    { 
+        accessorKey: 'amount', 
+        header: 'Amount', 
+        cell: ({ row }) => (
+            <div className={`font-semibold ${row.original.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                {row.original.type === 'credit' ? '+' : '-'}
+                {formatCurrency(row.original.amount)}
+            </div>
+        )
+    },
+    { accessorKey: 'status', header: 'Status', cell: ({ row }) => getStatusBadge(row.original.status) },
+    { accessorKey: 'timestamp', header: 'Date', cell: ({ row }) => <div className="text-right text-xs text-muted-foreground">{formatDate(row.original.timestamp)}</div>, enableSorting: true }
+  ], []);
+
+  const table = useReactTable({
+    data: transactions || [],
+    columns,
+    state: { sorting, globalFilter },
+    onGlobalFilterChange: setGlobalFilter,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
 
   return (
-    <div className="container mx-auto max-w-4xl py-6">
+    <div className="container mx-auto max-w-7xl py-6 space-y-6">
+        <Card>
+             <CardHeader>
+                <CardTitle className="flex items-center"><History className="mr-2"/>Transaction Analysis</CardTitle>
+                <CardDescription>A complete analysis of your financial activity.</CardDescription>
+            </CardHeader>
+        </Card>
+
+        {isLoading ? (
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
+            </div>
+        ) : (
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard title="Total Credited" value={formatCurrency(stats.totalCredit)} icon={TrendingUp} className="text-green-500" />
+                <StatCard title="Total Debited" value={formatCurrency(stats.totalDebit)} icon={TrendingDown} className="text-red-500" />
+                <StatCard title="Net Balance" value={formatCurrency(stats.netBalance)} icon={IndianRupee} />
+                <StatCard title="Total Winnings" value={formatCurrency(stats.totalWinnings)} icon={Trophy} className="text-yellow-500" />
+            </div>
+        )}
+
         <Card>
             <CardHeader>
-                <CardTitle>Transaction History</CardTitle>
-                <CardDescription>A complete record of your financial activity.</CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Detailed History</CardTitle>
+                        <CardDescription>All your transactions are listed below.</CardDescription>
+                    </div>
+                     <Input
+                        placeholder="Search transactions..."
+                        value={globalFilter ?? ''}
+                        onChange={(event) => setGlobalFilter(event.target.value)}
+                        className="max-w-sm"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
@@ -90,32 +194,8 @@ export default function AllTransactionsPage() {
                         <Skeleton className="h-12 w-full" />
                         <Skeleton className="h-12 w-full" />
                     </div>
-                ) : transactions && transactions.length > 0 ? (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Details</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Date</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {transactions.map(tx => (
-                        <TableRow key={tx.id}>
-                            <TableCell className="font-medium capitalize flex items-center">
-                                {tx.type === 'credit' ? <ArrowDownLeft className="h-5 w-5 mr-3 text-green-500"/> : <ArrowUpRight className="h-5 w-5 mr-3 text-red-500"/>}
-                                {getReasonText(tx.reason, tx.matchId)}
-                            </TableCell>
-                            <TableCell className={`font-semibold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(tx.amount)}</TableCell>
-                            <TableCell>{getStatusBadge(tx.status)}</TableCell>
-                            <TableCell className="text-right text-xs">{formatDate(tx.timestamp)}</TableCell>
-                        </TableRow>
-                    ))}
-                    </TableBody>
-                </Table>
                 ) : (
-                <p className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg">No transactions yet.</p>
+                    <DataTable table={table} columns={columns} />
                 )}
             </CardContent>
       </Card>
