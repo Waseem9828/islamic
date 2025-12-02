@@ -320,7 +320,7 @@ export default function MatchLobbyPage() {
   };
   
   const handleReadyToggle = async () => {
-    if (!user || !match || !firestore) return;
+    if (!user || !match || !firestore || !match.playerInfo) return;
     const matchRef = doc(firestore, 'matches', match.id);
     const currentReadyStatus = match.playerInfo[user.uid]?.isReady || false;
     try {
@@ -349,7 +349,7 @@ export default function MatchLobbyPage() {
 
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
-  const readyPlayerCount = match && match.playerInfo ? match.players.filter(p => match.playerInfo[p]?.isReady).length : 0;
+  const readyPlayerCount = match && match.playerInfo ? match.players.filter(p => match.playerInfo![p]?.isReady).length : 0;
   const allPlayersReady = match ? readyPlayerCount === match.players.length : false;
   const canStart = isCreator && match && match.players.length >= 2 && allPlayersReady;
 
