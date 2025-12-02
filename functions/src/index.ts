@@ -43,7 +43,7 @@ const ensureAdmin = async (context: { auth?: { uid: string } }) => {
 
 const region = "us-east1";
 
-export const processDeposit = onCall({ region }, async (request) => {
+export const requestDeposit = onCall({ region, cors: true }, async (request) => {
   ensureAuthenticated(request);
   const { amount, transactionId, screenshotUrl } = request.data;
   const uid = request.auth!.uid;
@@ -64,16 +64,18 @@ export const processDeposit = onCall({ region }, async (request) => {
   return { status: "success", message: "Your deposit request has been submitted." };
 });
 
-export const requestWithdrawal = onCall({ region }, async (request) => {
+export const requestWithdrawal = onCall({ region, cors: true }, async (request) => {
     ensureAuthenticated(request);
-    const { amount } = request.data;
+    const { amount, upiId } = request.data;
     const uid = request.auth!.uid;
 
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
-        throw new HttpsError("invalid-argument", "A valid amount is required.");
+    if (!amount || typeof amount !== 'number' || amount <= 0 || !upiId) {
+        throw new HttpsError("invalid-argument", "A valid amount and UPI ID are required.");
     }
 
     const walletRef = db.collection("wallets").doc(uid);
+    const userRef = db.collection('users').doc(uid);
+
     return db.runTransaction(async (transaction) => {
         const walletDoc = await transaction.get(walletRef);
         if (!walletDoc.exists) {
@@ -83,11 +85,19 @@ export const requestWithdrawal = onCall({ region }, async (request) => {
         if (walletData.winningBalance < amount) {
             throw new HttpsError("failed-precondition", "Insufficient winning balance.");
         }
+
+        // Update user's UPI ID
+        transaction.update(userRef, { upiId: upiId });
+
+        // Decrement winning balance
         transaction.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-amount) });
+
+        // Create withdrawal request
         const withdrawalRequestRef = db.collection("withdrawalRequests").doc();
         transaction.set(withdrawalRequestRef, {
             userId: uid,
             amount,
+            upiId,
             status: "pending",
             requestedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -95,19 +105,25 @@ export const requestWithdrawal = onCall({ region }, async (request) => {
     });
 });
 
-export const createMatch = onCall({ region }, async (request) => {
+export const createMatch = onCall({ region, cors: true }, async (request) => {
     ensureAuthenticated(request);
-    const { matchId, matchTitle, entryFee } = request.data;
+    const { matchId, matchTitle, entryFee, maxPlayers, privacy, timeLimit } = request.data;
     const uid = request.auth!.uid;
 
-    if (!matchId || !matchTitle || !entryFee) {
+    if (!matchId || !matchTitle || !entryFee || !maxPlayers || !privacy || !timeLimit) {
       throw new HttpsError("invalid-argument", "Missing required match parameters.");
     }
   
     const walletRef = db.collection("wallets").doc(uid);
     const matchRef = db.collection("matches").doc(matchId);
+    const activeMatchesQuery = db.collection('matches').where('players', 'array-contains', uid).where('status', 'in', ['waiting', 'inprogress']);
   
     return db.runTransaction(async (transaction) => {
+        const activeMatchesSnap = await transaction.get(activeMatchesQuery);
+        if (activeMatchesSnap.size >= 3) {
+            throw new HttpsError('failed-precondition', 'You can only have a maximum of 3 active matches.');
+        }
+
         const walletDoc = await transaction.get(walletRef);
         if (!walletDoc.exists) throw new HttpsError("not-found", "User wallet does not exist.");
 
@@ -119,7 +135,25 @@ export const createMatch = onCall({ region }, async (request) => {
         const winningDeduction = Math.min(walletData.winningBalance, entryFee);
         const depositDeduction = entryFee - winningDeduction;
 
-        transaction.set(matchRef, { title: matchTitle, entryFee, hostId: uid, players: [uid], status: "waiting", createdAt: admin.firestore.FieldValue.serverTimestamp() });
+        transaction.set(matchRef, { 
+            matchTitle: matchTitle || `Match ${matchId}`, 
+            entryFee, 
+            maxPlayers,
+            privacy,
+            timeLimit,
+            createdBy: uid, 
+            creatorName: request.auth?.token.name || 'Anonymous',
+            players: [uid], 
+            status: "waiting", 
+            playerInfo: {
+                [uid]: {
+                    name: request.auth?.token.name || 'Anonymous',
+                    photoURL: request.auth?.token.picture || '',
+                    isReady: false, 
+                }
+            },
+            createdAt: admin.firestore.FieldValue.serverTimestamp() 
+        });
         transaction.update(walletRef, { winningBalance: admin.firestore.FieldValue.increment(-winningDeduction), depositBalance: admin.firestore.FieldValue.increment(-depositDeduction) });
         
         const userTransactionRef = db.collection(`users/${uid}/transactions`).doc();
@@ -129,7 +163,7 @@ export const createMatch = onCall({ region }, async (request) => {
     });
 });
 
-export const joinMatch = onCall({ region }, async (request) => {
+export const joinMatch = onCall({ region, cors: true }, async (request) => {
     ensureAuthenticated(request);
     const { matchId } = request.data;
     const uid = request.auth!.uid;
@@ -138,8 +172,14 @@ export const joinMatch = onCall({ region }, async (request) => {
 
     const walletRef = db.collection("wallets").doc(uid);
     const matchRef = db.collection("matches").doc(matchId);
+    const activeMatchesQuery = db.collection('matches').where('players', 'array-contains', uid).where('status', 'in', ['waiting', 'inprogress']);
 
     return db.runTransaction(async (transaction) => {
+        const activeMatchesSnap = await transaction.get(activeMatchesQuery);
+        if (activeMatchesSnap.size >= 3) {
+            throw new HttpsError('failed-precondition', 'You can only have a maximum of 3 active matches.');
+        }
+
         const matchDoc = await transaction.get(matchRef);
         const walletDoc = await transaction.get(walletRef);
 
@@ -170,7 +210,7 @@ export const joinMatch = onCall({ region }, async (request) => {
     });
 });
 
-export const declareMatchWinner = onCall({ region }, async (request) => {
+export const declareMatchWinner = onCall({ region, cors: true }, async (request) => {
     ensureAuthenticated(request);
     const { matchId, winnerId } = request.data;
     const uid = request.auth!.uid;
@@ -205,7 +245,7 @@ export const declareMatchWinner = onCall({ region }, async (request) => {
     });
 });
 
-export const getUserTransactions = onCall({ region }, async (request) => {
+export const getUserTransactions = onCall({ region, cors: true }, async (request) => {
     ensureAuthenticated(request);
     const uid = request.auth!.uid;
     const transactionsSnap = await db.collection(`users/${uid}/transactions`).orderBy("timestamp", "desc").get();
@@ -216,12 +256,12 @@ export const getUserTransactions = onCall({ region }, async (request) => {
 // ADMIN-FACING Callable Functions
 // =====================================================================
 
-export const checkAdminStatus = onCall({ region }, async (request) => {
+export const checkAdminStatus = onCall({ region, cors: true }, async (request) => {
   ensureAuthenticated(request);
   return { isAdmin: await isAdmin(request.auth!.uid) };
 });
 
-export const processDepositRequest = onCall({ region }, async (request) => {
+export const processDepositRequest = onCall({ region, cors: true }, async (request) => {
     await ensureAdmin(request);
     const { requestId, action } = request.data;
 
@@ -242,7 +282,14 @@ export const processDepositRequest = onCall({ region }, async (request) => {
             transaction.update(userWalletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
             
             const userTransactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
-            transaction.set(userTransactionRef, { amount: requestData.amount, reason: "deposit_approved", depositId: requestId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+            transaction.set(userTransactionRef, { 
+                amount: requestData.amount, 
+                reason: "deposit",
+                type: 'credit',
+                status: 'completed',
+                depositId: requestId, 
+                timestamp: admin.firestore.FieldValue.serverTimestamp() 
+            });
             
             transaction.update(requestRef, { status: "approved" });
         } else {
@@ -252,7 +299,7 @@ export const processDepositRequest = onCall({ region }, async (request) => {
     });
 });
 
-export const processWithdrawalRequest = onCall({ region }, async (request) => {
+export const processWithdrawalRequest = onCall({ region, cors: true }, async (request) => {
     await ensureAdmin(request);
     const { requestId, action } = request.data;
 
@@ -280,19 +327,19 @@ export const processWithdrawalRequest = onCall({ region }, async (request) => {
     });
 });
 
-export const getAllUsers = onCall({ region }, async (request) => {
+export const getAllUsers = onCall({ region, cors: true }, async (request) => {
     await ensureAdmin(request);
     const usersSnap = await admin.auth().listUsers();
     return usersSnap.users.map(user => user.toJSON());
 });
 
-export const getAllMatches = onCall({ region }, async (request) => {
+export const getAllMatches = onCall({ region, cors: true }, async (request) => {
     await ensureAdmin(request);
     const matchesSnap = await db.collection("matches").orderBy("createdAt", "desc").get();
     return matchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 });
 
-export const cancelMatch = onCall({ region }, async (request) => {
+export const cancelMatch = onCall({ region, cors: true }, async (request) => {
     await ensureAdmin(request);
     const { matchId } = request.data;
     if (!matchId) throw new HttpsError("invalid-argument", "Match ID is required.");
@@ -317,7 +364,7 @@ export const cancelMatch = onCall({ region }, async (request) => {
     });
 });
 
-export const adjustUserWallet = onCall({ region }, async (request) => {
+export const adjustUserWallet = onCall({ region, cors: true }, async (request) => {
     await ensureAdmin(request);
     const { userId, amount, balanceType, reason } = request.data;
 
@@ -337,7 +384,7 @@ export const adjustUserWallet = onCall({ region }, async (request) => {
     return { success: true };
 });
 
-export const getAdminDashboardStats = onCall({ region }, async (request) => {
+export const getAdminDashboardStats = onCall({ region, cors: true }, async (request) => {
   await ensureAdmin(request);
   const usersSnapshot = await db.collection("users").get();
   const matchesSnapshot = await db.collection("matches").get();
