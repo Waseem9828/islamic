@@ -39,7 +39,7 @@ interface MatchData {
   createdBy: string;
   creatorName: string;
   players: string[];
-  playerInfo: { [uid: string]: { name: string; photoURL?: string; isReady?: boolean } };
+  playerInfo?: { [uid: string]: { name: string; photoURL?: string; isReady?: boolean } };
   results?: { [uid: string]: any };
 }
 
@@ -349,7 +349,7 @@ export default function MatchLobbyPage() {
 
   const isUserInMatch = user && match?.players.includes(user.uid);
   const isCreator = user && match?.createdBy === user.uid;
-  const readyPlayerCount = match && match.playerInfo ? match.players.filter(p => match.playerInfo![p]?.isReady).length : 0;
+  const readyPlayerCount = (match && match.playerInfo) ? match.players.filter(p => match.playerInfo![p]?.isReady).length : 0;
   const allPlayersReady = match ? readyPlayerCount === match.players.length : false;
   const canStart = isCreator && match && match.players.length >= 2 && allPlayersReady;
 
