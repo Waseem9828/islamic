@@ -28,6 +28,12 @@ service cloud.firestore {
       allow create: if request.auth != null; // Any authenticated user can create their own profile.
       allow delete: if isAdmin();
     }
+    
+    // users/{userId}/transactions: Users can read their own transactions. Admins can read all.
+    match /users/{userId}/transactions/{transactionId} {
+       allow read: if isOwner(userId) || isAdmin();
+       allow write: if false; // Writes should be handled by cloud functions
+    }
 
     // wallets: Users can read their own wallet. Admins can read any wallet.
     // Writes are blocked to force all balance changes through trusted Cloud Functions.
@@ -90,10 +96,10 @@ service cloud.firestore {
         allow create: if false;
     }
 
-    // transactions: Users can read their own transactions. Admins can read all.
-    // Writes are blocked to force all transactions through trusted Cloud Functions.
+    // transactions: A global transaction log readable by admins.
+    // User-specific transactions are in a subcollection.
     match /transactions/{transactionId} {
-       allow read: if isAdmin() || (resource.data.userId == request.auth.uid);
+       allow read: if isAdmin();
        allow write: if false;
     }
 
