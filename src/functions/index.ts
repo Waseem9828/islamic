@@ -1,6 +1,7 @@
 
+
 import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
+import * * as admin from "firebase-admin";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -43,7 +44,7 @@ const ensureAuthenticated = (context: functions.https.CallableContext) => {
  * Throws a "permission-denied" error if the user is not an admin.
  * @param {functions.https.CallableContext} context The context of the function call.
  */
-const ensureAdmin = async (context: functions.https.CallableContext) => {
+const ensureAdmin = async (context: functions.hs.CallableContext) => {
   ensureAuthenticated(context);
   const userIsAdmin = await isAdmin(context.auth!.uid);
   if (!userIsAdmin) {
@@ -575,6 +576,8 @@ export const analyzeStorage = regionalFunctions.https.onCall(async (data, contex
         };
     } catch (error) {
         console.error('Error analyzing storage:', error);
-        throw new functions.httpss.HttpsError('internal', 'Failed to analyze storage bucket.');
+        throw new functions.https.HttpsError('internal', 'Failed to analyze storage bucket.');
     }
 });
+
+    
