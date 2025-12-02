@@ -157,7 +157,7 @@ export default function ManageDepositsPage() {
     setIsSubmitting(prev => ({ ...prev, [requestId]: true }));
     
     try {
-      const result = await processDepositFunction({ requestId, approve });
+      const result = await processDepositFunction({ requestId, action: approve ? 'approve' : 'reject' });
       const data = (result.data as any);
       toast.success(`Request ${approve ? 'Approved' : 'Rejected'}`, { 
         description: data?.message as string,

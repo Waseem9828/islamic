@@ -384,47 +384,42 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
     });
 });
 
-export const processDeposit = regionalFunctions.https.onCall(async (data, context) => {
+export const processDepositRequest = regionalFunctions.https.onCall(async (data, context) => {
     await ensureAdmin(context);
-    const { requestId, approve } = data;
+    const { requestId, action } = data; // 'action' is 'approve' or 'reject'
 
-    if (!requestId || approve === undefined) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
+    if (!requestId || !['approve', 'reject'].includes(action)) {
+        throw new functions.https.HttpsError("invalid-argument", "Request ID and a valid action are required.");
     }
 
-    const requestRef = db.collection('depositRequests').doc(requestId);
-
+    const requestRef = db.collection("depositRequests").doc(requestId);
     return db.runTransaction(async (transaction) => {
         const requestDoc = await transaction.get(requestRef);
-        if (!requestDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Deposit request not found.');
+        if (!requestDoc.exists || requestDoc.data()?.status !== 'pending') {
+            throw new functions.https.HttpsError("not-found", "Pending deposit request not found.");
         }
 
         const requestData = requestDoc.data()!;
-        if (requestData.status !== 'pending') {
-            throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
-        }
-        
-        const newStatus = approve ? 'approved' : 'rejected';
-        transaction.update(requestRef, { status: newStatus, processedBy: context.auth?.uid, processedAt: admin.firestore.FieldValue.serverTimestamp() });
-
-        if (approve) {
-            const walletRef = db.collection('wallets').doc(requestData.userId);
-            transaction.update(walletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
+        if (action === 'approve') {
+            const userWalletRef = db.collection("wallets").doc(requestData.userId);
+            transaction.update(userWalletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
             
-            // Create a corresponding transaction record
-            const transactionRef = db.collection('transactions').doc();
-            transaction.set(transactionRef, {
-                userId: requestData.userId,
-                amount: requestData.amount,
+            const userTransactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
+            transaction.set(userTransactionRef, { 
+                amount: requestData.amount, 
+                reason: "deposit_approved", 
                 type: 'credit',
-                reason: 'deposit',
                 status: 'completed',
-                relatedRequestId: requestId,
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
+                userId: requestData.userId,
+                depositId: requestId, 
+                timestamp: admin.firestore.FieldValue.serverTimestamp() 
             });
+            
+            transaction.update(requestRef, { status: "approved", processedBy: context.auth?.uid });
+        } else {
+            transaction.update(requestRef, { status: "rejected", processedBy: context.auth?.uid });
         }
-        return { status: 'success', message: `Deposit request ${newStatus}.` };
+        return { status: "success", message: `Request ${action}ed.` };
     });
 });
 
