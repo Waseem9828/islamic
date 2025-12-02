@@ -3,7 +3,7 @@ const nextConfig = {
   // Setting this to true will disable optimizations and tree-shaking.
   // This is not recommended for production builds.
   // We have this on to get clearer error messages in the console.
-  optimizeFonts: true, 
+  optimizeFonts: false, 
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
