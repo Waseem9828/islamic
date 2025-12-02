@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
 import { useUser, useFirebase, useDoc } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Button } from "@/components/ui/button";
@@ -308,7 +308,7 @@ export default function MatchLobbyPage() {
             } else {
                 await updateDoc(matchRef, {
                     players: arrayRemove(user.uid),
-                    [`playerInfo.${user.uid}`]: undefined 
+                    [`playerInfo.${user.uid}`]: deleteField()
                 });
                 toast.info('You left the match.');
             }
@@ -476,3 +476,5 @@ export default function MatchLobbyPage() {
     </div>
   );
 }
+
+    
