@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDoc, doc, collectionGroup } from 'firebase/firestore';
 import { useFirebase } from '@/firebase/provider'; 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,13 +50,16 @@ export default function AllTransactionsPage() {
   useEffect(() => {
     if (!firestore) return;
 
-    const transQuery = query(collection(firestore, 'transactions'), orderBy('timestamp', 'desc'));
+    const transQuery = query(collectionGroup(firestore, 'transactions'), orderBy('timestamp', 'desc'));
 
     const unsubscribe = onSnapshot(transQuery, async (snapshot) => {
         const fetchedTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         
         const userCache = new Map<string, User>();
         const transactionsWithUsers = await Promise.all(fetchedTransactions.map(async (tx) => {
+            if (tx.userId === 'admin') {
+                 return { ...tx, user: { id: 'admin', displayName: 'Admin Commission' } };
+            }
             if (userCache.has(tx.userId)) {
                 return { ...tx, user: userCache.get(tx.userId) };
             }
@@ -92,9 +95,15 @@ export default function AllTransactionsPage() {
         const typeMatch = filters.type === 'all' || tx.type === filters.type;
         const reasonMatch = filters.reason === 'all' || tx.reason === filters.reason;
         const statusMatch = filters.status === 'all' || tx.status === filters.status;
-        return typeMatch && reasonMatch && statusMatch;
+        const searchMatch = !globalFilter || 
+            tx.user?.displayName?.toLowerCase().includes(globalFilter.toLowerCase()) ||
+            tx.user?.email?.toLowerCase().includes(globalFilter.toLowerCase()) ||
+            tx.userId.toLowerCase().includes(globalFilter.toLowerCase()) ||
+            tx.id.toLowerCase().includes(globalFilter.toLowerCase());
+
+        return typeMatch && reasonMatch && statusMatch && searchMatch;
     });
-  }, [transactions, filters]);
+  }, [transactions, filters, globalFilter]);
 
   const uniqueReasons = useMemo(() => [...new Set(transactions.map(tx => tx.reason))], [transactions]);
   const uniqueStatuses = useMemo(() => [...new Set(transactions.map(tx => tx.status))], [transactions]);
@@ -121,6 +130,9 @@ export default function AllTransactionsPage() {
         header: 'User',
         cell: ({ row }) => {
             const tx = row.original;
+            if (tx.userId === 'admin') {
+                return <div className='font-semibold'>Admin</div>
+            }
             return (
                 <Link href={`/admin/users/${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
                     <Avatar className="h-9 w-9 border">

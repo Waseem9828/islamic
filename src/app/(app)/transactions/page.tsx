@@ -60,7 +60,7 @@ const getStatusBadge = (status: string) => {
 
 const getReasonText = (reason: string, matchId?: string) => {
     const reasonMap: {[key: string]: string} = {
-        'deposit_approved': 'Deposit Approved',
+        'deposit': 'Deposit Approved',
         'withdrawal_request': 'Withdrawal',
         'match_creation': 'Match Entry Fee',
         'match_join': 'Match Entry Fee',
@@ -86,8 +86,7 @@ export default function AllTransactionsPage() {
   const transactionsQuery = useMemo(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'transactions'),
-      where('userId', '==', user.uid),
+      collection(firestore, `users/${user.uid}/transactions`),
       orderBy('timestamp', 'desc')
     );
   }, [user, firestore]);

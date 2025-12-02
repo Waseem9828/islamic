@@ -53,8 +53,7 @@ export default function WalletPage() {
     );
 
     const transactionsQuery = query(
-      collection(firestore, 'transactions'),
-      where('userId', '==', user.uid),
+      collection(firestore, `users/${user.uid}/transactions`),
       orderBy('timestamp', 'desc'),
       limit(20)
     );
@@ -260,4 +259,3 @@ function WalletSkeleton() {
     </div>
   );
 }
-

@@ -89,7 +89,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
 
         // Financial stats
         const totalCommission = matchesSnapshot.docs.reduce((sum, doc) => sum + (doc.data().commission || 0), 0);
-        const winningsPaidSnapshot = await db.collection("transactions").where("reason", "==", "match_win").get();
+        const winningsPaidSnapshot = await db.collectionGroup("transactions").where("reason", "==", "match_win").get();
         const totalWinnings = winningsPaidSnapshot.docs.reduce((sum, doc) => sum + doc.data().amount, 0);
 
         // Chart data for the last 7 days
@@ -108,7 +108,7 @@ export const getAdminDashboardStats = regionalFunctions.https.onCall(async (_, c
             if (day) day["New Users"]++;
         });
 
-        const revenueSnapshot = await db.collection('transactions').where('reason', '==', 'admin_commission').get();
+        const revenueSnapshot = await db.collectionGroup('transactions').where('reason', '==', 'admin_commission').get();
         revenueSnapshot.docs.forEach(doc => {
             const revenue = doc.data();
             const dateStr = revenue.timestamp.toDate().toISOString().split('T')[0];
@@ -287,7 +287,7 @@ export const processWithdrawal = regionalFunctions.https.onCall(async (data, con
         }
         
         // Log transaction for both approved and rejected
-        const transactionRef = db.collection('transactions').doc();
+        const transactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
         t.set(transactionRef, {
             userId: requestData.userId,
             amount: requestData.amount,
@@ -377,7 +377,7 @@ export const createMatch = regionalFunctions.https.onCall(async (data, context) 
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        const transactionRef = db.collection('transactions').doc();
+        const transactionRef = db.collection(`users/${uid}/transactions`).doc();
         transaction.set(transactionRef, {
             userId: uid,
             amount: entryFee,
@@ -412,12 +412,12 @@ export const processDepositRequest = regionalFunctions.https.onCall(async (data,
             const userWalletRef = db.collection("wallets").doc(requestData.userId);
             transaction.update(userWalletRef, { depositBalance: admin.firestore.FieldValue.increment(requestData.amount) });
             
-            // Create a record in the top-level 'transactions' collection
-            const userTransactionRef = db.collection('transactions').doc();
+            // Create a record in the user's 'transactions' sub-collection
+            const userTransactionRef = db.collection(`users/${requestData.userId}/transactions`).doc();
             transaction.set(userTransactionRef, { 
                 userId: requestData.userId,
                 amount: requestData.amount, 
-                reason: "deposit_approved", 
+                reason: "deposit", 
                 type: 'credit',
                 status: 'completed',
                 depositId: requestId, 
@@ -459,7 +459,7 @@ export const distributeWinnings = regionalFunctions.https.onCall(async (data, co
         const winnerWalletRef = db.collection('wallets').doc(winnerId);
         transaction.update(winnerWalletRef, { winningBalance: admin.firestore.FieldValue.increment(winnings) });
         
-        const winTxRef = db.collection('transactions').doc();
+        const winTxRef = db.collection(`users/${winnerId}/transactions`).doc();
         transaction.set(winTxRef, {
             userId: winnerId,
             amount: winnings,
@@ -470,9 +470,9 @@ export const distributeWinnings = regionalFunctions.https.onCall(async (data, co
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        const commissionTxRef = db.collection('transactions').doc();
+        const commissionTxRef = db.collection('transactions').doc(); // Storing admin commission in a separate collection for analytics
         transaction.set(commissionTxRef, {
-            userId: 'admin', // Or a specific admin ID
+            userId: 'admin', 
             amount: commission,
             type: 'credit',
             reason: 'admin_commission',
@@ -503,7 +503,7 @@ export const cancelMatchByAdmin = regionalFunctions.https.onCall(async (data, co
 
         for (const playerId of match.players) {
             const walletRef = db.collection('wallets').doc(playerId);
-            const txRef = db.collection('transactions').doc();
+            const txRef = db.collection(`users/${playerId}/transactions`).doc();
             
             // Refund the entry fee to the deposit balance
             t.update(walletRef, { depositBalance: admin.firestore.FieldValue.increment(match.entryFee) });
@@ -575,9 +575,6 @@ export const analyzeStorage = regionalFunctions.https.onCall(async (data, contex
         };
     } catch (error) {
         console.error('Error analyzing storage:', error);
-        throw new functions.https.HttpsError('internal', 'Failed to analyze storage bucket.');
+        throw new functions.httpss.HttpsError('internal', 'Failed to analyze storage bucket.');
     }
 });
-
-
-    
