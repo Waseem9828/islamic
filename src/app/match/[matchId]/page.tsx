@@ -398,7 +398,7 @@ export default function MatchLobbyPage() {
             </div>
         }
 
-        {isCreator && match.status === 'waiting' && <RoomCodeManager match={match} />}
+        {isCreator && match.status === 'waiting' && match.players.length > 1 && <RoomCodeManager match={match} />}
 
         {isUserInMatch && !isCreator && match.status === 'waiting' && (
             <Alert className="mb-4">
