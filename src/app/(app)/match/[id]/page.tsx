@@ -15,8 +15,24 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Users, Swords, Clock, IndianRupee, Crown, Copy, Share2, Trophy, Ban } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
+interface MatchPlayer {
+    uid?: string;
+    name?: string;
+    photoURL?: string;
+    isHost?: boolean;
+}
 
-const PlayerAvatar = ({ player, isWinner }) => (
+interface Match {
+    id: string;
+    status: 'pending' | 'completed' | 'cancelled';
+    players: string[];
+    hostId: string;
+    playerCount: number;
+    winnerId?: string;
+    fee: number;
+}
+
+const PlayerAvatar = ({ player, isWinner }: { player: MatchPlayer, isWinner: boolean }) => (
     <div className="flex flex-col items-center space-y-2 relative">
         {isWinner && <Crown className="absolute -top-4 text-yellow-400 w-8 h-8"/>}
         <Avatar className={`h-16 w-16 border-4 ${isWinner ? 'border-yellow-400' : 'border-muted'}`}>
@@ -34,7 +50,7 @@ export default function MatchLobbyPage() {
     const { firestore, functions } = useFirebase();
     const { user, isUserLoading } = useUser();
 
-    const [match, setMatch] = useState<any>(null);
+    const [match, setMatch] = useState<Match | null>(null);
     const [playersInfo, setPlayersInfo] = useState({});
     const [isLoading, setIsLoading] = useState(true);
     const [isActionLoading, setIsActionLoading] = useState(false);
@@ -55,7 +71,7 @@ export default function MatchLobbyPage() {
         const matchRef = doc(firestore, 'matches', matchId as string);
         const unsubscribe = onSnapshot(matchRef, async (docSnap) => {
             if (docSnap.exists()) {
-                const matchData = { id: docSnap.id, ...docSnap.data() };
+                const matchData = { id: docSnap.id, ...docSnap.data() } as Match;
                 setMatch(matchData);
                 
                 if (matchData.status === 'cancelled') {

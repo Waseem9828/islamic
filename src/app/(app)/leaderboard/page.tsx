@@ -106,19 +106,16 @@ export default function LeaderboardPage() {
             });
         });
 
-        const combinedData: LeaderboardEntry[] = topWallets
+        const combinedData = topWallets
           .map((wallet, index) => {
             const userProfile = usersData[wallet.id];
             // If user profile is not found, we can't display the entry
             if (!userProfile) return null;
             
             return {
-              id: wallet.id,
+              ...userProfile,
               rank: index + 1,
               winningBalance: wallet.winningBalance || 0,
-              displayName: userProfile.displayName,
-              email: userProfile.email,
-              photoURL: userProfile.photoURL,
             };
           })
           .filter((entry): entry is LeaderboardEntry => entry !== null);
