@@ -6,3 +6,12 @@ export interface Activity {
     amount: number;
     timestamp: Date;
 }
+
+export interface AdminActivity {
+    adminId: string;
+    type: string;
+    amount: number;
+    userId: string;
+    depositId: string;
+    timestamp?: Date;
+}
