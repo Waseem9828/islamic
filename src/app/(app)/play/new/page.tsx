@@ -12,7 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from 'sonner';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase, useUser } from '@/firebase';
-import { doc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Gamepad2, Users, Lock, Unlock, Clock, IndianRupee, Loader2, Share2, Copy, CheckCircle, ArrowRight, Info, Wallet } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { LoadingScreen } from '@/components/ui/loading';
@@ -22,54 +22,14 @@ export default function CreateMatchPage() {
     const { user, isUserLoading } = useUser();
     const { functions, firestore } = useFirebase();
 
-    const [matchTitle, setMatchTitle] = useState('');
     const [entryFee, setEntryFee] = useState([50]);
-    const [maxPlayers, setMaxPlayers] = useState('2');
-    const [privacy, setPrivacy] = useState('public');
-    const [timeLimit, setTimeLimit] = useState('15');
-    const [createdMatchId, setCreatedMatchId] = useState('');
-
-    const [wallet, setWallet] = useState<{ depositBalance: number, winningBalance: number, bonusBalance: number } | null>(null);
-    const [isLoadingWallet, setIsLoadingWallet] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
-    const [isMatchCreated, setIsMatchCreated] = useState(false);
-
-    const totalBalance = useMemo(() => {
-        if (!wallet) return 0;
-        // Only deposit and winning balance can be used for entry fees
-        return wallet.depositBalance + wallet.winningBalance;
-    }, [wallet]);
-    
-    useEffect(() => {
-        if (isUserLoading) return;
-        if (!user) {
-            router.push('/login');
-            return;
-        }
-        if (firestore) {
-            setIsLoadingWallet(true);
-            const walletRef = doc(firestore, 'wallets', user.uid);
-            const unsubscribe = onSnapshot(walletRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    setWallet(docSnap.data() as any);
-                } else {
-                    setWallet({ depositBalance: 0, winningBalance: 0, bonusBalance: 0 });
-                }
-                setIsLoadingWallet(false);
-            }, err => {
-                toast.error("Failed to load wallet.");
-                console.error(err);
-                setIsLoadingWallet(false);
-            });
-            return () => unsubscribe();
-        }
-    }, [user, firestore, isUserLoading, router]);
+    const [createdMatchId, setCreatedMatchId] = useState('');
 
     const createMatchFunction = useMemo(() => {
         if (!functions) return null;
         return httpsCallable(functions, 'createMatch');
     }, [functions]);
-
 
     const handleCreateMatch = async () => {
         if (!user || !createMatchFunction) {
@@ -77,35 +37,15 @@ export default function CreateMatchPage() {
             return;
         }
 
-        if (totalBalance < entryFee[0]) {
-            toast.error("Insufficient Balance", { description: `You need at least ₹${entryFee[0]} to create this match.` });
-            router.push('/deposit');
-            return;
-        }
+        // Wallet check can be done on the server-side for security
         
         setIsCreating(true);
         try {
-            // Generate a unique match ID on the client
-            const newMatchId = doc(collection(firestore!, 'matches')).id.substring(0, 8).toUpperCase();
-
-            const result = await createMatchFunction({
-                matchId: newMatchId,
-                matchTitle: matchTitle || `Match ${newMatchId}`,
-                entryFee: entryFee[0],
-                maxPlayers: parseInt(maxPlayers),
-                privacy,
-                timeLimit: `${timeLimit} mins`
-            });
-            
-            const data = (result.data as any);
-
-            if (data.status === 'success') {
-                toast.success("Match Created!", { description: data.message });
-                setCreatedMatchId(data.matchId);
-                setIsMatchCreated(true);
-            } else {
-                throw new Error(data.message);
-            }
+            const result = await createMatchFunction({ fee: entryFee[0] });
+            const data = result.data as { matchId: string };
+            setCreatedMatchId(data.matchId);
+            toast.success("Match Created!", { description: `Match ID: ${data.matchId}` });
+            router.push(`/match/${data.matchId}`);
         } catch (error: any) {
             console.error("Error creating match: ", error);
             toast.error("Failed to Create Match", { description: error.message || "An internal error occurred." });
@@ -114,126 +54,30 @@ export default function CreateMatchPage() {
         }
     };
     
-    const handleCopyCode = () => {
-        navigator.clipboard.writeText(createdMatchId);
-        toast.success("Match ID Copied!");
-    };
-    
-    const handleShare = () => {
-        const shareUrl = `${window.location.origin}/match/${createdMatchId}`;
-        const shareText = `Join my Ludo match on Ludo Arena!\nMatch ID: ${createdMatchId}\nEntry Fee: ₹${entryFee[0]}`;
-        
-        if (navigator.share) {
-            navigator.share({
-                title: `Join my Ludo match: ${matchTitle || `Match ${createdMatchId}`}`,
-                text: shareText,
-                url: shareUrl,
-            }).catch(err => console.log('Error sharing', err));
-        } else {
-            navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-            toast.info("Sharing not supported. Invite link copied instead.");
-        }
-    };
-
-    if (isUserLoading || isLoadingWallet) {
-        return <LoadingScreen text="Loading wallet..." />;
-    }
-    
-    if (isMatchCreated) {
-        return (
-            <div className="container mx-auto max-w-md py-8 animate-fade-in-up">
-                <Card>
-                    <CardHeader className="text-center">
-                        <CheckCircle className="mx-auto w-12 h-12 text-green-500" />
-                        <CardTitle className="text-2xl font-bold mt-4">Match Created!</CardTitle>
-                        <CardDescription>Your match is ready. Share the Match ID with other players.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="text-center space-y-2">
-                            <Label className="text-muted-foreground">Match ID</Label>
-                            <div className="p-4 bg-muted rounded-lg border-2 border-dashed">
-                                <p className="text-4xl font-bold tracking-[0.3em]">{createdMatchId}</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                             <Button onClick={handleCopyCode} variant="outline" className="w-full"><Copy className="mr-2 h-4 w-4"/>Copy ID</Button>
-                             <Button onClick={handleShare} className="w-full"><Share2 className="mr-2 h-4 w-4"/>Share Invite</Button>
-                        </div>
-                         <Card className="bg-muted/50">
-                            <CardHeader className='p-4'>
-                                <CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5"/> Match Details</CardTitle>
-                            </CardHeader>
-                            <CardContent className="text-sm text-muted-foreground p-4 pt-0">
-                               <ul className="space-y-2">
-                                  <li className="flex justify-between"><span>Entry Fee:</span> <span className="font-semibold">₹{entryFee[0]}</span></li>
-                                  <li className="flex justify-between"><span>Players:</span> <span className="font-semibold">{maxPlayers}</span></li>
-                                  <li className="flex justify-between"><span>Time Limit:</span> <span className="font-semibold">{timeLimit} mins</span></li>
-                               </ul>
-                            </CardContent>
-                        </Card>
-                         <Button onClick={() => router.push(`/match/${createdMatchId}`)} className="w-full" size="lg">Go to Lobby <ArrowRight className="ml-2 h-4 w-4"/></Button>
-                    </CardContent>
-                </Card>
-            </div>
-        )
+    if (isUserLoading) {
+        return <LoadingScreen text="Loading..." />;
     }
 
     return (
-        <div className="container mx-auto max-w-2xl py-8">
+        <div className="container mx-auto max-w-md py-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Create a New Match</CardTitle>
-                    <CardDescription>Set up a new Ludo match for others to join.</CardDescription>
+                    <CardTitle>Create New Match</CardTitle>
+                    <CardDescription>Set the entry fee and create a match.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <Alert variant={totalBalance < entryFee[0] ? "destructive" : "default"}>
-                        <Wallet className="h-4 w-4" />
-                        <AlertTitle>Available Balance</AlertTitle>
-                        <AlertDescription>
-                            Your usable balance is ₹{totalBalance.toFixed(2)}. The entry fee of ₹{entryFee[0]} will be deducted upon creation.
-                        </AlertDescription>
-                    </Alert>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="match-title">Match Title (Optional)</Label>
-                        <Input id="match-title" placeholder="e.g., Weekend Ludo Clash" value={matchTitle} onChange={(e) => setMatchTitle(e.target.value)} />
-                    </div>
-
                     <div className="space-y-3">
                         <div className="flex justify-between items-center">
                             <Label>Entry Fee</Label>
-                            <span className="text-xl font-bold text-primary">₹{entryFee[0]}</span>
+                            <span className="text-2xl font-bold text-primary">₹{entryFee[0]}</span>
                         </div>
-                        <Slider value={entryFee} onValueChange={setEntryFee} min={50} max={5000} step={10} />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                            <Label>Max Players</Label>
-                             <RadioGroup value={maxPlayers} onValueChange={setMaxPlayers} className="flex gap-4">
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="2" id="p2" /><Users className="h-4 w-4"/> 2</Label>
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="4" id="p4" /><Users className="h-4 w-4"/> 4</Label>
-                            </RadioGroup>
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Privacy</Label>
-                             <RadioGroup value={privacy} onValueChange={setPrivacy} className="flex gap-4">
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="public" id="public" /><Unlock className="h-4 w-4"/> Public</Label>
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="private" id="private" /><Lock className="h-4 w-4"/> Private</Label>
-                            </RadioGroup>
-                        </div>
-                         <div className="space-y-2">
-                            <Label>Time Limit</Label>
-                            <RadioGroup value={timeLimit} onValueChange={setTimeLimit} className="flex gap-4">
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="15" id="t15" /><Clock className="h-4 w-4"/> 15m</Label>
-                                <Label className="flex items-center gap-2 p-3 border rounded-md has-[:checked]:border-primary"><RadioGroupItem value="30" id="t30" /><Clock className="h-4 w-4"/> 30m</Label>
-                            </RadioGroup>
-                        </div>
+                        <Slider value={entryFee} onValueChange={setEntryFee} min={10} max={1000} step={10} />
+                         <p className="text-xs text-muted-foreground text-center">The winner gets 1.8x the entry fee.</p>
                     </div>
                     
-                    <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isCreating || isLoadingWallet}>
-                        {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <IndianRupee className="mr-2 h-4 w-4" />}
-                        Create Match &amp; Deduct ₹{entryFee[0]}
+                    <Button onClick={handleCreateMatch} size="lg" className="w-full" disabled={isCreating}>
+                        {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Gamepad2 className="mr-2 h-4 w-4" />}
+                        Create Match & Play
                     </Button>
                 </CardContent>
             </Card>
