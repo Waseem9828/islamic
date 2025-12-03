@@ -1,11 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAdminDashboardStats = exports.adjustUserWallet = exports.cancelMatch = exports.getAllMatches = exports.getAllUsers = exports.processWithdrawalRequest = exports.processDepositRequest = exports.checkAdminStatus = exports.getUserTransactions = exports.declareMatchWinner = exports.joinMatch = exports.createMatch = exports.requestWithdrawal = exports.requestDeposit = void 0;
+exports.getAdminDashboardStats = exports.adjustUserWallet = exports.cancelMatch = exports.getAllMatches = exports.getAllUsers = exports.processWithdrawalRequest = exports.processDepositRequest = exports.checkAdminStatus = exports.getUserTransactions = exports.declareMatchWinner = exports.submitResult = exports.joinMatch = exports.createMatch = exports.requestWithdrawal = exports.requestDeposit = void 0;
 const admin = require("firebase-admin");
 const https_1 = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 admin.initializeApp();
 const db = admin.firestore();
+const storage = admin.storage();
 // =====================================================================
 // Helper Functions
 // =====================================================================
@@ -179,6 +180,40 @@ exports.joinMatch = (0, https_1.onCall)({ region, cors: true }, async (request) 
         transaction.set(userTransactionRef, { amount: -entryFee, reason: "match_entry", matchId, timestamp: admin.firestore.FieldValue.serverTimestamp() });
         return { status: "success", message: "Successfully joined match." };
     });
+});
+exports.submitResult = (0, https_1.onCall)({ region, cors: true, maxInstances: 10 }, async (request) => {
+    ensureAuthenticated(request);
+    const { matchId, selectedPosition, screenshotBase64, prize } = request.data;
+    const uid = request.auth.uid;
+    if (!matchId || !selectedPosition || !screenshotBase64 || !prize) {
+        throw new https_1.HttpsError("invalid-argument", "Missing required result data.");
+    }
+    const matchRef = db.collection("matches").doc(matchId);
+    const matchDoc = await matchRef.get();
+    if (!matchDoc.exists)
+        throw new https_1.HttpsError("not-found", "Match not found.");
+    const matchData = matchDoc.data();
+    if (!matchData.players.includes(uid))
+        throw new https_1.HttpsError("permission-denied", "You are not a player in this match.");
+    if (matchData.status !== 'inprogress')
+        throw new https_1.HttpsError("failed-precondition", "Match is not in progress.");
+    if (matchData.results && matchData.results[uid])
+        throw new https_1.HttpsError("failed-precondition", "You have already submitted a result.");
+    const bucket = storage.bucket();
+    const fileName = `results/${matchId}/${uid}/${Date.now()}.jpg`;
+    const file = bucket.file(fileName);
+    const buffer = Buffer.from(screenshotBase64, 'base64');
+    await file.save(buffer, { contentType: 'image/jpeg' });
+    const [screenshotUrl] = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' });
+    const resultData = {
+        position: parseInt(selectedPosition),
+        screenshotUrl,
+        submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'Pending Verification',
+        estimatedWinnings: prize,
+    };
+    await matchRef.update({ [`results.${uid}`]: resultData });
+    return { status: "success", message: "Result submitted successfully!" };
 });
 exports.declareMatchWinner = (0, https_1.onCall)({ region, cors: true }, async (request) => {
     ensureAuthenticated(request);

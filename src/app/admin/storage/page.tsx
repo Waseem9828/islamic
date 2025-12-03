@@ -1,253 +1,208 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Loader2, Trash2, HardDrive, FileText, AlertTriangle, UserX, BarChart } from 'lucide-react';
-import { collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
+import { Loader2, Trophy, ExternalLink, RefreshCw, AlertTriangle, Users } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { deleteFileByUrl } from '@/firebase/storage';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
-interface FileInfo {
-  name: string;
-  size: string;
+// Interfaces
+interface Submission {
+    id: string;
+    matchId: string;
+    userId: string;
+    userName: string;
+    screenshotURL: string;
+    selectedPosition: number;
+    prize: number;
+    submittedAt: string;
+    status: 'Pending Verification' | 'Verified' | 'Flagged for Review';
 }
 
-interface AnalysisResult {
-  totalSize: string;
-  fileCount: number;
-  files: FileInfo[];
+interface GroupedSubmission {
+    matchId: string;
+    submissions: Submission[];
+    hasConflict: boolean;
+    players: { id: string; name: string }[];
 }
 
-export default function ManageStoragePage() {
-  const { firestore, functions } = useFirebase();
-  const [isLoading, setIsLoading] = useState(false);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [isDepositCleaning, setIsDepositCleaning] = useState(false);
-  const [isMatchWinningCleaning, setIsMatchWinningCleaning] = useState(false);
-  const [isProfileCleaning, setIsProfileCleaning] = useState(false);
+// Main Page Component
+export default function ManageResultsPage() {
+    const { functions, firestore } = useFirebase();
+    const [submissions, setSubmissions] = useState<GroupedSubmission[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedMatch, setSelectedMatch] = useState<GroupedSubmission | null>(null);
+    const [winnerId, setWinnerId] = useState<string>('');
 
-  const handleAnalyze = async () => {
-    if (!functions) {
-        toast.error("Functions not available.");
-        return;
-    }
-    setIsLoading(true);
-    setAnalysis(null);
-    const toastId = toast.loading('Analyzing storage bucket...');
+    const fetchSubmissions = async () => {
+        if (!functions) return;
+        setIsLoading(true);
+        try {
+            const listSubmissionsFn = httpsCallable(functions, 'listResultSubmissions');
+            const result: HttpsCallableResult<Submission[]> = await listSubmissionsFn();
+            const data = result.data as Submission[];
 
-    try {
-        const analyzeStorageFn = httpsCallable(functions, 'analyzeStorage');
-        const result = await analyzeStorageFn();
-        setAnalysis(result.data as AnalysisResult);
-        toast.success('Analysis complete!', { id: toastId });
-    } catch (error: any) {
-        toast.error('Analysis Failed', { id: toastId, description: error.message });
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
-  const handleCleanupSuccessfulDeposits = async () => {
-    if (!firestore) return;
-    if (!confirm('Are you sure you want to delete ALL screenshots from successful deposits? This is permanent.')) return;
-
-    setIsDepositCleaning(true);
-    const toastId = toast.loading('Starting cleanup of deposit screenshots...');
-    try {
-        const q = query(collection(firestore, 'depositRequests'), where('status', '==', 'approved'));
-        const snapshot = await getDocs(q);
-        
-        if (snapshot.empty) {
-            toast.info("No successful deposits found to clean up.", { id: toastId });
-            setIsDepositCleaning(false);
-            return;
-        }
-
-        toast.loading(`Found ${snapshot.size} approved deposits. Deleting files...`, { id: toastId });
-
-        let deletedCount = 0;
-        const batch = writeBatch(firestore);
-
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            if (data.screenshotURL && data.screenshotURL !== 'deleted') {
-                try {
-                    await deleteFileByUrl(data.screenshotURL);
-                    batch.update(doc.ref, { screenshotURL: 'deleted' });
-                    deletedCount++;
-                } catch (error: any) {
-                    console.error(`Failed to delete file: ${data.screenshotURL}`, error);
-                    toast.error(`Failed to delete a file for deposit ${doc.id}. Skipping.`);
+            // Group submissions by matchId
+            const grouped = data.reduce((acc, sub) => {
+                if (!acc[sub.matchId]) {
+                    acc[sub.matchId] = { 
+                        matchId: sub.matchId, 
+                        submissions: [], 
+                        hasConflict: false,
+                        players: [] // Will be populated later
+                    };
                 }
-            }
-        }
+                acc[sub.matchId].submissions.push(sub);
+                return acc;
+            }, {} as Record<string, GroupedSubmission>);
 
-        if (deletedCount > 0) {
-            await batch.commit();
-            toast.success(`Successfully cleaned up and deleted ${deletedCount} deposit screenshots.`, { id: toastId });
-        } else {
-            toast.info('No deposit screenshots needed to be deleted.', { id: toastId });
-        }
-    } catch (error: any) {
-        toast.error('Deposit cleanup failed', { id: toastId, description: error.message });
-    } finally {
-        setIsDepositCleaning(false);
-    }
-  };
-
-  const handleCleanupMatchWinnings = async () => {
-    if (!firestore) return;
-    if (!confirm('Are you sure you want to delete ALL screenshots from successful match winnings? This is permanent.')) return;
-
-    setIsMatchWinningCleaning(true);
-    const toastId = toast.loading('Starting cleanup of match winning screenshots...');
-    try {
-        const q = query(collection(firestore, 'matchWinnings'), where('status', '==', 'approved'));
-        const snapshot = await getDocs(q);
-        
-        if (snapshot.empty) {
-            toast.info("No approved match winnings found.", { id: toastId });
-            return;
-        }
-
-        let deletedCount = 0;
-        const batch = writeBatch(firestore);
-
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            if (data.screenshotUrl && data.screenshotUrl !== 'deleted') {
-                try {
-                    await deleteFileByUrl(data.screenshotUrl);
-                    batch.update(doc.ref, { screenshotUrl: 'deleted' });
-                    deletedCount++;
-                } catch (error: any) {
-                    console.error(`Failed to delete file: ${data.screenshotUrl}`, error);
-                    toast.error(`Failed to delete file for match ${doc.id}. Skipping.`);
+            // Check for conflicts
+            Object.values(grouped).forEach(group => {
+                const winningClaims = group.submissions.filter(s => s.selectedPosition === 1);
+                if (winningClaims.length > 1) {
+                    group.hasConflict = true;
                 }
-            }
+            });
+
+            setSubmissions(Object.values(grouped));
+        } catch (error: any) {
+            console.error("Error fetching submissions:", error);
+            toast.error('Failed to fetch submissions', { description: error.message });
+        } finally {
+            setIsLoading(false);
         }
-        
-        if (deletedCount > 0) {
-            await batch.commit();
-            toast.success(`Successfully cleaned up and deleted ${deletedCount} match winning screenshots.`, { id: toastId });
-        } else {
-            toast.info('No match winning screenshots needed to be deleted.', { id: toastId });
+    };
+
+    useEffect(() => {
+        fetchSubmissions();
+    }, [functions]);
+
+    const handleDeclareWinner = async (match: GroupedSubmission) => {
+        const matchDoc = await firestore.collection('matches').doc(match.matchId).get();
+        if(matchDoc.exists) {
+            const matchData = matchDoc.data();
+            const players = Object.entries(matchData.playerInfo).map(([id, info]) => ({ id, name: info.name }));
+            setSelectedMatch({ ...match, players });
         }
-    } catch (error: any) {
-        toast.error('Match winning cleanup failed', { id: toastId, description: error.message });
-    } finally {
-        setIsMatchWinningCleaning(false);
-    }
-  };
+        setWinnerId('');
+    };
 
-  const handleCleanupOldProfilePictures = async () => {
-    if (!firestore) return;
-    if (!confirm('Are you sure you want to delete ALL user profile pictures? This does not delete default avatars. This is permanent.')) return;
+    const handleConfirmWinner = async () => {
+        if (!selectedMatch || !winnerId || !functions) return;
 
-    setIsProfileCleaning(true);
-    const toastId = toast.loading('Starting cleanup of user profile pictures...');
-    try {
-        const usersSnapshot = await getDocs(collection(firestore, 'users'));
-        
-        if (usersSnapshot.empty) {
-            toast.info("No users found.", { id: toastId });
-            return;
+        const toastId = toast.loading('Declaring winner and distributing prize...');
+        try {
+            const distributeWinningsFn = httpsCallable(functions, 'distributeWinnings');
+            await distributeWinningsFn({ matchId: selectedMatch.matchId, winnerId });
+
+            toast.success('Winner declared successfully!', { 
+                id: toastId, 
+                description: 'The match has been completed and the prize has been awarded.'
+            });
+            setSelectedMatch(null);
+            fetchSubmissions(); // Refresh the list
+        } catch (error: any) {
+            toast.error('Failed to declare winner', { 
+                id: toastId, 
+                description: error.message 
+            });
         }
+    };
 
-        let deletedCount = 0;
-        const batch = writeBatch(firestore);
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader className='flex-row items-center justify-between'>
+                    <div>
+                        <CardTitle className="flex items-center"><Trophy className="mr-2" />Match Result Submissions</CardTitle>
+                        <CardDescription>Review screenshots submitted by players and declare a winner.</CardDescription>
+                    </div>
+                    <Button variant='outline' size='icon' onClick={fetchSubmissions} disabled={isLoading}>
+                        <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                    </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {isLoading ? (
+                        <div className="flex justify-center items-center h-48">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : submissions.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-12">No pending submissions found.</p>
+                    ) : (
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {submissions.map((group) => (
+                                <Card key={group.matchId} className={cn(group.hasConflict && 'border-red-500')}>
+                                    <CardHeader>
+                                        <CardTitle className='text-lg flex items-center justify-between'>
+                                            <span>Match ID</span>
+                                            <Link href={`/admin/matches/${group.matchId}`} passHref>
+                                               <Button variant='ghost' size='sm'><ExternalLink className='h-4 w-4'/></Button>
+                                            </Link>
+                                        </CardTitle>
+                                         <p className='text-xs font-mono truncate'>{group.matchId}</p>
+                                        {group.hasConflict && (
+                                            <Badge variant="destructive" className='flex items-center gap-1.5'><AlertTriangle className='h-3 w-3'/>Conflicting Claims</Badge>
+                                        )}
+                                    </CardHeader>
+                                    <CardContent className='space-y-3'>
+                                        {group.submissions.map(sub => (
+                                            <div key={sub.id} className='flex items-start gap-3'>
+                                                <img src={sub.screenshotURL} alt={`Screenshot by ${sub.userName}`} className='w-16 h-16 rounded-md object-cover cursor-pointer' onClick={() => window.open(sub.screenshotURL, '_blank')}/>
+                                                <div>
+                                                    <p className='font-semibold'>{sub.userName}</p>
+                                                    <p className='text-sm'>Claimed Rank: <span className='font-bold'>{sub.selectedPosition}</span></p>
+                                                    <p className='text-xs text-muted-foreground'>{new Date(sub.submittedAt).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                    <DialogFooter className='p-4 border-t'>
+                                        <Button className='w-full' onClick={() => handleDeclareWinner(group)}><Trophy className='mr-2 h-4 w-4'/>Declare Winner</Button>
+                                    </DialogFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
-        for (const userDoc of usersSnapshot.docs) {
-            const userData = userDoc.data();
-            // Check if photoURL exists and is a non-default, non-deleted URL
-            if (userData.photoURL && !userData.photoURL.includes('googleusercontent') && !userData.photoURL.includes('robohash') && userData.photoURL !== 'deleted') {
-                try {
-                    await deleteFileByUrl(userData.photoURL);
-                    batch.update(userDoc.ref, { photoURL: 'deleted' });
-                    deletedCount++;
-                } catch (error: any) {
-                    console.error(`Failed to delete profile picture for user ${userDoc.id}:`, error);
-                    toast.error(`Failed to delete photo for user ${userDoc.id}. It might have been already deleted.`);
-                }
-            }
-        }
-
-        if (deletedCount > 0) {
-            await batch.commit();
-            toast.success(`Successfully deleted ${deletedCount} old user profile pictures.`, { id: toastId });
-        } else {
-            toast.info('No old profile pictures found to delete.', { id: toastId });
-        }
-
-    } catch (error: any) {
-        toast.error('Profile picture cleanup failed', { id: toastId, description: error.message });
-    } finally {
-        setIsProfileCleaning(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-        <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center"><HardDrive className="mr-2"/>Storage Bucket Management</CardTitle>
-              <CardDescription>Analyze storage and clean up unnecessary files. Actions here are permanent.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                 <Button onClick={handleAnalyze} disabled={isLoading} className="w-full sm:w-auto">
-                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <BarChart className="mr-2 h-4 w-4" />}
-                    Analyze Bucket
-                </Button>
-                {analysis && (
-                    <Card className="bg-muted/50">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Analysis Results</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-4">
-                            <div className="flex items-center gap-2">
-                                <FileText className="h-5 w-5 text-primary" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Total Files</p>
-                                    <p className="font-bold text-xl">{analysis.fileCount}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <HardDrive className="h-5 w-5 text-primary" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Total Size</p>
-                                    <p className="font-bold text-xl">{analysis.totalSize}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center"><AlertTriangle className="mr-2 text-red-500"/>Cleanup Zone</CardTitle>
-                <CardDescription>Bulk-delete files from your storage. Please be careful, these actions cannot be undone.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Button variant="destructive" onClick={handleCleanupSuccessfulDeposits} disabled={isDepositCleaning || !firestore}>
-                    {isDepositCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
-                    Clean Deposit Screenshots
-                </Button>
-                <Button variant="destructive" onClick={handleCleanupMatchWinnings} disabled={isMatchWinningCleaning || !firestore}>
-                    {isMatchWinningCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Trash2 className="mr-2 h-4 w-4"/>}
-                    Clean Match Winning Screenshots
-                </Button>
-                 <Button variant="destructive" onClick={handleCleanupOldProfilePictures} disabled={isProfileCleaning || !firestore}>
-                    {isProfileCleaning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserX className="mr-2 h-4 w-4"/>}
-                    Clean Old Profile Pictures
-                </Button>
-            </CardContent>
-        </Card>
-    </div>
-  );
+            <Dialog open={!!selectedMatch} onOpenChange={() => setSelectedMatch(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Declare Match Winner</DialogTitle>
+                        <p className='text-sm text-muted-foreground font-mono pt-2'>{selectedMatch?.matchId}</p>
+                         {selectedMatch?.hasConflict && (
+                             <p className='text-sm text-red-500 flex items-center gap-2 pt-2'><AlertTriangle className='h-4 w-4'/>Multiple players are claiming victory. Please review carefully.</p>
+                         )}
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Select value={winnerId} onValueChange={setWinnerId}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a player..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {selectedMatch?.players.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                           <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleConfirmWinner} disabled={!winnerId}>Confirm Winner</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
 }

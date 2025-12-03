@@ -1,213 +1,147 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
-import { collection, query, orderBy, onSnapshot, getDoc, doc, collectionGroup } from 'firebase/firestore';
-import { useFirebase } from '@/firebase/provider'; 
+import { useEffect, useState } from 'react';
+import { httpsCallable } from 'firebase/functions';
+import { useFirebase } from '@/firebase';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { History, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DataTable } from '@/components/ui/data-table';
-import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from '@tanstack/react-table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Deposit } from '@/lib/firebase/collections/transactions_deposit';
+import { Withdrawal } from '@/lib/firebase/collections/transactions_withdraw';
 
+const TransactionTable = ({ transactions, type, onAction, isLoading }: { transactions: (Deposit | Withdrawal)[], type: 'deposit' | 'withdrawal', onAction: (id: string, action: string) => void, isLoading: boolean }) => (
+    <Table>
+        <TableHeader>
+            <TableRow>
+                <TableHead>User ID</TableHead>
+                <TableHead>Amount (₹)</TableHead>
+                <TableHead>Date</TableHead>
+                {type === 'withdrawal' && <TableHead>UPI ID</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {isLoading ? (
+                <TableRow><TableCell colSpan={5} className="text-center"><Loader2 className="mx-auto my-4 h-6 w-6 animate-spin" /></TableCell></TableRow>
+            ) : transactions.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center">No pending {type}s.</TableCell></TableRow>
+            ) : (
+                transactions.map((tx) => (
+                    <TableRow key={tx.id}>
+                        <TableCell className="font-mono">{tx.userId}</TableCell>
+                        <TableCell>₹{tx.amount.toLocaleString('en-IN')}</TableCell>
+                        <TableCell>{new Date(tx.timestamp.seconds * 1000).toLocaleString()}</TableCell>
+                        {type === 'withdrawal' && <TableCell>{(tx as Withdrawal).upiId}</TableCell>}
+                        <TableCell className="text-right space-x-2">
+                            {type === 'deposit' && (
+                                <>
+                                    <Button size="sm" variant="outline" className="border-green-500 text-green-500 hover:bg-green-50 hover:text-green-600" onClick={() => onAction(tx.id, 'approved')}><CheckCircle className="mr-2 h-4 w-4"/>Approve</Button>
+                                    <Button size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => onAction(tx.id, 'rejected')}><XCircle className="mr-2 h-4 w-4"/>Reject</Button>
+                                </>
+                            )}
+                            {type === 'withdrawal' && (
+                                <>
+                                    <Button size="sm" variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-50 hover:text-blue-600" onClick={() => onAction(tx.id, 'completed')}><CheckCircle className="mr-2 h-4 w-4"/>Complete</Button>
+                                    <Button size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => onAction(tx.id, 'rejected')}><XCircle className="mr-2 h-4 w-4"/>Reject</Button>
+                                </>
+                            )}
+                        </TableCell>
+                    </TableRow>
+                ))
+            )}
+        </TableBody>
+    </Table>
+);
 
-interface User {
-  id: string;
-  email?: string;
-  displayName?: string;
-  photoURL?: string;
-}
+export default function TransactionsHubPage() {
+    const { functions } = useFirebase();
+    const [pendingDeposits, setPendingDeposits] = useState<Deposit[]>([]);
+    const [pendingWithdrawals, setPendingWithdrawals] = useState<Withdrawal[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState<string | null>(null); // Tracks ID of transaction being actioned
 
-interface Transaction {
-  id: string;
-  amount: number;
-  userId: string;
-  type: 'credit' | 'debit';
-  reason: string;
-  status: string;
-  timestamp: { toDate: () => Date };
-  matchId?: string;
-}
-
-type TransactionWithUser = Transaction & { user?: User };
-
-export default function AllTransactionsPage() {
-  const { firestore } = useFirebase(); 
-  const [transactions, setTransactions] = useState<TransactionWithUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [globalFilter, setGlobalFilter] = useState('');
-  const [filters, setFilters] = useState({ type: 'all', reason: 'all', status: 'all' });
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'timestamp', desc: true }]);
-
-
-  useEffect(() => {
-    if (!firestore) return;
-
-    const transQuery = query(collectionGroup(firestore, 'transactions'), orderBy('timestamp', 'desc'));
-
-    const unsubscribe = onSnapshot(transQuery, async (snapshot) => {
-        const fetchedTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-        
-        const userCache = new Map<string, User>();
-        const transactionsWithUsers = await Promise.all(fetchedTransactions.map(async (tx) => {
-            if (tx.userId === 'admin') {
-                 return { ...tx, user: { id: 'admin', displayName: 'Admin Commission' } };
-            }
-            if (userCache.has(tx.userId)) {
-                return { ...tx, user: userCache.get(tx.userId) };
-            }
-            try {
-                const userDoc = await getDoc(doc(firestore, 'users', tx.userId));
-                if (userDoc.exists()) {
-                    const userData = { id: userDoc.id, ...userDoc.data() } as User;
-                    userCache.set(tx.userId, userData);
-                    return { ...tx, user: userData };
-                }
-            } catch (e) {
-                console.error(`Failed to fetch user ${tx.userId}`, e);
-            }
-            return { ...tx, user: undefined };
-        }));
-
-        setTransactions(transactionsWithUsers);
-        setLoading(false);
-    }, (error) => {
-        console.error("Failed to fetch transactions:", error);
-        setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [firestore]);
-
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter(tx => {
-        const typeMatch = filters.type === 'all' || tx.type === filters.type;
-        const reasonMatch = filters.reason === 'all' || tx.reason === filters.reason;
-        const statusMatch = filters.status === 'all' || tx.status === filters.status;
-        const searchMatch = !globalFilter || 
-            tx.user?.displayName?.toLowerCase().includes(globalFilter.toLowerCase()) ||
-            tx.user?.email?.toLowerCase().includes(globalFilter.toLowerCase()) ||
-            tx.userId.toLowerCase().includes(globalFilter.toLowerCase()) ||
-            tx.id.toLowerCase().includes(globalFilter.toLowerCase());
-
-        return typeMatch && reasonMatch && statusMatch && searchMatch;
-    });
-  }, [transactions, filters, globalFilter]);
-
-  const uniqueReasons = useMemo(() => [...new Set(transactions.map(tx => tx.reason))], [transactions]);
-  const uniqueStatuses = useMemo(() => [...new Set(transactions.map(tx => tx.status))], [transactions]);
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-        case 'approved':
-        case 'success':
-        case 'completed':
-            return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-100">Completed</Badge>;
-        case 'pending':
-            return <Badge variant="secondary">Pending</Badge>;
-        case 'rejected':
-        case 'cancelled':
-            return <Badge variant="destructive">Failed</Badge>;
-        default:
-            return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const columns: ColumnDef<TransactionWithUser>[] = useMemo(() => [
-    {
-        accessorKey: 'user',
-        header: 'User',
-        cell: ({ row }) => {
-            const tx = row.original;
-            if (tx.userId === 'admin') {
-                return <div className='font-semibold'>Admin</div>
-            }
-            return (
-                <Link href={`/admin/users/${tx.userId}`} className="flex items-center gap-2 hover:bg-muted p-1 rounded-md transition-colors">
-                    <Avatar className="h-9 w-9 border">
-                        <AvatarImage src={tx.user?.photoURL || undefined} />
-                        <AvatarFallback>{tx.user?.displayName?.[0] || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <p className="font-semibold text-sm">{tx.user?.displayName || 'Unknown User'}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{tx.userId}</p>
-                    </div>
-                </Link>
-            )
+    const fetchTransactions = async () => {
+        setIsLoading(true);
+        try {
+            const getPendingTransactionsFn = httpsCallable(functions, 'getPendingTransactions');
+            const result = await getPendingTransactionsFn();
+            const data = result.data as { deposits: Deposit[], withdrawals: Withdrawal[] };
+            setPendingDeposits(data.deposits || []);
+            setPendingWithdrawals(data.withdrawals || []);
+        } catch (err: any) {
+            toast.error("Failed to fetch transactions", { description: err.message });
+        } finally {
+            setIsLoading(false);
         }
-    },
-    { accessorKey: 'type', header: 'Type', cell: ({ row }) => (
-        row.original.type === 'credit' ? 
-        <span className='flex items-center text-green-600 font-medium'><ArrowDownLeft className="h-4 w-4 mr-1"/>Credit</span> : 
-        <span className='flex items-center text-red-600 font-medium'><ArrowUpRight className="h-4 w-4 mr-1"/>Debit</span>
-    )},
-    { accessorKey: 'amount', header: 'Amount', cell: ({ row }) => <div className={`font-semibold ${row.original.type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>₹{row.original.amount.toFixed(2)}</div>},
-    { accessorKey: 'reason', header: 'Reason', cell: ({ row }) => <div className="capitalize">{row.original.reason.replace(/_/g, ' ')}</div> },
-    { accessorKey: 'status', header: 'Status', cell: ({ row }) => getStatusBadge(row.original.status) },
-    { accessorKey: 'id', header: 'Reference', cell: ({ row }) => (
-        <div className="font-mono text-xs max-w-[120px] truncate">
-            {row.original.matchId ? <Link href={`/admin/matches/${row.original.matchId}`} className="hover:underline" title={row.original.matchId}>Match: {row.original.matchId}</Link> : row.original.id}
+    };
+
+    useEffect(() => {
+        fetchTransactions();
+    }, [functions]);
+
+    const handleAction = async (id: string, action: string, type: 'deposit' | 'withdrawal') => {
+        setActionLoading(id);
+        const toastId = toast.loading(`Processing ${type}...`);
+        
+        const functionName = type === 'deposit' ? 'handleDepositByAdmin' : 'handleWithdrawalByAdmin';
+        const payload = type === 'deposit' ? { depositId: id, action } : { withdrawalId: id, action };
+
+        try {
+            const callableFn = httpsCallable(functions, functionName);
+            await callableFn(payload);
+            toast.success(`Transaction ${action} successfully.`, { id: toastId });
+            fetchTransactions(); // Refresh the list
+        } catch (err: any) {
+            toast.error(err.message, { id: toastId });
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h1 className="text-2xl font-bold">Transactions Hub</h1>
+                <p className="text-muted-foreground">Approve deposits and complete withdrawals.</p>
+            </div>
+
+            <Tabs defaultValue="deposits">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="deposits">
+                        <Badge className="mr-2">{pendingDeposits.length}</Badge> Pending Deposits
+                    </TabsTrigger>
+                    <TabsTrigger value="withdrawals">
+                        <Badge className="mr-2">{pendingWithdrawals.length}</Badge> Pending Withdrawals
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="deposits">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Pending Deposit Requests</CardTitle>
+                            <CardDescription>Review and approve or reject these deposit requests.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <TransactionTable transactions={pendingDeposits} type="deposit" onAction={(id, action) => handleAction(id, action, 'deposit')} isLoading={isLoading} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="withdrawals">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Pending Withdrawal Requests</CardTitle>
+                            <CardDescription>Users have requested these withdrawals. Complete them after verifying payment.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <TransactionTable transactions={pendingWithdrawals} type="withdrawal" onAction={(id, action) => handleAction(id, action, 'withdrawal')} isLoading={isLoading} />
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
         </div>
-    )},
-    { accessorKey: 'timestamp', header: 'Date', cell: ({ row }) => <div className="text-right text-xs text-muted-foreground">{format(row.original.timestamp.toDate(), 'PPp')}</div> }
-  ], []);
-
-  const table = useReactTable({
-    data: filteredTransactions,
-    columns,
-    state: { sorting, globalFilter },
-    onGlobalFilterChange: setGlobalFilter,
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-  });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center"><History className="mr-2"/>All Transactions</CardTitle>
-        <CardDescription>A complete, real-time history of all financial activities across the platform.</CardDescription>
-         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
-              <Input placeholder="Search Name, Email, User ID, TXN ID..." value={globalFilter} onChange={e => setGlobalFilter(e.target.value)} className="md:col-span-2" />
-               <Select value={filters.type} onValueChange={v => handleFilterChange('type', v)}>
-                  <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
-                      <SelectItem value="debit">Debit</SelectItem>
-                  </SelectContent>
-              </Select>
-               <Select value={filters.status} onValueChange={v => handleFilterChange('status', v)}>
-                  <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
-                  <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      {uniqueStatuses.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
-                  </SelectContent>
-              </Select>
-          </div>
-      </CardHeader>
-      <CardContent>
-          {loading && (
-              <div className="space-y-2">
-                  {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-              </div>
-          )}
-          {!loading && (
-             <DataTable table={table} columns={columns} />
-          )}
-      </CardContent>
-    </Card>
-  );
+    );
 }

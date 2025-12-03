@@ -23,9 +23,9 @@ import { collection, query, orderBy, onSnapshot, Timestamp, addDoc } from 'fireb
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 // Types
-interface Match {
+interface Game {
     id: string;
-    matchTitle: string;
+    gameTitle: string;
     status: 'waiting' | 'inprogress' | 'completed' | 'cancelled' | 'archived';
     entryFee: number;
     maxPlayers: number;
@@ -34,82 +34,80 @@ interface Match {
     winner?: string;
 }
 
-interface NewMatchState {
+interface NewGameState {
     title: string;
     entryFee: string;
     maxPlayers: string;
 }
 
-const MatchClient = () => {
+const GameClient = () => {
     const { firestore, functions } = useFirebase();
     const router = useRouter();
-    const [matches, setMatches] = useState<Match[]>([]);
+    const [games, setGames] = useState<Game[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [globalFilter, setGlobalFilter] = useState('');
     const [sorting, setSorting] = useState<SortingState>([{ id: 'createdAt', desc: true }]);
-    const [actionState, setActionState] = useState<{ matchId: string | null; winnerId: string | null; type: 'win' | 'cancel' | null }>({ matchId: null, winnerId: null, type: null });
+    const [actionState, setActionState] = useState<{ gameId: string | null; winnerId: string | null; type: 'win' | 'cancel' | null }>({ gameId: null, winnerId: null, type: null });
     const [isSubmittingAction, setIsSubmittingAction] = useState(false);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [newMatch, setNewMatch] = useState<NewMatchState>({ title: '', entryFee: '', maxPlayers: '' });
-    const [isCreatingMatch, setIsCreatingMatch] = useState(false);
+    const [newGame, setNewGame] = useState<NewGameState>({ title: '', entryFee: '', maxPlayers: '' });
+    const [isCreatingGame, setIsCreatingGame] = useState(false);
 
     useEffect(() => {
         if (!firestore) return;
         setIsLoading(true);
 
-        const matchesQuery = query(collection(firestore, 'matches'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
-            const fetchedMatches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-            setMatches(fetchedMatches);
+        const gamesQuery = query(collection(firestore, 'games'), orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(gamesQuery, (snapshot) => {
+            const fetchedGames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
+            setGames(fetchedGames);
             setIsLoading(false);
         }, (err) => {
             console.error(err);
-            toast.error("Failed to load matches", { description: err.message });
+            toast.error("Failed to load games", { description: err.message });
             setIsLoading(false);
         });
 
         return () => unsubscribe();
     }, [firestore]);
 
-    const handleCreateMatch = async () => {
+    const handleCreateGame = async () => {
         if (!firestore) return;
-        const { title, entryFee, maxPlayers } = newMatch;
+        const { title, entryFee, maxPlayers } = newGame;
         if (!title || !entryFee || !maxPlayers) {
             toast.error("All fields are required.");
             return;
         }
 
-        setIsCreatingMatch(true);
+        setIsCreatingGame(true);
         try {
-            // This is the line that was causing the error.
-            // We ensure 'collection' and 'addDoc' are imported from 'firebase/firestore'
-            await addDoc(collection(firestore, "matches"), {
-                matchTitle: title,
+            await addDoc(collection(firestore, "games"), {
+                gameTitle: title,
                 entryFee: parseInt(entryFee, 10),
                 maxPlayers: parseInt(maxPlayers, 10),
                 status: 'waiting',
                 players: [],
                 createdAt: Timestamp.now(),
             });
-            toast.success("Match created successfully!");
+            toast.success("Game created successfully!");
             setIsCreateDialogOpen(false);
-            setNewMatch({ title: '', entryFee: '', maxPlayers: '' });
+            setNewGame({ title: '', entryFee: '', maxPlayers: '' });
         } catch (error: any) {
-            console.error("Error creating match: ", error);
-            toast.error("Error creating match:", { description: error.message });
+            console.error("Error creating game: ", error);
+            toast.error("Error creating game:", { description: error.message });
         } finally {
-            setIsCreatingMatch(false);
+            setIsCreatingGame(false);
         }
     };
     
     const handleAction = async () => {
-        if (!actionState.matchId || !actionState.type || !functions) return;
+        if (!actionState.gameId || !actionState.type || !functions) return;
         
         setIsSubmittingAction(true);
-        const { matchId, winnerId, type } = actionState;
+        const { gameId, winnerId, type } = actionState;
         
         let actionFn;
-        let payload: any = { matchId };
+        let payload: any = { gameId };
         let successMessage = '';
         
         if (type === 'win') {
@@ -122,8 +120,8 @@ const MatchClient = () => {
             payload.winnerId = winnerId;
             successMessage = "Winner declared!";
         } else if (type === 'cancel') {
-            actionFn = httpsCallable(functions, 'cancelMatchByAdmin');
-            successMessage = "Match cancelled!";
+            actionFn = httpsCallable(functions, 'cancelGameByAdmin');
+            successMessage = "Game cancelled!";
         } else {
             setIsSubmittingAction(false);
             return;
@@ -135,18 +133,18 @@ const MatchClient = () => {
         } catch (err: any) {
             toast.error("Action failed", { description: err.message });
         } finally {
-            setActionState({ matchId: null, winnerId: null, type: null });
+            setActionState({ gameId: null, winnerId: null, type: null });
             setIsSubmittingAction(false);
         }
     };
     
-    const columns: ColumnDef<Match>[] = useMemo(() => [
+    const columns: ColumnDef<Game>[] = useMemo(() => [
         {
-            accessorKey: 'matchTitle',
-            header: 'Match',
+            accessorKey: 'gameTitle',
+            header: 'Game',
             cell: ({ row }) => (
                 <div>
-                    <div className="font-medium">{row.original.matchTitle}</div>
+                    <div className="font-medium">{row.original.gameTitle}</div>
                     <div className="text-xs text-muted-foreground font-mono">{row.original.id}</div>
                 </div>
             )
@@ -185,22 +183,22 @@ const MatchClient = () => {
         {
             id: 'actions',
             cell: ({ row }) => {
-                const match = row.original;
-                const isCancellable = match.status === 'waiting' || match.status === 'inprogress';
-                const isDeclareWinnerEnabled = match.status === 'inprogress';
+                const game = row.original;
+                const isCancellable = game.status === 'waiting' || game.status === 'inprogress';
+                const isDeclareWinnerEnabled = game.status === 'inprogress';
 
                 return (
-                    <AlertDialog onOpenChange={(open) => !open && setActionState({matchId: null, winnerId: null, type: null})}>
+                    <AlertDialog onOpenChange={(open) => !open && setActionState({gameId: null, winnerId: null, type: null})}>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => router.push(`/admin/matches/${match.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/admin/games/${game.id}`)}><Eye className="mr-2 h-4 w-4"/>View Details</DropdownMenuItem>
                                 {isDeclareWinnerEnabled && (
                                     <AlertDialogTrigger asChild>
-                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left" onClick={() => setActionState(prev => ({...prev, matchId: match.id}))}>
+                                        <button className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left" onClick={() => setActionState(prev => ({...prev, gameId: game.id}))}>
                                             <Crown className="mr-2 h-4 w-4"/>Declare Winner
                                         </button>
                                     </AlertDialogTrigger>
@@ -208,10 +206,10 @@ const MatchClient = () => {
                                 {isCancellable && (
                                     <AlertDialogTrigger asChild>
                                          <button 
-                                            onClick={() => setActionState({ matchId: match.id, winnerId: null, type: 'cancel' })}
+                                            onClick={() => setActionState({ gameId: game.id, winnerId: null, type: 'cancel' })}
                                             className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full text-left text-red-600 focus:text-red-600"
                                         >
-                                            <XCircle className="mr-2 h-4 w-4"/>Cancel Match
+                                            <XCircle className="mr-2 h-4 w-4"/>Cancel Game
                                         </button>
                                     </AlertDialogTrigger>
                                 )}
@@ -220,17 +218,17 @@ const MatchClient = () => {
                         <AlertDialogContent>
                              <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                    {actionState.type === 'cancel' ? `Cancel Match ${actionState.matchId}?` : `Declare Winner for Match ${match.id}`}
+                                    {actionState.type === 'cancel' ? `Cancel Game ${actionState.gameId}?` : `Declare Winner for Game ${game.id}`}
                                 </AlertDialogTitle>
                                 {actionState.type === 'cancel' ? (
-                                    <AlertDialogDescription>This will refund all players' entry fees and change the match status to 'cancelled'. This action is irreversible.</AlertDialogDescription>
+                                    <AlertDialogDescription>This will refund all players' entry fees and change the game status to 'cancelled'. This action is irreversible.</AlertDialogDescription>
                                 ) : (
                                     <AlertDialogDescription>Select a winner from the list of players. This action is irreversible and will distribute the prize pool.</AlertDialogDescription>
                                 )}
                             </AlertDialogHeader>
                             {actionState.type !== 'cancel' && (
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                                    {match.players.map(p => (
+                                    {game.players.map(p => (
                                         <Button key={p} variant={actionState.winnerId === p ? 'default' : 'outline'} className='w-full justify-start' onClick={() => setActionState(prev => ({ ...prev, winnerId: p, type: 'win' }))}>
                                             <Crown className="mr-2 h-4 w-4"/> Declare <span className="font-mono mx-2 p-1 bg-muted rounded text-xs">{p}</span> as Winner
                                         </Button>
@@ -256,7 +254,7 @@ const MatchClient = () => {
     ], [functions, actionState, isSubmittingAction, router]);
 
     const table = useReactTable({
-        data: matches,
+        data: games,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -270,7 +268,7 @@ const MatchClient = () => {
     });
 
     if (isLoading) {
-        return <MatchClientFallback />;
+        return <GameClientFallback />;
     }
 
     return (
@@ -278,7 +276,7 @@ const MatchClient = () => {
             <CardHeader>
                 <CardTitle className="flex items-center">
                     <Trophy className="mr-2"/> 
-                    Match Command Center
+                    Game Command Center
                 </CardTitle>
                 <CardDescription>
                     A real-time interface for viewing, managing, and resolving all game matches.
@@ -294,31 +292,31 @@ const MatchClient = () => {
                     />
                     <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button><PlusCircle className="mr-2 h-4 w-4"/> Create Match</Button>
+                            <Button><PlusCircle className="mr-2 h-4 w-4"/> Create Game</Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Create New Match</DialogTitle>
-                                <DialogDescription>Fill in the details below to create a new match.</DialogDescription>
+                                <DialogTitle>Create New Game</DialogTitle>
+                                <DialogDescription>Fill in the details below to create a new game.</DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="title" className="text-right">Title</Label>
-                                    <Input id="title" value={newMatch.title} onChange={(e) => setNewMatch(prev => ({...prev, title: e.target.value}))} className="col-span-3" />
+                                    <Input id="title" value={newGame.title} onChange={(e) => setNewGame(prev => ({...prev, title: e.target.value}))} className="col-span-3" />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="entry-fee" className="text-right">Entry Fee</Label>
-                                    <Input id="entry-fee" type="number" value={newMatch.entryFee} onChange={(e) => setNewMatch(prev => ({...prev, entryFee: e.target.value}))} className="col-span-3" />
+                                    <Input id="entry-fee" type="number" value={newGame.entryFee} onChange={(e) => setNewGame(prev => ({...prev, entryFee: e.target.value}))} className="col-span-3" />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="max-players" className="text-right">Max Players</Label>
-                                    <Input id="max-players" type="number" value={newMatch.maxPlayers} onChange={(e) => setNewMatch(prev => ({...prev, maxPlayers: e.target.value}))} className="col-span-3" />
+                                    <Input id="max-players" type="number" value={newGame.maxPlayers} onChange={(e) => setNewGame(prev => ({...prev, maxPlayers: e.target.value}))} className="col-span-3" />
                                 </div>
                             </div>
                             <DialogFooter>
-                                <DialogClose asChild><Button variant={'outline'} disabled={isCreatingMatch}>Cancel</Button></DialogClose>
-                                <Button onClick={handleCreateMatch} disabled={isCreatingMatch}>
-                                    {isCreatingMatch && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                <DialogClose asChild><Button variant={'outline'} disabled={isCreatingGame}>Cancel</Button></DialogClose>
+                                <Button onClick={handleCreateGame} disabled={isCreatingGame}>
+                                    {isCreatingGame && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                     Create
                                 </Button>
                             </DialogFooter>
@@ -331,7 +329,7 @@ const MatchClient = () => {
     );
 };
 
-const MatchClientFallback = () => {
+const GameClientFallback = () => {
     return (
         <div className="space-y-4">
             <div className="flex items-center py-4">
@@ -346,10 +344,10 @@ const MatchClientFallback = () => {
     )
 }
 
-export default function ManageMatchesPage() {
+export default function ManageGamesPage() {
     return (
-        <Suspense fallback={<MatchClientFallback />}>
-            <MatchClient />
+        <Suspense fallback={<GameClientFallback />}>
+            <GameClient />
         </Suspense>
     );
 }
