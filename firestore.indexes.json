@@ -2,7 +2,7 @@
 {
   "indexes": [
     {
-      "collectionGroup": "depositRequests",
+      "collectionGroup": "transactions_withdraw",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -10,13 +10,13 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "requestedAt",
-          "order": "DESCENDING"
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "withdrawalRequests",
+      "collectionGroup": "transactions_deposit",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -24,20 +24,26 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "requestedAt",
-          "order": "DESCENDING"
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
         }
       ]
     },
     {
-      "collectionGroup": "users",
-      "queryScope": "COLLECTION",
+      "collectionGroup": 'admins',
+      "queryScope": 'COLLECTION',
       "fields": [
         {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
+          "fieldPath": 'role',
+          "order": 'ASCENDING'
+        },
+        {
+          "fieldPath": 'createdAt',
+          "order": 'DESCENDING'
         }
       ]
     }
-  ]
+  ],
+  "fieldOverrides": []
 }
+
