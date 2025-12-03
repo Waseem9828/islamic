@@ -28,6 +28,10 @@ const CreateAdminDialog = ({ isOpen, onClose, onAdminCreated }: { isOpen: boolea
             toast.error("Please fill all fields.");
             return;
         }
+        if (!functions) {
+            toast.error("Firebase functions are not available.");
+            return;
+        }
         setIsLoading(true);
         const toastId = toast.loading("Creating admin...");
         try {
@@ -87,6 +91,10 @@ const AddBalanceDialog = ({ isOpen, onClose, onBalanceAdded, admin }: { isOpen: 
             toast.error("Please enter a valid positive amount.");
             return;
         }
+        if (!functions) {
+            toast.error("Firebase functions are not available.");
+            return;
+        }
         setIsLoading(true);
         const toastId = toast.loading("Adding balance...");
         try {
@@ -139,6 +147,10 @@ export default function ManageAdminsPage() {
     const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null);
 
     const fetchAdmins = async () => {
+        if (!functions) {
+            toast.error("Firebase functions are not available.");
+            return;
+        }
         setIsLoading(true);
         try {
             // This function needs to be created in the backend

@@ -57,7 +57,7 @@ export default function PlayPage() {
   const [joinCode, setJoinCode] = useState('');
   const [showJoinDialog, setShowJoinDialog] = useState(false);
 
-  const joinMatchFn = useMemo(() => httpsCallable(functions, 'joinMatch'), [functions]);
+  const joinMatchFn = useMemo(() => functions ? httpsCallable(functions, 'joinMatch') : null, [functions]);
 
   useEffect(() => {
     if (!isUserLoading && !user) router.push('/login');
@@ -78,6 +78,7 @@ export default function PlayPage() {
   }, [firestore]);
 
   const handleJoin = useCallback(async (matchId: string) => {
+    if (!joinMatchFn) return;
     setIsJoining(true);
     try {
         await joinMatchFn({ matchId });
@@ -93,7 +94,7 @@ export default function PlayPage() {
   }, [joinMatchFn, router]);
 
   const handleJoinWithCode = async () => {
-      if (!joinCode) return;
+      if (!joinCode || !firestore) return;
       // Basic validation if match exists client side.
       // Server will do the real check.
       const matchDoc = await getDoc(doc(firestore, "matches", joinCode));

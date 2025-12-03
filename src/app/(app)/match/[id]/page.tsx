@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase, useUser } from '@/firebase';
 import { toast } from 'sonner';
@@ -32,6 +32,13 @@ interface Match {
     fee: number;
 }
 
+interface PlayerInfo {
+    [key: string]: {
+        name?: string;
+        photoURL?: string;
+    };
+}
+
 const PlayerAvatar = ({ player, isWinner }: { player: MatchPlayer, isWinner: boolean }) => (
     <div className="flex flex-col items-center space-y-2 relative">
         {isWinner && <Crown className="absolute -top-4 text-yellow-400 w-8 h-8"/>}
@@ -51,7 +58,7 @@ export default function MatchLobbyPage() {
     const { user, isUserLoading } = useUser();
 
     const [match, setMatch] = useState<Match | null>(null);
-    const [playersInfo, setPlayersInfo] = useState({});
+    const [playersInfo, setPlayersInfo] = useState<PlayerInfo>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [winnerToDeclare, setWinnerToDeclare] = useState<string | null>(null);
@@ -81,11 +88,17 @@ export default function MatchLobbyPage() {
                 }
 
                 const playerIds = matchData.players || [];
-                const fetchedPlayers = {};
+                const fetchedPlayers: PlayerInfo = {};
                 for (const pid of playerIds) {
                     if (!playersInfo[pid]) {
-                        const userDoc = await doc(firestore, 'users', pid).get();
-                        if (userDoc.exists()) fetchedPlayers[pid] = userDoc.data();
+                        const userDoc = await getDoc(doc(firestore, 'users', pid));
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            fetchedPlayers[pid] = {
+                                name: userData.displayName,
+                                photoURL: userData.photoURL
+                            };
+                        }
                     }
                 }
                 setPlayersInfo(prev => ({...prev, ...fetchedPlayers}));
@@ -151,11 +164,11 @@ export default function MatchLobbyPage() {
         toast.success("Match ID Copied!");
     };
 
-    const filledPlayers = useMemo(() => 
+    const filledPlayers: MatchPlayer[] = useMemo(() => 
         (match?.players || []).map(pid => ({ 
             ...playersInfo[pid], 
             uid: pid, 
-            isHost: pid === match.hostId 
+            isHost: pid === match?.hostId 
         })).filter(p => p.name),
     [match, playersInfo]);
 
@@ -217,7 +230,7 @@ export default function MatchLobbyPage() {
                            </CardHeader>
                            <CardContent className="p-4 pt-0 grid grid-cols-2 gap-2">
                                 {filledPlayers.map(p => (
-                                    <Button key={p.uid} variant="outline" onClick={() => setWinnerToDeclare(p.uid)} disabled={isActionLoading}>
+                                    <Button key={p.uid} variant="outline" onClick={() => p.uid && setWinnerToDeclare(p.uid)} disabled={isActionLoading}>
                                         Declare {p.name} Winner
                                     </Button>
                                 ))}
@@ -247,7 +260,7 @@ export default function MatchLobbyPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            You are about to declare <span className="font-bold">{playersInfo[winnerToDeclare]?.name}</span> as the winner. This action cannot be undone and will transfer the prize money.
+                            You are about to declare <span className="font-bold">{playersInfo[winnerToDeclare!]?.name}</span> as the winner. This action cannot be undone and will transfer the prize money.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

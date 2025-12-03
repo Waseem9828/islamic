@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Loader2, Trophy, ExternalLink, RefreshCw, AlertTriangle, Users } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
+import { collection, doc, getDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from 'next/link';
@@ -46,9 +47,9 @@ export default function ManageResultsPage() {
         if (!functions) return;
         setIsLoading(true);
         try {
-            const listSubmissionsFn = httpsCallable(functions, 'listResultSubmissions');
-            const result: HttpsCallableResult<Submission[]> = await listSubmissionsFn();
-            const data = result.data as Submission[];
+            const listSubmissionsFn = httpsCallable<unknown, Submission[]>(functions, 'listResultSubmissions');
+            const result = await listSubmissionsFn();
+            const data = result.data;
 
             // Group submissions by matchId
             const grouped = data.reduce((acc, sub) => {
@@ -86,10 +87,11 @@ export default function ManageResultsPage() {
     }, [functions]);
 
     const handleDeclareWinner = async (match: GroupedSubmission) => {
-        const matchDoc = await firestore.collection('matches').doc(match.matchId).get();
-        if(matchDoc.exists) {
+        if (!firestore) return;
+        const matchDoc = await getDoc(doc(firestore, 'matches', match.matchId));
+        if(matchDoc.exists()) {
             const matchData = matchDoc.data();
-            const players = Object.entries(matchData.playerInfo).map(([id, info]) => ({ id, name: info.name }));
+            const players = Object.entries(matchData.playerInfo).map(([id, info]) => ({ id, name: (info as any).name }));
             setSelectedMatch({ ...match, players });
         }
         setWinnerId('');

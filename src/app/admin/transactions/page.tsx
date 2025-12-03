@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { useFirebase } from '@/firebase';
 import { toast } from 'sonner';
@@ -15,10 +14,10 @@ import { Deposit } from '@/lib/firebase/collections/transactions_deposit';
 import { Withdrawal } from '@/lib/firebase/collections/transactions_withdraw';
 
 // Memoized row for performance, prevents re-renders of unchanged rows
-const MemoizedTransactionRow = React.memo(({ tx, type, onAction, actionLoading }) => {
+const MemoizedTransactionRow = React.memo(({ tx, type, onAction, actionLoading }: { tx: Deposit | Withdrawal, type: string, onAction: (id: string, action: string, amount: number, userId: string) => void, actionLoading: string | null }) => {
     const isThisRowLoading = actionLoading === tx.id;
 
-    const handleAction = (action) => {
+    const handleAction = (action: string) => {
         onAction(tx.id, action, tx.amount, tx.userId);
     }
 
@@ -52,9 +51,10 @@ const MemoizedTransactionRow = React.memo(({ tx, type, onAction, actionLoading }
         </TableRow>
     );
 });
+MemoizedTransactionRow.displayName = 'MemoizedTransactionRow';
 
 // High-performance table using memoized rows
-const TransactionTable = ({ transactions, type, onAction, isLoading, actionLoading }) => (
+const TransactionTable = ({ transactions, type, onAction, isLoading, actionLoading }: { transactions: (Deposit | Withdrawal)[], type: string, onAction: any, isLoading: boolean, actionLoading: string | null }) => (
     <Table>
         <TableHeader> 
             <TableRow> 
@@ -79,6 +79,7 @@ const TransactionTable = ({ transactions, type, onAction, isLoading, actionLoadi
         </TableBody>
     </Table>
 );
+TransactionTable.displayName = 'TransactionTable';
 
 export default function TransactionsHubPage() {
     const { functions } = useFirebase();
@@ -87,11 +88,12 @@ export default function TransactionsHubPage() {
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     // Memoize callable functions for performance
-    const getPendingTransactionsFn = useMemo(() => httpsCallable(functions, 'getPendingTransactions'), [functions]);
-    const handleWithdrawalFn = useMemo(() => httpsCallable(functions, 'handleWithdrawalByAdmin'), [functions]);
-    const handleDepositFn = useMemo(() => httpsCallable(functions, 'handleDepositByAdmin'), [functions]);
+    const getPendingTransactionsFn = useMemo(() => functions ? httpsCallable(functions, 'getPendingTransactions') : null, [functions]);
+    const handleWithdrawalFn = useMemo(() => functions ? httpsCallable(functions, 'handleWithdrawalByAdmin') : null, [functions]);
+    const handleDepositFn = useMemo(() => functions ? httpsCallable(functions, 'handleDepositByAdmin') : null, [functions]);
 
     const fetchTransactions = useCallback(async () => {
+        if (!getPendingTransactionsFn) return;
         setIsLoading(true);
         try {
             const result = await getPendingTransactionsFn();
@@ -104,6 +106,7 @@ export default function TransactionsHubPage() {
 
     // Optimized action handler using optimistic UI update
     const handleWithdrawalAction = useCallback(async (id: string, action: string) => {
+        if (!handleWithdrawalFn) return;
         setActionLoading(id);
         const toastId = toast.loading(`Processing withdrawal...`);
         
@@ -128,6 +131,7 @@ export default function TransactionsHubPage() {
     }, [handleWithdrawalFn, fetchTransactions]);
 
     const handleDepositAction = useCallback(async (id: string, action: 'approved' | 'rejected') => {
+        if (!handleDepositFn) return;
         setActionLoading(id);
         const toastId = toast.loading(`Processing deposit...`);
 

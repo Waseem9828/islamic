@@ -7,7 +7,7 @@ import { useDoc, useFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { httpsCallable } from 'firebase/functions';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,8 +64,8 @@ const StatCard = ({ label, value, icon: Icon }: { label: string, value: string |
 const PlayerCard = ({ uid, info, isCreator, isWinner }: { uid: string, info: PlayerInfo, isCreator: boolean, isWinner: boolean }) => (
     <Card className={`relative ${isWinner ? 'border-2 border-green-500' : ''}`}>
         <CardContent className="p-4 flex items-center gap-4">
-            {isCreator && <Crown className="absolute top-2 right-2 h-4 w-4 text-yellow-500" title="Game Creator" />}
-            {isWinner && <ShieldCheck className="absolute -top-2 -left-2 h-5 w-5 text-green-500" title="Winner" />}
+            {isCreator && <Crown className="absolute top-2 right-2 h-4 w-4 text-yellow-500" />}
+            {isWinner && <ShieldCheck className="absolute -top-2 -left-2 h-5 w-5 text-green-500" />}
             <Avatar className="h-12 w-12">
                 <AvatarImage src={info.photoURL} />
                 <AvatarFallback>{info.name?.[0]}</AvatarFallback>
