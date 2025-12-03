@@ -5,6 +5,7 @@ import * as logger from "firebase-functions/logger";
 
 admin.initializeApp();
 const db = admin.firestore();
+const storage = admin.storage();
 
 // =====================================================================
 // Helper Functions
@@ -208,6 +209,46 @@ export const joinMatch = onCall({ region, cors: true }, async (request) => {
 
         return { status: "success", message: "Successfully joined match." };
     });
+});
+
+export const submitResult = onCall({ region, cors: true, maxInstances: 10 }, async (request) => {
+    ensureAuthenticated(request);
+    const { matchId, selectedPosition, screenshotBase64, prize } = request.data;
+    const uid = request.auth!.uid;
+
+    if (!matchId || !selectedPosition || !screenshotBase64 || !prize) {
+        throw new HttpsError("invalid-argument", "Missing required result data.");
+    }
+
+    const matchRef = db.collection("matches").doc(matchId);
+    const matchDoc = await matchRef.get();
+
+    if (!matchDoc.exists) throw new HttpsError("not-found", "Match not found.");
+    const matchData = matchDoc.data()!;
+
+    if (!matchData.players.includes(uid)) throw new HttpsError("permission-denied", "You are not a player in this match.");
+    if (matchData.status !== 'inprogress') throw new HttpsError("failed-precondition", "Match is not in progress.");
+    if (matchData.results && matchData.results[uid]) throw new HttpsError("failed-precondition", "You have already submitted a result.");
+
+    const bucket = storage.bucket();
+    const fileName = `results/${matchId}/${uid}/${Date.now()}.jpg`;
+    const file = bucket.file(fileName);
+    const buffer = Buffer.from(screenshotBase64, 'base64');
+
+    await file.save(buffer, { contentType: 'image/jpeg' });
+    const [screenshotUrl] = await file.getSignedUrl({ action: 'read', expires: '03-09-2491' });
+
+    const resultData = {
+        position: parseInt(selectedPosition),
+        screenshotUrl,
+        submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'Pending Verification',
+        estimatedWinnings: prize,
+    };
+
+    await matchRef.update({ [`results.${uid}`]: resultData });
+
+    return { status: "success", message: "Result submitted successfully!" };
 });
 
 export const declareMatchWinner = onCall({ region, cors: true }, async (request) => {

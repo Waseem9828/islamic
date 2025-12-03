@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, updateDoc, arrayUnion, arrayRemove, deleteField } from 'firebase/firestore';
 import { useUser, useFirebase, useDoc } from '@/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,7 +18,6 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { errorEmitter, FirestorePermissionError } from '@/firebase/errors';
-
 
 interface Player {
   uid: string;
@@ -81,10 +80,20 @@ const calculateWinnings = (totalPool: number, playerCount: number): { position: 
     }
 };
 
+const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+        const result = (reader.result as string).split(',')[1];
+        resolve(result);
+    };
+    reader.onerror = error => reject(error);
+});
+
+
 const ResultSubmission = ({ match }: { match: MatchData }) => {
-    const router = useRouter();
     const { user } = useUser();
-    const { firestore, storage } = useFirebase();
+    const { app } = useFirebase();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
@@ -102,39 +111,32 @@ const ResultSubmission = ({ match }: { match: MatchData }) => {
     };
 
     const handleSubmitResult = async () => {
-        if (!user || !match || !selectedPosition || !screenshot || !storage || !firestore) {
+        if (!user || !match || !selectedPosition || !screenshot || !app) {
             toast.error("Please fill all fields and upload a screenshot.");
             return;
         }
         setIsSubmitting(true);
 
         try {
-            const screenshotRef = ref(storage, `results/${match.id}/${user.uid}/${Date.now()}`);
-            const uploadResult = await uploadBytes(screenshotRef, screenshot);
-            const screenshotUrl = await getDownloadURL(uploadResult.ref);
+            const functions = getFunctions(app, 'us-east1');
+            const submitResult = httpsCallable(functions, 'submitResult');
 
-            const matchRef = doc(firestore, 'matches', match.id);
-            const winning = prizeDistribution.find(p => p.position === parseInt(selectedPosition))?.prize || 0;
+            const screenshotBase64 = await fileToBase64(screenshot);
+            const prize = prizeDistribution.find(p => p.position === parseInt(selectedPosition))?.prize || 0;
 
-            const resultData = {
-                position: parseInt(selectedPosition),
-                screenshotUrl,
-                submittedAt: new Date(),
-                status: 'Pending Verification',
-                estimatedWinnings: winning
-            };
-
-            await updateDoc(matchRef, { 
-                [`results.${user.uid}`]: resultData,
+            const response = await submitResult({ 
+                matchId: match.id, 
+                selectedPosition, 
+                screenshotBase64, 
+                prize 
             });
 
             toast.success("Result submitted successfully!", {
-                description: `Position: ${selectedPosition}. Est. Winning: ₹${winning}. Results are under review.`,
+                description: `Position: ${selectedPosition}. Est. Winning: ₹${prize}. Results are under review.`,
             });
-            // Don't redirect, stay on page to see submission status
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error submitting result:", error);
-            toast.error("Submission failed.", { description: "Could not upload screenshot or save result." });
+            toast.error("Submission failed.", { description: error.message || "Could not save result." });
         } finally {
             setIsSubmitting(false);
         }
@@ -387,7 +389,7 @@ export default function MatchLobbyPage() {
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><IndianRupee className='h-3 w-3'/>{match.entryFee}</span><span className='text-muted-foreground'>Entry</span></div>
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><Users className='h-3 w-3'/>{match.players.length}/{match.maxPlayers}</span><span className='text-muted-foreground'>Players</span></div>
             <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'><Clock className='h-3 w-3'/>{match.timeLimit}</span><span className='text-muted-foreground'>Time</span></div>
-            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'>{match.privacy === 'private' ? <Lock className='h-3 w-3'/> : <Unlock className='h-3 w-3'/>}</span><span className='text-muted-foreground capitalize'>{match.privacy}</span></div>
+            <div className="bg-muted p-2 rounded-lg"><span className='font-bold flex items-center justify-center gap-1'>{match.privacy === 'private' ? <Lock className='h-3 w-3'/> : <Unlock className='h-3 w-3'/> }</span><span className='text-muted-foreground capitalize'>{match.privacy}</span></div>
         </div>
 
         {match.status === 'waiting' &&
@@ -398,7 +400,7 @@ export default function MatchLobbyPage() {
             </div>
         }
 
-        {isCreator && match.status === 'waiting' && match.players.length > 1 && <RoomCodeManager match={match} />}
+        {isCreator && match.status === 'waiting' && <RoomCodeManager match={match} />}
 
         {isUserInMatch && !isCreator && match.status === 'waiting' && (
             <Alert className="mb-4">
@@ -477,4 +479,3 @@ export default function MatchLobbyPage() {
     </div>
   );
 }
-
