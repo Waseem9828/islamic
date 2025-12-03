@@ -12,7 +12,7 @@ import {
     updateProfile
 } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,14 +149,46 @@ export function LoginForm() {
 
     // --- Google Sign-In Logic ---
     const handleGoogleSignIn = async () => {
-        if (!auth) return;
+        if (!auth || !firestore) return;
         const provider = new GoogleAuthProvider();
+        setIsLoading(true);
         try {
-            await signInWithPopup(auth, provider);
-            toast.success('Signed in with Google successfully!');
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            // Check if user exists in Firestore
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+
+            if (!userDocSnap.exists()) {
+                // New user - create documents
+                const photoURL = user.photoURL || `https://avatar.vercel.sh/${user.email}.png`;
+                await setDoc(userDocRef, {
+                    email: user.email,
+                    displayName: user.displayName,
+                    photoURL: photoURL,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    status: 'active',
+                });
+
+                const walletDocRef = doc(firestore, 'wallets', user.uid);
+                await setDoc(walletDocRef, {
+                    depositBalance: 0,
+                    winningBalance: 0,
+                    bonusBalance: 0,
+                });
+                toast.success('Welcome! Your account has been created.');
+            } else {
+                toast.success('Signed in with Google successfully!');
+            }
+            
             router.push('/play');
+
         } catch (error: any) {
             handleAuthError(error);
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -227,7 +259,7 @@ export function LoginForm() {
                         <Input id="email" type="email" placeholder="Email address" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className="pl-10 h-12 text-base" />
                     </div>
                     <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <User className.tsx="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input id="displayName" type="text" placeholder="Full Name" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} disabled={isLoading} className="pl-10 h-12 text-base" />
                     </div>
                     <div className="relative">

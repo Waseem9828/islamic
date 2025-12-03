@@ -153,10 +153,9 @@ export default function ManageAdminsPage() {
         }
         setIsLoading(true);
         try {
-            // This function needs to be created in the backend
             const getAllAdminsFn = httpsCallable(functions, 'getAllAdmins');
-            const result = await getAllAdminsFn();
-            setAdmins(result.data as Admin[]);
+            const result = await getAllAdminsFn() as { data: { admins: Admin[] } };
+            setAdmins(result.data.admins);
         } catch (err: any) {
             toast.error("Failed to fetch admins", { description: err.message });
             setAdmins([]); // Clear admins on error
