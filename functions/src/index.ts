@@ -6,6 +6,7 @@
 import * as withdrawalController from './controllers/withdrawal.controller';
 import * as depositController from './controllers/deposit.controller';
 import * as matchController from './controllers/match.controller';
+import * as adminController from './controllers/admin.controller';
 
 // Export all functions from controllers to make them deployable.
 // This keeps the root index file clean and focused solely on exporting.
@@ -16,4 +17,4 @@ export const handleDepositByAdmin = depositController.handleDepositByAdmin;
 export const createMatch = matchController.createMatch;
 export const joinMatch = matchController.joinMatch;
 export const submitResult = matchController.submitResult;
-
+export const getAllAdmins = adminController.getAllAdmins;
