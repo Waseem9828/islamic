@@ -11,6 +11,7 @@ export interface Deposit {
   amount: number;
   status: DepositStatus;
   timestamp: Timestamp;
+  transactionId?: string; // The transaction ID from the payment gateway
 }
 
 export const depositsCollection = collection(firestore, "transactions_deposit");
