@@ -23,7 +23,7 @@ class DepositService {
             if (action === 'approved') {
                 const depositData = depositDoc.data()!;
                 // Update user wallet
-                userRepository.updateWalletBalance(transaction, depositData.userId, depositData.amount);
+                userRepository.updateWalletBalance(transaction, depositData.userId, depositData.amount, 'deposit');
                 // Update deposit status
                 depositRepository.updateDepositStatus(transaction, depositId, 'approved', adminId);
                  // Log admin activity
@@ -50,4 +50,3 @@ class DepositService {
 }
 
 export const depositService = new DepositService();
-
