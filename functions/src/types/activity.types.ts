@@ -12,6 +12,7 @@ export interface AdminActivity {
     type: string;
     amount: number;
     userId: string;
-    depositId: string;
+    depositId?: string;
+    withdrawalId?: string;
     timestamp?: Date;
 }

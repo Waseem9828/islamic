@@ -1,7 +1,6 @@
 
 import { firestore } from '../firebase';
 import { FieldValue } from 'firebase-admin/firestore';
-import { Admin } from '../types/admin.types';
 
 class AdminRepository {
     private collection = firestore.collection('admins');
